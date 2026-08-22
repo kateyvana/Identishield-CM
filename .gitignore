@@ -1,0 +1,30 @@
+# secrets
+.env
+*.pem
+*.key
+*.jks
+*.keystore
+# java
+build/
+.gradle/
+*.class
+# python
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+# node
+node_modules/
+.next/
+# android
+android/.gradle/
+android/local.properties
+android/**/build/
+# ide
+.idea/
+*.iml
+# data (frozen datasets stay out of git; hashes are committed)
+datasets/*.csv
+datasets/*.parquet
+# os
+.DS_Store
