@@ -41,7 +41,8 @@ build:
 	@for p in $(PY_PROJECTS); do \
 	  (cd $$p && uv sync --quiet) || exit 1; \
 	done
-	@cd console && npm run --silent build
+	@if [ ! -d console/node_modules ]; then (cd console && npm ci --no-audit --no-fund); fi
+	@if [ -n "$$MSYSTEM" ]; then 	  echo "console : next build complet indisponible sous Windows (bug amont vercel/next.js#87719) — mode compile seul ; le build complet tourne en CI et dans la VM"; 	  (cd console && npm run --silent build:compile); 	else 	  (cd console && npm run --silent build); 	fi
 
 format:
 	@for p in $(GRADLE_PROJECTS); do \
