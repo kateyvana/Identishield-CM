@@ -1,0 +1,414 @@
+openapi: 3.1.0
+info:
+  title: IdentiShield-CM — PDP Decision API
+  version: 0.1.0
+  summary: Contrat du Point de Décision de Politique (isc-pdp)
+  description: |
+    Contrat central du système (ISC-SAD §8.1, §8.3). Le cœur opérateur simulé
+    (isc-core) est l'unique client : le PDP n'est jamais joignable depuis
+    l'extérieur du réseau isc-net (ES-11, ISC-DEPLOY §3.3).
+
+    **Idempotence (ENF-03)** : `decisionId` est la clé d'idempotence. Deux appels
+    `POST /evaluate` portant le même `decisionId` renvoient la même décision et
+    n'écrivent qu'une seule entrée d'audit.
+
+    Transport : mTLS obligatoire entre isc-core et isc-pdp (SPIKE-4, ADR-019).
+    Une requête sans certificat client valide reçoit 401.
+servers:
+  - url: https://isc-pdp:8081
+    description: Réseau interne isc-net uniquement (jamais exposé à l'hôte)
+
+security:
+  - mtls: []
+
+paths:
+  /evaluate:
+    post:
+      operationId: evaluateTransaction
+      summary: Évalue une transaction et rend une décision graduée
+      description: |
+        Décision ALLOW / STEP_UP / FREEZE / REJECTED avec score, règles
+        déclenchées et veto éventuel. Appel synchrone avant commit côté cœur ;
+        en cas d'indisponibilité (503), le cœur applique la politique
+        fail-closed (ADR-007).
+
+        Rejouer le même `decisionId` est sûr : même décision, une seule entrée
+        d'audit (ENF-03).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluateRequest'
+            examples:
+              cashOutApp:
+                summary: Retrait via l'application, preuve par signature
+                value:
+                  decisionId: 5f1e7c1a-9d3b-4e6a-8c2f-0b7d9a4e6c1d
+                  accountId: acc-000123
+                  msisdn: '699000123'
+                  currentImsi: '624019900001230'
+                  channel: APP
+                  type: CASH_OUT
+                  amountXaf: 25000
+                  beneficiaryId: ben-000045
+                  serverTimestamp: '2026-08-26T09:15:00Z'
+                  localityCellId: cell-yde-007
+                  deviceKeyId: dk-7f3a2b
+                  signature: TUVVQ0lRRHhleGFtcGxlc2lnbmF0dXJlYmFzZTY0
+                  nonce: 9f86d081884c7d659a2feaa0c55ad015
+                  proofType: SIGNATURE
+      responses:
+        '200':
+          description: Décision rendue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluateResponse'
+              examples:
+                allow:
+                  summary: Transaction autorisée
+                  value:
+                    decision: ALLOW
+                    score: 12
+                    requiredAction: NONE
+                    triggeredRules:
+                      - ruleId: VEL
+                        contribution: 12
+                        explanation: velocity within configured window
+                    vetoApplied: NONE
+                    decisionId: 5f1e7c1a-9d3b-4e6a-8c2f-0b7d9a4e6c1d
+                    ruleSetVersion: rs-0.1.0
+                    evaluatedAt: '2026-08-26T09:15:00Z'
+                    latencyMs: 18
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Nonce déjà consommé (rejeu détecté).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: NONCE_CONSUMED
+                message: nonce already consumed
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /nonce:
+    get:
+      operationId: issueNonce
+      summary: Émet un nonce à usage unique (128 bits, 120 s)
+      description: |
+        Nonce lié au compte, à usage unique, expirant après 120 secondes
+        (ISC-SAD §8.3). Consommé par la signature d'une transaction.
+      parameters:
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: string
+          example: acc-000123
+      responses:
+        '200':
+          description: Nonce émis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NonceResponse'
+              example:
+                nonce: 9f86d081884c7d659a2feaa0c55ad015
+                accountId: acc-000123
+                issuedAt: '2026-08-26T09:14:00Z'
+                expiresAt: '2026-08-26T09:16:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /freeze/{id}/release:
+    post:
+      operationId: releaseFreeze
+      summary: Demande de levée d'un gel (quatre-yeux au-delà de THR_4EYES)
+      description: |
+        Enregistre l'approbation d'un acteur pour la levée du gel `id`
+        (ISC-SAD §8.3, §9.2 : `releasedBy` est une liste — deux analystes
+        distincts sont requis au-delà du seuil configuré THR_4EYES).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifiant du gel (freeze.id)
+          schema:
+            type: string
+          example: frz-000012
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FreezeReleaseRequest'
+            example:
+              actorId: analyst-01
+              proof: case-4711
+              justification: identité du titulaire vérifiée par contact de confiance
+      responses:
+        '200':
+          description: Approbation enregistrée ; état courant du gel retourné.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FreezeReleaseResponse'
+              examples:
+                firstApproval:
+                  summary: Première approbation, seconde attendue
+                  value:
+                    freezeId: frz-000012
+                    state: PENDING_SECOND_APPROVAL
+                    releasedBy: [analyst-01]
+                released:
+                  summary: Gel levé
+                  value:
+                    freezeId: frz-000012
+                    state: RELEASED
+                    releasedBy: [analyst-01, analyst-02]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: >-
+            Conflit : gel déjà clos, ou second approbateur identique au premier
+            (quatre-yeux).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: FOUR_EYES_VIOLATION
+                message: second approver must differ from first
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+components:
+  securitySchemes:
+    mtls:
+      type: mutualTLS
+      description: Certificats de service émis par l'autorité locale (SPIKE-4).
+
+  responses:
+    BadRequest:
+      description: Requête hors contrat (champ manquant, type ou domaine invalide).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CONTRACT_VIOLATION
+            message: amountXaf must be a positive integer
+    Unauthorized:
+      description: mTLS absent ou certificat client invalide.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: MTLS_REQUIRED
+            message: client certificate required
+    TooManyRequests:
+      description: Débit dépassé.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: RATE_LIMITED
+            message: request rate exceeded
+    Unavailable:
+      description: >-
+        PDP indisponible. Le cœur applique la politique fail-closed (ADR-007).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: UNAVAILABLE
+            message: decision engine unavailable
+
+  schemas:
+    EvaluateRequest:
+      type: object
+      required:
+        - decisionId
+        - accountId
+        - msisdn
+        - currentImsi
+        - channel
+        - type
+        - amountXaf
+        - beneficiaryId
+        - serverTimestamp
+        - proofType
+      properties:
+        decisionId:
+          type: string
+          format: uuid
+          description: UUID v4 ; clé d'idempotence (ENF-03).
+        accountId:
+          type: string
+        msisdn:
+          type: string
+          pattern: '^69900[0-9]{4}$'
+          description: Plage fictive 699000000–699009999 uniquement (ED-09).
+        currentImsi:
+          type: string
+          description: IMSI courant vu par le cœur (fictif).
+        channel:
+          type: string
+          enum: [APP, USSD]
+        type:
+          type: string
+          enum: [P2P, CASH_OUT, MERCHANT, BILL, AIRTIME, CASH_IN]
+        amountXaf:
+          type: integer
+          minimum: 1
+          description: Montant en FCFA entiers ; aucun flottant (ED-05).
+        beneficiaryId:
+          type: string
+        serverTimestamp:
+          type: string
+          format: date-time
+          description: UTC, généré par le serveur via Clock (ED-04).
+        localityCellId:
+          type: string
+        deviceKeyId:
+          type: string
+          description: Requis quand proofType vaut SIGNATURE.
+        signature:
+          type: string
+          contentEncoding: base64
+          description: Signature du canonical (PROVISOIRE, SPIKE-1 / ADR-018).
+        nonce:
+          type: string
+          description: Nonce émis par GET /nonce ; usage unique.
+        proofType:
+          type: string
+          enum: [SIGNATURE, TRUSTED_CONTACT, NONE]
+
+    EvaluateResponse:
+      type: object
+      required:
+        - decision
+        - score
+        - requiredAction
+        - triggeredRules
+        - vetoApplied
+        - decisionId
+        - ruleSetVersion
+        - evaluatedAt
+        - latencyMs
+      properties:
+        decision:
+          type: string
+          enum: [ALLOW, STEP_UP, FREEZE, REJECTED]
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        requiredAction:
+          type: string
+          enum: [SIGNATURE, DEFER, CONTACT_CONFIRMATION, NONE]
+        triggeredRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggeredRule'
+        vetoApplied:
+          type: string
+          enum: [IMSI_CHANGE, SIGNATURE_INVALID, PROBATION_VIOLATION, NONE]
+        decisionId:
+          type: string
+          format: uuid
+        ruleSetVersion:
+          type: string
+        evaluatedAt:
+          type: string
+          format: date-time
+        latencyMs:
+          type: integer
+          minimum: 0
+
+    TriggeredRule:
+      type: object
+      required: [ruleId, contribution, explanation]
+      properties:
+        ruleId:
+          type: string
+        contribution:
+          type: integer
+          description: Contribution au score (entier).
+        explanation:
+          type: string
+
+    NonceResponse:
+      type: object
+      required: [nonce, accountId, issuedAt, expiresAt]
+      properties:
+        nonce:
+          type: string
+          description: 128 bits, encodé en hexadécimal.
+          pattern: '^[0-9a-f]{32}$'
+        accountId:
+          type: string
+        issuedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          description: issuedAt + 120 s.
+
+    FreezeReleaseRequest:
+      type: object
+      required: [actorId, proof, justification]
+      properties:
+        actorId:
+          type: string
+          description: Analyste demandant la levée.
+        proof:
+          type: string
+          description: Référence de la preuve (dossier, confirmation).
+        justification:
+          type: string
+
+    FreezeReleaseResponse:
+      type: object
+      required: [freezeId, state, releasedBy]
+      properties:
+        freezeId:
+          type: string
+        state:
+          type: string
+          enum: [PENDING_SECOND_APPROVAL, RELEASED, CLOSED]
+        releasedBy:
+          type: array
+          items:
+            type: string
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string

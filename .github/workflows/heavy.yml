@@ -1,0 +1,29 @@
+# Portes lourdes (ISC-DEPLOY §5.2, §5.3) : executeur auto-heberge `isc-vm`
+# dans la machine virtuelle. Tant que l'executeur n'est pas installe, ces
+# travaux restent en attente : comportement accepte, pas une panne (ADR-023).
+name: heavy
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *' # chaque nuit, 02:00 UTC
+
+jobs:
+  portes-lourdes:
+    runs-on: [self-hosted, isc-vm]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Demarrage de la pile
+        run: make up
+
+      - name: Sante, isolation reseau, role d'audit (ED-06)
+        run: make check-stack
+
+      - name: Cas d'abus T-AC-01..13
+        run: make abuse
+
+      - name: Arret de la pile
+        if: always()
+        run: make down
