@@ -52,6 +52,7 @@ format:
 	  (cd $$p && uv run --quiet ruff format --check . && uv run --quiet ruff check .) || exit 1; \
 	done
 	@cd console && npx --yes prettier@3.9.6 --log-level warn --check .
+	@(cd simulator && uv run --quiet ruff format --check ../tools && uv run --quiet ruff check ../tools) 	  || { echo "format : ÉCHEC — les scripts des portes (tools/) ne passent pas ruff"; exit 1; }
 
 unit:
 	@for p in $(GRADLE_PROJECTS); do \
