@@ -10,5 +10,6 @@
 | QO-13 | Licence du dépôt public ; droits de l'université | CT-06 | Candidat | Semaine 4 | OUVERT |
 | QO-15 | L'agent complice est-il dans le modèle de menace ? | ISC-TM | Encadrement | — | FERMÉ — oui (ADR-008) |
 | QO-17 | Confirmation que la plage MSISDN fictive 699000000–699009999 est hors de tout bloc attribué par l'ART | ED-09 | Candidat | Semaine 3 | OUVERT |
+| QO-18 | Quelle proportion des appareils du marché camerounais dispose d'un TEE exploitable (Keystore matériel) ? Limite constatée par SPIKE-1 : TEE sans StrongBox sur les deux appareils du projet | Mémoire (limite ES-02 / HP-2) | Candidat | Mois 4 | OUVERT |
 
 Règle : une question est fermée uniquement par une réponse écrite dans la colonne Statut. Une question bloquante ouverte depuis plus de deux semaines est remontée en revue hebdomadaire.
