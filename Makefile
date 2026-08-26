@@ -1,0 +1,92 @@
+# IdentiShield-CM - commandes du depot (TACHE-00 tache 4 ; ISC-DEV §4, ISC-DEPLOY §4.4)
+# Recettes en shell POSIX portable : memes commandes sous Git Bash et dans la VM Ubuntu.
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
+
+# MSYS_NO_PATHCONV empeche Git Bash de reecrire les chemins /... dans les arguments
+# docker ; la variable est ignoree partout ailleurs. Regle documentee dans le README.
+COMPOSE := MSYS_NO_PATHCONV=1 docker compose -f infra/docker-compose.yml
+PY      ?= python
+GRADLE_PROJECTS := core pdp
+PY_PROJECTS     := simulator attacker hlr-agent evaluation
+
+.PHONY: help up down reset check test abuse evaluate diagrams check-docs check-stack \
+        build format unit arch contract secrets fictitious-msisdn
+
+help:
+	@echo "Cibles : up down reset check test abuse evaluate diagrams check-docs check-stack"
+
+## ---- pile ------------------------------------------------------------------
+up:
+	@bash infra/gen-secrets.sh
+	@$(COMPOSE) up -d --wait
+
+down:
+	@$(COMPOSE) down
+
+reset:
+	@$(COMPOSE) down -v
+
+check-stack:
+	@bash tools/check_stack.sh
+
+## ---- portes legeres (ISC-DEV §4) -------------------------------------------
+check: build format unit arch contract check-docs secrets fictitious-msisdn
+	@echo "make check : VERT"
+
+build:
+	@for p in $(GRADLE_PROJECTS); do \
+	  (cd $$p && ./gradlew --quiet assemble) || exit 1; \
+	done
+	@for p in $(PY_PROJECTS); do \
+	  (cd $$p && uv sync --quiet) || exit 1; \
+	done
+	@cd console && npm run --silent build
+
+format:
+	@for p in $(GRADLE_PROJECTS); do \
+	  (cd $$p && ./gradlew --quiet spotlessCheck) || exit 1; \
+	done
+	@for p in $(PY_PROJECTS); do \
+	  (cd $$p && uv run --quiet ruff format --check . && uv run --quiet ruff check .) || exit 1; \
+	done
+	@cd console && npx --yes prettier --log-level warn --check .
+
+unit:
+	@for p in $(GRADLE_PROJECTS); do \
+	  (cd $$p && ./gradlew --quiet test) || exit 1; \
+	done
+	@for p in $(PY_PROJECTS); do \
+	  (cd $$p && uv run --quiet pytest -q) || exit 1; \
+	done
+
+arch:
+	@for p in $(GRADLE_PROJECTS); do \
+	  (cd $$p && ./gradlew --quiet test --tests '*ArchitectureTest') || exit 1; \
+	done
+
+contract:
+	@npx --yes @redocly/cli@2.14.5 lint contracts/evaluate.yaml
+
+check-docs:
+	@$(PY) tools/check_docs.py
+
+secrets:
+	@$(PY) tools/check_secrets.py
+
+fictitious-msisdn:
+	@$(PY) tools/check_msisdn.py
+
+## ---- autres cibles ----------------------------------------------------------
+test: unit
+
+abuse:
+	@echo "non implémenté — jalon M3 (exige la pile complète et les T-AC)"
+
+evaluate:
+	@echo "non implémenté — jalon M4 (protocole ISC-EVAL)"
+
+diagrams:
+	@files=$$(find docs/diagrams -name '*.puml' 2>/dev/null); \
+	if [ -z "$$files" ]; then echo "diagrams : aucun diagramme à rendre (VERT)"; \
+	else plantuml -checkonly $$files && echo "diagrams : VERT"; fi
