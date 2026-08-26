@@ -13,7 +13,7 @@ jobs:
   portes-lourdes:
     runs-on: [self-hosted, isc-vm]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Demarrage de la pile
         run: make up

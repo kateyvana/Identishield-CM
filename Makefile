@@ -6,7 +6,7 @@ SHELL := /bin/bash
 # MSYS_NO_PATHCONV empeche Git Bash de reecrire les chemins /... dans les arguments
 # docker ; la variable est ignoree partout ailleurs. Regle documentee dans le README.
 COMPOSE := MSYS_NO_PATHCONV=1 docker compose -f infra/docker-compose.yml
-PY      ?= python
+PY      ?= $(shell command -v python >/dev/null 2>&1 && echo python || echo python3)
 GRADLE_PROJECTS := core pdp
 PY_PROJECTS     := simulator attacker hlr-agent evaluation
 
