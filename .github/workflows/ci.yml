@@ -1,0 +1,33 @@
+# Portes legeres (ISC-DEV §4, ISC-DEPLOY §5.2) : executeur heberge, chaque poussee.
+# Parite : la CI execute les MEMES cibles make que le poste et la VM.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  portes-legeres:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Portes legeres
+        run: make check
+
+      - name: Diagrammes
+        run: make diagrams
