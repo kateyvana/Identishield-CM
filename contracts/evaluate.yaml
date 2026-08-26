@@ -268,7 +268,7 @@ components:
           type: string
         msisdn:
           type: string
-          pattern: '^6990[0-9]{5}$'
+          pattern: '^69900[0-9]{4}$'
           description: Plage fictive 699000000–699009999 uniquement (ED-09).
         currentImsi:
           type: string
