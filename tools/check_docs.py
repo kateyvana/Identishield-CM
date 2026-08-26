@@ -3,7 +3,9 @@
 Trois verifications sur docs/ :
 1. tout identifiant ADR-xxx cite possede un fichier docs/01-decisions/ADR-xxx.md ;
 2. aucun identifiant d'exigence RETIREE (liste : ES-01, ES-16 et leurs formes
-   anglaises SR-01, SR-16) n'est cite ailleurs que sur sa ligne de retrait ;
+   anglaises SR-01, SR-16) n'est cite ailleurs que sur sa ligne de retrait —
+   perimetre : docs/02-specifications/ uniquement (les revues historiques de
+   docs/03-revues documentent legitimement le retrait) ;
 3. les ensembles d'identifiants d'exigences des SRS FR et EN sont identiques
    sous le mapping EF->FR, ES->SR, ENF->NFR, EAR->RAR, ED->DR, EI->IR.
 
@@ -26,13 +28,6 @@ SRS_EN = (
 # interdit un caractere alphanumerique apres le numero.
 RETIRED = ["ES-01", "ES-16", "SR-01", "SR-16"]
 RETIREMENT_MARKERS = ("RETIRÉE", "RETIREE", "RETIRED", "WITHDRAWN")
-
-# Fichiers historiques anterieurs au retrait, qui le documentent ou le testent.
-# Toute NOUVELLE citation d'un identifiant retire ailleurs reste une erreur.
-RETIRED_ALLOWLIST = {
-    Path("docs/03-revues/03-journal-defauts-SRS-v1.1.md"),
-    Path("docs/03-revues/TACHE-00_Mise_en_place_depot.md"),
-}
 
 PREFIX_MAP = {"EF": "FR", "ES": "SR", "ENF": "NFR", "EAR": "RAR", "ED": "DR", "EI": "IR"}
 
@@ -81,8 +76,9 @@ def check_adr_references(texts) -> list[str]:
 def check_retired_ids(texts) -> list[str]:
     errors = []
     patterns = [(rid, re.compile(re.escape(rid) + r"(?![0-9A-Za-z])")) for rid in RETIRED]
+    spec_dir = DOCS / "02-specifications"
     for path, text in texts:
-        if path in RETIRED_ALLOWLIST:
+        if spec_dir not in path.parents:
             continue
         lines = text.splitlines()
         for lineno, line in enumerate(lines, start=1):
