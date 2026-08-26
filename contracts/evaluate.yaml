@@ -146,10 +146,12 @@ paths:
         - name: id
           in: path
           required: true
-          description: Identifiant du gel (freeze.id)
+          description: Identifiant du gel (freeze.id), UUID v4 (ED-09)
           schema:
             type: string
-          example: frz-000012
+            format: uuid
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          example: 0e7c9b2a-5d1f-4c3a-9b6e-2f8a4d7c1e5b
       requestBody:
         required: true
         content:
@@ -171,13 +173,13 @@ paths:
                 firstApproval:
                   summary: Première approbation, seconde attendue
                   value:
-                    freezeId: frz-000012
+                    freezeId: 0e7c9b2a-5d1f-4c3a-9b6e-2f8a4d7c1e5b
                     state: PENDING_SECOND_APPROVAL
                     releasedBy: [analyst-01]
                 released:
                   summary: Gel levé
                   value:
-                    freezeId: frz-000012
+                    freezeId: 0e7c9b2a-5d1f-4c3a-9b6e-2f8a4d7c1e5b
                     state: RELEASED
                     releasedBy: [analyst-01, analyst-02]
         '400':
@@ -263,7 +265,8 @@ components:
         decisionId:
           type: string
           format: uuid
-          description: UUID v4 ; clé d'idempotence (ENF-03).
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          description: UUID v4 (ED-09) ; clé d'idempotence (ENF-03).
         accountId:
           type: string
         msisdn:
@@ -288,7 +291,8 @@ components:
         serverTimestamp:
           type: string
           format: date-time
-          description: UTC, généré par le serveur via Clock (ED-04).
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$'
+          description: UTC obligatoire, suffixe Z (ED-04) ; généré par le serveur via Clock.
         localityCellId:
           type: string
         deviceKeyId:
@@ -300,7 +304,8 @@ components:
           description: Signature du canonical (PROVISOIRE, SPIKE-1 / ADR-018).
         nonce:
           type: string
-          description: Nonce émis par GET /nonce ; usage unique.
+          pattern: '^[0-9a-f]{32}$'
+          description: Nonce émis par GET /nonce ; 128 bits hex, usage unique (ES-10).
         proofType:
           type: string
           enum: [SIGNATURE, TRUSTED_CONTACT, NONE]
@@ -338,11 +343,15 @@ components:
         decisionId:
           type: string
           format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          description: UUID v4 (ED-09).
         ruleSetVersion:
           type: string
         evaluatedAt:
           type: string
           format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$'
+          description: UTC obligatoire, suffixe Z (ED-04).
         latencyMs:
           type: integer
           minimum: 0
@@ -372,10 +381,13 @@ components:
         issuedAt:
           type: string
           format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$'
+          description: UTC obligatoire, suffixe Z (ED-04).
         expiresAt:
           type: string
           format: date-time
-          description: issuedAt + 120 s.
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$'
+          description: issuedAt + 120 s ; UTC obligatoire, suffixe Z (ED-04).
 
     FreezeReleaseRequest:
       type: object
@@ -396,6 +408,9 @@ components:
       properties:
         freezeId:
           type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          description: UUID v4 (ED-09).
         state:
           type: string
           enum: [PENDING_SECOND_APPROVAL, RELEASED, CLOSED]
