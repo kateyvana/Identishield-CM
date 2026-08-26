@@ -4,8 +4,8 @@ Trois verifications sur docs/ :
 1. tout identifiant ADR-xxx cite possede un fichier docs/01-decisions/ADR-xxx.md ;
 2. aucun identifiant d'exigence RETIREE (liste : ES-01, ES-16 et leurs formes
    anglaises SR-01, SR-16) n'est cite ailleurs que sur sa ligne de retrait —
-   perimetre : docs/02-specifications/ uniquement (les revues historiques de
-   docs/03-revues documentent legitimement le retrait) ;
+   perimetre : tout docs/ SAUF docs/03-revues/ (les comptes rendus de revue et
+   journaux de defauts parlent legitimement des exigences retirees) ;
 3. les ensembles d'identifiants d'exigences des SRS FR et EN sont identiques
    sous le mapping EF->FR, ES->SR, ENF->NFR, EAR->RAR, ED->DR, EI->IR.
 
@@ -20,9 +20,7 @@ from pathlib import Path
 DOCS = Path("docs")
 ADR_DIR = DOCS / "01-decisions"
 SRS_FR = DOCS / "02-specifications" / "ISC-SRS-FR_Cahier_des_charges_v1.2.docx"
-SRS_EN = (
-    DOCS / "02-specifications" / "ISC-SRS-EN_Software_Requirements_Specification_v1.2.docx"
-)
+SRS_EN = DOCS / "02-specifications" / "ISC-SRS-EN_Software_Requirements_Specification_v1.2.docx"
 
 # Identifiants retires (SRS §16). ES-01b etc. restent valides : la frontiere
 # interdit un caractere alphanumerique apres le numero.
@@ -33,12 +31,24 @@ PREFIX_MAP = {"EF": "FR", "ES": "SR", "ENF": "NFR", "EAR": "RAR", "ED": "DR", "E
 
 
 def docx_to_text(path: Path) -> str:
+    """Convert a .docx to text. Table rows become ONE line each (cells joined
+    by tabs) so that an ID cell and its retirement cell share their line -
+    no adjacency window needed (TACHE-01 correction 3)."""
     with zipfile.ZipFile(path) as z:
         xml = z.read("word/document.xml").decode("utf-8")
-    xml = re.sub(r"</w:p>", "\n", xml)
     xml = re.sub(r"<w:tab[^>]*/>", "\t", xml)
     xml = re.sub(r"<w:br[^>]*/>", "\n", xml)
-    text = re.sub(r"<[^>]+>", "", xml)
+    parts = re.split(r"(<w:tbl>.*?</w:tbl>)", xml, flags=re.DOTALL)
+    rebuilt = []
+    for part in parts:
+        if part.startswith("<w:tbl>"):
+            part = re.sub(r"</w:p>", " ", part)
+            part = re.sub(r"</w:tc>", "\t", part)
+            part = re.sub(r"</w:tr>", "\n", part)
+        else:
+            part = re.sub(r"</w:p>", "\n", part)
+        rebuilt.append(part)
+    text = re.sub(r"<[^>]+>", "", "".join(rebuilt))
     return (
         text.replace("&amp;", "&")
         .replace("&lt;", "<")
@@ -64,10 +74,10 @@ def iter_doc_texts():
 
 def check_adr_references(texts) -> list[str]:
     errors = []
-    pattern = re.compile(r"\bADR-(\d{3})\b")
+    pattern = re.compile(r"\bADR-(\d{2,3})\b")
     for path, text in texts:
         for num in sorted(set(pattern.findall(text))):
-            target = ADR_DIR / f"ADR-{num}.md"
+            target = ADR_DIR / f"ADR-{int(num):03d}.md"
             if not target.exists():
                 errors.append(f"{path}: cite ADR-{num} mais {target} n'existe pas")
     return errors
@@ -76,19 +86,14 @@ def check_adr_references(texts) -> list[str]:
 def check_retired_ids(texts) -> list[str]:
     errors = []
     patterns = [(rid, re.compile(re.escape(rid) + r"(?![0-9A-Za-z])")) for rid in RETIRED]
-    spec_dir = DOCS / "02-specifications"
+    reviews_dir = DOCS / "03-revues"
     for path, text in texts:
-        if spec_dir not in path.parents:
+        if reviews_dir in path.parents:
             continue
-        lines = text.splitlines()
-        for lineno, line in enumerate(lines, start=1):
-            # Ligne de retrait : marqueur sur la ligne elle-meme, ou sur la
-            # suivante (dans un tableau .docx converti, la cellule ID et la
-            # cellule "RETIREE ..." deviennent deux lignes adjacentes).
-            window = line.upper()
-            if lineno < len(lines):
-                window += " " + lines[lineno].upper()
-            if any(marker in window for marker in RETIREMENT_MARKERS):
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            # Ligne de retrait : marqueur sur la ligne elle-meme, sans fenetre
+            # (les rangees de tableau docx sont convertie en une seule ligne).
+            if any(marker in line.upper() for marker in RETIREMENT_MARKERS):
                 continue
             for rid, pat in patterns:
                 if pat.search(line):
@@ -100,11 +105,11 @@ def check_retired_ids(texts) -> list[str]:
 
 
 def extract_ids(text: str, prefixes) -> set[str]:
-    """IDs d'exigences DEFINIS : l'identifiant seul sur sa ligne (cellule de
-    tableau du SRS converti). Les simples mentions dans le corps du texte ou
-    l'historique des revisions ne definissent pas une exigence."""
+    """IDs d'exigences DEFINIS : l'identifiant en TETE de ligne - rangee de
+    tableau convertie (ID puis tabulation) ou ligne ne contenant que l'ID.
+    Les mentions au milieu d'une ligne ne definissent pas une exigence."""
     ids = set()
-    pat = re.compile(r"^(" + "|".join(prefixes) + r")-(\d+[a-z]?)$")
+    pat = re.compile(r"^(" + "|".join(prefixes) + r")-(\d+[a-z]?)(?=[ 	]|$)")
     for line in text.splitlines():
         m = pat.match(line.strip())
         if m:
