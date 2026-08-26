@@ -2,6 +2,11 @@
 
 Verifie (1) qu'aucun fichier au nom sensible n'est suivi, (2) qu'aucun bloc de
 cle privee ni mot de passe en dur n'apparait dans un fichier texte suivi.
+
+Perimetre : l'arbre de travail suivi, pas l'historique complet. Decision du
+proprietaire (2026-08-26) : l'exigence d'ISC-DEV §4 (« dans l'historique »)
+sera reformulee en v1.1 ; un scan d'historique exigerait un outil hors stack
+(gitleaks) et donc un ADR.
 """
 import re
 import subprocess
