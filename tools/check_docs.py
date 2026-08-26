@@ -20,9 +20,7 @@ from pathlib import Path
 DOCS = Path("docs")
 ADR_DIR = DOCS / "01-decisions"
 SRS_FR = DOCS / "02-specifications" / "ISC-SRS-FR_Cahier_des_charges_v1.2.docx"
-SRS_EN = (
-    DOCS / "02-specifications" / "ISC-SRS-EN_Software_Requirements_Specification_v1.2.docx"
-)
+SRS_EN = DOCS / "02-specifications" / "ISC-SRS-EN_Software_Requirements_Specification_v1.2.docx"
 
 # Identifiants retires (SRS §16). ES-01b etc. restent valides : la frontiere
 # interdit un caractere alphanumerique apres le numero.

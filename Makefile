@@ -51,7 +51,7 @@ format:
 	@for p in $(PY_PROJECTS); do \
 	  (cd $$p && uv run --quiet ruff format --check . && uv run --quiet ruff check .) || exit 1; \
 	done
-	@cd console && npx --yes prettier --log-level warn --check .
+	@cd console && npx --yes prettier@3.9.6 --log-level warn --check .
 
 unit:
 	@for p in $(GRADLE_PROJECTS); do \
@@ -60,6 +60,7 @@ unit:
 	@for p in $(PY_PROJECTS); do \
 	  (cd $$p && uv run --quiet pytest -q) || exit 1; \
 	done
+	@echo "unit : console — aucun test n'existe encore (TACHE-00) ; rien n'a été vérifié pour ce projet"
 
 arch:
 	@for p in $(GRADLE_PROJECTS); do \
@@ -87,7 +88,11 @@ abuse:
 evaluate:
 	@echo "non implémenté — jalon M4 (protocole ISC-EVAL)"
 
+# Fail-closed (TACHE-01 correction 4) : une porte dont l'outil est absent ou
+# non fonctionnel ÉCHOUE, elle ne réussit jamais silencieusement.
 diagrams:
+	@plantuml -version >/dev/null 2>&1 || { \
+	  echo "diagrams : ÉCHEC — outil manquant ou non fonctionnel : plantuml (ISC-DEV §2.1)"; exit 1; }
 	@files=$$(find docs/diagrams -name '*.puml' 2>/dev/null); \
 	if [ -z "$$files" ]; then echo "diagrams : aucun diagramme à rendre (VERT)"; \
 	else plantuml -checkonly $$files && echo "diagrams : VERT"; fi
