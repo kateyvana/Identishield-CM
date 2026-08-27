@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'cm.identishield.spike'
+version = '0.0.1-SPIKE'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+// Step 4: deliberate bypass attempts live in their own source set, compiled for ArchUnit to
+// inspect but never on the spike's runtime classpath. The third-party dependency exists only
+// here, on the owner's explicit instruction (levée of the JDK-only rule for this analysis).
+sourceSets {
+    contournement {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+dependencies {
+    contournementImplementation 'org.apache.commons:commons-lang3:3.14.0'
+    testImplementation sourceSets.contournement.output
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
+}
+
+application {
+    mainClass = 'cm.identishield.spike.clock.Main'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+        events 'passed', 'failed'
+    }
+}
