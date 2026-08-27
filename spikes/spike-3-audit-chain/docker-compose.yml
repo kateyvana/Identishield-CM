@@ -1,0 +1,24 @@
+# SPIKE-3 — PostgreSQL jetable dans la VM. Aucun secret versionné : le mot de
+# passe superutilisateur arrive par variable d'environnement au lancement.
+# Durabilité PostgreSQL par DÉFAUT (fsync + synchronous_commit actifs) : les
+# latences mesurées à l'étape 4 doivent refléter le coût réel d'un journal
+# d'audit durable (ES-09), pas un réglage optimisé pour la mesure.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: spike3
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command: postgres -c max_connections=50
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spike3"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
