@@ -1,0 +1,6 @@
+# SPIKE-4 outils : autorité de certification (openssl) et client cœur (curl).
+# Base épinglée ; construite dans la VM (ADR-024). Aucune clé dans l'image :
+# les clés naissent au démarrage dans un volume, jamais ici.
+FROM alpine:3.20
+RUN apk add --no-cache openssl curl coreutils
+WORKDIR /work
