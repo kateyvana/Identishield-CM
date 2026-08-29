@@ -1,1 +1,6 @@
 origine,exigence,composant,test,verdict,commit
+SPIKE-1,ES-02,device-binding Android Keystore (spikes/spike-1-keystore),spikes/spike-1-keystore/RESULT.md,RÉUSSI,6a2cff5
+SPIKE-2,C-08,Clock/VirtualClock (spikes/spike-2-clock),spikes/spike-2-clock/RESULT.md,RÉUSSI,d43e709
+SPIKE-3,ES-09,AuditLog chaîné (spikes/spike-3-audit-chain),spikes/spike-3-audit-chain/RESULT.md,RÉUSSI AVEC RÉSERVES,f0dd0db
+SPIKE-4,ES-11,mTLS cœur-PDP (spikes/spike-4-mtls),spikes/spike-4-mtls/RESULT.md,RÉUSSI AVEC RÉSERVES,a391fcc
+SPIKE-5,SQ-21,Simulateur injection (spikes/spike-5-injection),spikes/spike-5-injection/RESULT.md,RÉUSSI,3b78573
