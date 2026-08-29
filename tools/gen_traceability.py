@@ -21,6 +21,7 @@ des marqueurs de code, elles ne sont donc pas soumises à la porte.
 Sur le dépôt actuel (squelette sans marqueurs), la sortie est quasi vide, hormis
 les lignes de spikes — c'est attendu et correct.
 """
+
 import csv
 import re
 import subprocess
@@ -61,7 +62,13 @@ def git_files():
 
 
 def head_commit():
-    out = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True)
+    out = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
@@ -112,21 +119,25 @@ def main():
     seed = seed_rows()
     rows = list(seed)
     for idv in sorted(set(impls) | set(covers)):
-        rows.append({
-            "origine": "code",
-            "exigence": idv,
-            "composant": ";".join(sorted(impls.get(idv, []))),
-            "test": ";".join(sorted(covers.get(idv, []))),
-            "verdict": "",          # rempli par la CI quand les tests s'exécutent
-            "commit": commit,
-        })
+        rows.append(
+            {
+                "origine": "code",
+                "exigence": idv,
+                "composant": ";".join(sorted(impls.get(idv, []))),
+                "test": ";".join(sorted(covers.get(idv, []))),
+                "verdict": "",  # rempli par la CI quand les tests s'exécutent
+                "commit": commit,
+            }
+        )
     with OUT.open("w", encoding="utf-8", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=COLUMNS, lineterminator="\n")
         w.writeheader()
         for r in rows:
             w.writerow({c: r.get(c, "") for c in COLUMNS})
-    print(f"traceability : {len(rows)} ligne(s) écrite(s) dans {OUT.relative_to(ROOT)} "
-          f"(dont {len(seed)} attestée(s) manuellement, {len(rows)-len(seed)} depuis marqueurs)")
+    print(
+        f"traceability : {len(rows)} ligne(s) écrite(s) dans {OUT.relative_to(ROOT)} "
+        f"(dont {len(seed)} attestée(s) manuellement, {len(rows) - len(seed)} depuis marqueurs)"
+    )
     return 0
 
 
