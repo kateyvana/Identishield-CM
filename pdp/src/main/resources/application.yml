@@ -1,0 +1,30 @@
+# PDP — terminaison TLS mutuelle DIRECTE par Spring Boot (Tomcat), sans
+# reverse-proxy (OB-5). Le certificat serveur et l'ancre de confiance des clients
+# viennent du volume `certs` genere au demarrage (infra/ca/gen-ca.sh) ; aucun
+# secret ici. Bundle PEM : Spring lit directement les .crt/.key, pas de PKCS12.
+server:
+  port: 8443
+  ssl:
+    enabled: true
+    bundle: pdp
+    # need : le client DOIT presenter un certificat valide signe par notre CA,
+    # SINON le refus a lieu au niveau de la POIGNEE DE MAIN (OB-5) ; la requete
+    # n'atteint jamais le service. (want = refus applicatif = defaut, interdit.)
+    client-auth: need
+
+spring:
+  application:
+    name: isc-pdp
+  ssl:
+    bundle:
+      pem:
+        pdp:
+          keystore:
+            certificate: "file:/certs/pdp.crt"
+            private-key: "file:/certs/pdp.key"
+          truststore:
+            # Ancre de confiance pour l'authentification des clients (le coeur).
+            certificate: "file:/certs/ca.crt"
+
+# Aucun endpoint metier : /evaluate est T2-05. Le PDP n'expose qu'un point de
+# sante minimal (voir HealthController).
