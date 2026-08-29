@@ -52,8 +52,7 @@ Tu ne modifies JAMAIS un document de docs/02-specifications/. Si une tâche exig
 
 ## 5. Obligations
 
-- Chaque règle métier porte en commentaire l'identifiant d'exigence qu'elle implémente (ex. `// ES-04`).
-- Chaque test porte l'identifiant de l'exigence ou du cas d'abus qu'il vérifie, sous forme d'annotation lisible par le script de traçabilité.
+- **Convention de traçabilité (une seule, lisible par `tools/gen_traceability.py`)** : le code de production qui implémente une exigence porte, dans un commentaire, le marqueur `@implements <ID>` ; un test qui vérifie une exigence ou un cas d'abus porte le marqueur `@covers <ID>`. Un marqueur par ligne ; plusieurs marqueurs autorisés sur des lignes distinctes. `<ID>` est un identifiant d'exigence du SRS (familles EF, ES, ENF, EAR, EI, ED, suffixe de variante optionnel, ex. `ES-05b`) ou un cas d'abus (`AC-01` à `AC-13`). Exemples : `// @implements ES-04` (Java/Kotlin/TS), `# @implements ED-06` (Python), `// @covers AC-09` (test). La matrice `docs/traceability.csv` est **générée** à partir de ces marqueurs (`make traceability`), jamais tenue à la main : une matrice manuelle diverge du code. Un marqueur référençant une exigence inexistante dans le SRS fait échouer la génération.
 - Tout code touchant à la signature, aux nonces, au journal d'audit ou à la machine à états est signalé EXPLICITEMENT en fin de réponse : « Revue ligne à ligne requise : <fichiers> ».
 - Toute ambiguïté dans une spécification est signalée avant d'écrire du code. Tu ne choisis pas seul.
 - Toute décision structurante prise pendant une tâche est signalée comme nécessitant un ADR.

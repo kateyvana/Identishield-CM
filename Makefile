@@ -11,7 +11,7 @@ GRADLE_PROJECTS := core pdp
 PY_PROJECTS     := simulator attacker hlr-agent evaluation
 
 .PHONY: help up down reset check test abuse evaluate diagrams check-docs check-stack \
-        build format unit arch contract secrets fictitious-msisdn
+        build format unit arch contract secrets fictitious-msisdn traceability
 
 help:
 	@echo "Cibles : up down reset check test abuse evaluate diagrams check-docs check-stack"
@@ -73,6 +73,15 @@ contract:
 
 check-docs:
 	@$(PY) tools/check_docs.py
+
+# Régénère docs/traceability.csv depuis les marqueurs @implements/@covers du code
+# et les lignes attestées de docs/traceability-seed.csv. Échoue (porte) si un
+# marqueur référence une exigence inexistante dans le SRS. Non câblé dans
+# `make check` : cette cible écrit un fichier suivi, un check ne doit pas muter
+# l'arbre. La porte « exigence obligatoire sans test » (ISC-TEST §12.1) viendra
+# quand les tests existeront.
+traceability:
+	@$(PY) tools/gen_traceability.py
 
 secrets:
 	@$(PY) tools/check_secrets.py
