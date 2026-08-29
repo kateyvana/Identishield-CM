@@ -1,0 +1,25 @@
+# Minimal `openssl ca` config — only used for the two date-special certs
+# (expired client, short-lived server). Normal certs use `openssl x509 -req`.
+[ca]
+default_ca = CA_default
+
+[CA_default]
+dir            = /certs/cadb
+new_certs_dir  = $dir/newcerts
+database       = $dir/index.txt
+serial         = $dir/serial
+certificate    = /certs/ca.crt
+private_key    = /certs/ca.key
+default_md     = sha256
+policy         = policy_any
+email_in_dn    = no
+rand_serial    = yes
+unique_subject = no
+
+[policy_any]
+commonName = supplied
+
+[v3_leaf]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth

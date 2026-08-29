@@ -1,0 +1,77 @@
+# SPIKE-4 — mTLS cœur↔PDP. Composition PROPRE au spike (infra/ non touché).
+# Les clés vivent dans le volume `certs`, jamais dans le dépôt ni dans une image.
+services:
+  ca-init:
+    build: { context: ., dockerfile: Dockerfile.tools }
+    image: spike4-tools
+    command: ["/ca/gen-ca.sh"]
+    environment:
+      FORCE: ${FORCE:-0}
+    volumes:
+      - certs:/certs
+      - ./ca:/ca:ro
+
+  pdp:
+    image: nginx:1.27-alpine
+    depends_on:
+      ca-init: { condition: service_completed_successfully }
+    volumes:
+      - certs:/certs:ro
+      - ./pdp/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks: [isc]
+
+  fakepdp:
+    image: nginx:1.27-alpine
+    depends_on:
+      ca-init: { condition: service_completed_successfully }
+    volumes:
+      - certs:/certs:ro
+      - ./fakepdp/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      isc: { aliases: [pdp-fake] }
+
+  # Terminateur STRICT : openssl s_server -Verify rejette au HANDSHAKE si le
+  # certificat client manque/échoue (SSL_VERIFY_FAIL_IF_NO_PEER_CERT), comme le
+  # fera le PDP Spring Boot (server.ssl.client-auth=need). Contraste avec nginx.
+  pdp-strict:
+    image: spike4-tools
+    depends_on:
+      ca-init: { condition: service_completed_successfully }
+    command: ["sh","-c","openssl s_server -accept 8443 -cert /certs/strict.crt -key /certs/strict.key -CAfile /certs/ca.crt -Verify 1 -verify_return_error -www -quiet"]
+    volumes:
+      - certs:/certs:ro
+    networks: [isc]
+
+  wrongpdp:
+    image: nginx:1.27-alpine
+    depends_on:
+      ca-init: { condition: service_completed_successfully }
+    volumes:
+      - certs:/certs:ro
+      - ./wrongpdp/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      isc: { aliases: [pdp-wrong] }
+
+  plain:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./plain/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks: [isc]
+
+  core:
+    image: spike4-tools
+    depends_on:
+      ca-init: { condition: service_completed_successfully }
+    command: ["sleep", "infinity"]
+    volumes:
+      - certs:/certs:ro
+      - ./core:/core:ro
+    networks: [isc]
+
+volumes:
+  certs:
+
+networks:
+  isc:
+    driver: bridge
+    internal: true      # aucun accès sortant : CT-02 vérifiable
