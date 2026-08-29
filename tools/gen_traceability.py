@@ -5,65 +5,54 @@ Convention (CLAUDE.md §5) :
     l'exigence.
   - `@covers <ID>` dans un test → le test qui vérifie l'exigence / le cas d'abus.
 
-Source de vérité des identifiants valides : le SRS (docs/02-specifications/
-ISC-SRS-*.docx) pour les exigences, et le modèle de menace (02-modele-de-
-menace-v1.1.md) pour les cas d'abus AC-xx. PORTE : un marqueur référençant un
-identifiant inexistant fait échouer la génération (sortie non nulle).
+Source machine des identifiants valides : `docs/requirements-index.csv` (index
+versionné des 117 exigences du SRS ; le .docx reste la référence humaine, mais
+ses identifiants sont éclatés dans les cellules et ne s'extraient pas de façon
+fiable — d'où l'index). Les cas d'abus AC-01..13 (ISC-TM) sont valides d'office.
+
+PORTE : la génération échoue (sortie non nulle) si un marqueur référence
+  - une exigence inexistante dans l'index, ou
+  - une exigence RETIRÉE (ex. ES-01, ES-16).
 
 Les lignes attestées manuellement (aujourd'hui : les cinq spikes) vivent dans
-docs/traceability-seed.csv et sont fusionnées telles quelles ; elles ne sont
-PAS des marqueurs de code et ne sont donc pas soumises à la porte.
+docs/traceability-seed.csv et sont fusionnées telles quelles ; ce ne sont pas
+des marqueurs de code, elles ne sont donc pas soumises à la porte.
 
 Sur le dépôt actuel (squelette sans marqueurs), la sortie est quasi vide, hormis
 les lignes de spikes — c'est attendu et correct.
-
-Limite connue et signalée : l'extraction des identifiants depuis le .docx du SRS
-est imparfaite (les identifiants sont éclatés dans des tableaux). Elle capture
-~40-50 des 117 exigences nominales. Tant qu'aucun marqueur n'existe, la porte ne
-mord pas ; avant le mois 4, produire une source machine fiable des exigences
-(index versionné, ou SRS converti) pour que la porte ne rejette pas à tort une
-exigence valide non captée.
 """
 import csv
 import re
 import subprocess
 import sys
-import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SPEC = ROOT / "docs" / "02-specifications"
+INDEX = ROOT / "docs" / "requirements-index.csv"
 SEED = ROOT / "docs" / "traceability-seed.csv"
 OUT = ROOT / "docs" / "traceability.csv"
 COLUMNS = ["origine", "exigence", "composant", "test", "verdict", "commit"]
 
-REQ_RE = re.compile(r"(?:EF|ES|ENF|EAR|EI|ED)[-‐‑‒–—][0-9]{1,3}[a-z]?")
-AC_RE = re.compile(r"AC-[0-9]{2}")
-IMPLEMENTS_RE = re.compile(r"@implements\s+([A-Za-z]{1,4}[-‐‑‒–—][0-9]{1,3}[a-z]?)")
-COVERS_RE = re.compile(r"@covers\s+([A-Za-z]{1,4}[-‐‑‒–—][0-9]{1,3}[a-z]?)")
-
+IMPLEMENTS_RE = re.compile(r"@implements\s+([A-Za-z]{1,4}-[0-9]{1,3}[a-z]?)")
+COVERS_RE = re.compile(r"@covers\s+([A-Za-z]{1,4}-[0-9]{1,3}[a-z]?)")
 CODE_EXT = {".java", ".kt", ".kts", ".ts", ".tsx", ".py"}
 
 
-def norm(idv):
-    """Normalise le tiret en tiret ASCII pour comparaison stable."""
-    return re.sub(r"[‐‑‒–—]", "-", idv)
-
-
-def valid_ids():
-    ids = set()
-    for docx in SPEC.glob("ISC-SRS-*.docx"):
-        try:
-            xml = zipfile.ZipFile(docx).read("word/document.xml").decode("utf-8")
-        except OSError:
-            continue
-        txt = re.sub(r"<[^>]+>", "", xml)
-        ids |= {norm(m) for m in REQ_RE.findall(txt)}
-    tm = SPEC / "02-modele-de-menace-v1.1.md"
-    if tm.exists():
-        ids |= set(AC_RE.findall(tm.read_text(encoding="utf-8", errors="ignore")))
-    ids |= {f"AC-{n:02d}" for n in range(1, 14)}  # AC-01..13 (ISC-TM)
-    return ids
+def load_index():
+    """→ (active: set, retired: set). Source : docs/requirements-index.csv."""
+    active, retired = set(), set()
+    if INDEX.exists():
+        with INDEX.open(encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                idv = (row.get("id") or "").strip()
+                if not idv:
+                    continue
+                if (row.get("statut") or "").strip().upper().startswith("RETIR"):
+                    retired.add(idv)
+                else:
+                    active.add(idv)
+    active |= {f"AC-{n:02d}" for n in range(1, 14)}  # cas d'abus (ISC-TM)
+    return active, retired
 
 
 def git_files():
@@ -78,26 +67,29 @@ def head_commit():
 
 def scan():
     """→ (impls: id->set(composants), covers: id->set(tests), erreurs: list)."""
-    valid = valid_ids()
+    active, retired = load_index()
     impls, covers, errors = {}, {}, []
+
+    def check(idv, marker, f):
+        if idv in retired:
+            errors.append(f"{f}: {marker} {idv} — exigence RETIRÉE, marqueur interdit")
+        elif idv not in active:
+            errors.append(f"{f}: {marker} {idv} — exigence inexistante dans l'index")
+
     for f in git_files():
         p = ROOT / f
-        if p.suffix.lower() not in CODE_EXT or "/spikes/" in "/" + f or f.startswith("spikes/"):
+        if p.suffix.lower() not in CODE_EXT or f.startswith("spikes/"):
             continue
         try:
             text = p.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
-        is_test = "test" in f.lower()
-        for idv in (norm(x) for x in IMPLEMENTS_RE.findall(text)):
-            if idv not in valid:
-                errors.append(f"{f}: @implements {idv} — exigence inexistante dans le SRS")
+        for idv in IMPLEMENTS_RE.findall(text):
+            check(idv, "@implements", f)
             impls.setdefault(idv, set()).add(f)
-        for idv in (norm(x) for x in COVERS_RE.findall(text)):
-            if idv not in valid:
-                errors.append(f"{f}: @covers {idv} — exigence/cas d'abus inexistant")
+        for idv in COVERS_RE.findall(text):
+            check(idv, "@covers", f)
             covers.setdefault(idv, set()).add(f)
-            _ = is_test  # (le chemin distingue test/prod ; réservé à un durcissement futur)
     return impls, covers, errors
 
 
@@ -105,7 +97,7 @@ def seed_rows():
     if not SEED.exists():
         return []
     with SEED.open(encoding="utf-8", newline="") as fh:
-        return [row for row in csv.DictReader(fh)]
+        return list(csv.DictReader(fh))
 
 
 def main():
@@ -117,7 +109,8 @@ def main():
         return 1
 
     commit = head_commit()
-    rows = list(seed_rows())
+    seed = seed_rows()
+    rows = list(seed)
     for idv in sorted(set(impls) | set(covers)):
         rows.append({
             "origine": "code",
@@ -133,7 +126,7 @@ def main():
         for r in rows:
             w.writerow({c: r.get(c, "") for c in COLUMNS})
     print(f"traceability : {len(rows)} ligne(s) écrite(s) dans {OUT.relative_to(ROOT)} "
-          f"(dont {len(seed_rows())} attestée(s) manuellement, {len(rows)-len(seed_rows())} depuis marqueurs)")
+          f"(dont {len(seed)} attestée(s) manuellement, {len(rows)-len(seed)} depuis marqueurs)")
     return 0
 
 

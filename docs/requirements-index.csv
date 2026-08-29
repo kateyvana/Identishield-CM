@@ -1,0 +1,118 @@
+id,famille,priorite,statut,libelle
+EAR-01,EAR,M,ACTIVE,"Le générateur DOIT être une simulation à base d’agents : persona, distributions (horaires, montants, types, bénéficiaires, canal), appareil (IMSI, empreinte)."
+EAR-02,EAR,M,ACTIVE,Le générateur DOIT modéliser au minimum cinq personas camerounais documentés et la saisonnalité.
+EAR-03,EAR,M,ACTIVE,Le générateur DOIT injecter AC-01 à AC-13 et étiqueter chaque transaction (légitime / frauduleuse / scénario).
+EAR-04,EAR,M,ACTIVE,Le générateur DOIT être déterministe à graine fixée et produire un fichier de paramètres versionné.
+EAR-05,EAR,M,ACTIVE,Le jeu v1 DOIT être gelé (empreinte publiée) avant tout réglage du moteur ; tout jeu ultérieur porte un nouveau numéro.
+EAR-06,EAR,M,ACTIVE,Le générateur DOIT produire un rapport de plausibilité comparant ses agrégats aux sources publiques ; les écarts DOIVENT être documentés.
+EAR-07,EAR,M,ACTIVE,"Le protocole DOIT fixer avant exécution : taille, ratio fraude/légitime, découpage, métriques (rappel, précision, FPR, latence, friction), seuils, scénarios."
+EAR-08,EAR,M,ACTIVE,Le ML DOIT être entraîné et testé sur le jeu gelé avec les mêmes découpages que les règles ; comparaison sur les mêmes transactions.
+EAR-09,EAR,M,ACTIVE,Toute figure du mémoire DOIT être régénérable par make evaluate ; version du jeu et des règles en légende.
+EAR-10,EAR,M,ACTIVE,"Aucune donnée personnelle réelle ; calibration sur sources publiques ; tout entretien qualitatif consenti, anonymisé, sans relevé de transactions [I2]."
+EAR-11,EAR,S,ACTIVE,Les personas DEVRAIENT être validés par au moins deux relecteurs connaissant le terrain (relecture consignée).
+ED-01,ED,M,ACTIVE,"Chaque service (cœur, PDP) DOIT posséder son schéma ; aucune table partagée ; les échanges passent par les interfaces EI."
+ED-02,ED,M,ACTIVE,"Le cœur DOIT persister : Compte, AbonnéHLR (avec historique), Transaction, Session, OTP, Notification."
+ED-03,ED,M,ACTIVE,"Le PDP DOIT persister : Dispositif, ÉtatDeConfiance (avec historique des transitions), Décision, Gel, ContactDeConfiance, Nonce, EntréeAudit, ConfigurationVersionnée, PrédictionOmbre."
+ED-04,ED,M,ACTIVE,"Les horodatages DOIVENT être en UTC, générés par le serveur."
+ED-05,ED,M,ACTIVE,"Les montants DOIVENT être stockés en entiers (FCFA), jamais en flottants."
+ED-06,ED,M,ACTIVE,La table EntréeAudit DOIT être accessible en INSERT seul par le rôle applicatif ; aucun UPDATE/DELETE.
+ED-07,ED,M,ACTIVE,"Volume cible du jeu v1 : ≥ 1 000 agents, ≥ 6 mois simulés, ≥ 500 000 transactions, ratio fraude fixé par le protocole (EAR-07)."
+ED-08,ED,M,ACTIVE,Rétention : aucune purge pendant le projet ; les jeux gelés sont conservés avec leur empreinte.
+ED-09,ED,M,ACTIVE,"Identifiants : UUID v4 pour décisions, gels, transactions ; MSISDN dans la plage fictive 6 99 000 000 – 6 99 009 999, à confirmer hors de tout bloc attribué par l’ART avant adoption (QO-17)."
+ED-10,ED,M,ACTIVE,Localité : identifiant entier de cellule simulée ; chaque agent possède une à trois cellules habituelles ; le générateur modélise les déplacements avec une probabilité documentée.
+EF-01,EF,M,ACTIVE,"Le cœur DOIT gérer des comptes identifiés par MSISDN dans une plage fictive réservée, avec solde, historique et état de confiance."
+EF-02,EF,M,ACTIVE,"Le cœur DOIT maintenir un HLR simulé associant chaque MSISDN à un IMSI courant et conservant l’historique des réassignations (horodatage serveur, agent, motif)."
+EF-03,EF,M,ACTIVE,Le cœur DOIT émettre un OTP à usage unique vers l’IMSI courant du MSISDN afin de reproduire la faiblesse réelle.
+EF-04,EF,M,ACTIVE,"Le cœur DOIT supporter : transfert P2P, cash-in, cash-out, paiement marchand, facture, achat de crédit."
+EF-05,EF,M,ACTIVE,"Avant tout commit d’une sortie sensible, le cœur DOIT appeler POST /evaluate et appliquer la décision."
+EF-06,EF,M,ACTIVE,Le cœur DOIT exposer un canal USSD simulé sous forme de machine à états de session sans capacité cryptographique côté client.
+EF-07,EF,M,ACTIVE,"Le cœur DOIT offrir un mode sans couche pour la démonstration avant/après, affiché sans ambiguïté en console."
+EF-08,EF,M,ACTIVE,"Le cœur DOIT émettre un événement « changement d’IMSI » (horodatage du dernier changement), équivalent fonctionnel de l’API CAMARA Sim Swap [N3]."
+EF-09,EF,M,ACTIVE,"Le cœur DOIT exposer un sous-système de notification simulé (SMS vers IMSI courant, push vers dispositif enrôlé) consultable en console et par l’app."
+EF-10,EF,M,ACTIVE,"Le PDP DOIT exposer POST /evaluate recevant : compte, MSISDN, IMSI courant, canal, type, montant, bénéficiaire, horodatage serveur, localité, empreinte et signature de dispositif (optionnelles), nonce."
+EF-11,EF,M,ACTIVE,"La réponse DOIT contenir : décision, score, règles déclenchées avec contribution, action requise, identifiant de décision, version du jeu de règles."
+EF-12,EF,M,ACTIVE,"Le PDP DOIT maintenir un registre de dispositifs (compte → clés publiques, état PENDING/ACTIVE/REVOKED, dates)."
+EF-13,EF,M,ACTIVE,Le PDP DOIT implémenter la machine à états TRUSTED / PROBATION / FROZEN / LOCKED et journaliser chaque transition avec sa cause.
+EF-14,EF,M,ACTIVE,Le PDP DOIT émettre des nonces serveur (GET /nonce).
+EF-15,EF,M,ACTIVE,"Le PDP DOIT gérer le cycle de vie des gels : création avec TTL, levée (acteur, preuve), annulation à expiration, notification."
+EF-16,EF,M,ACTIVE,"Le PDP DOIT gérer les contacts de confiance : enregistrement, demande, réponse, expiration."
+EF-17,EF,M,ACTIVE,Le PDP DOIT charger règles et paramètres depuis une configuration versionnée ; la version DOIT figurer dans chaque décision.
+EF-18,EF,M,ACTIVE,Le PDP DOIT accepter une horloge injectable (temps réel ou virtuel).
+EF-19,EF,C,ACTIVE,"Le PDP PEUT exposer un évaluateur ombre (modèle appris) appelé sur le même contexte sans influence sur la décision, et journaliser sa prédiction à côté de la décision."
+EF-20,EF,M,ACTIVE,L’application DOIT générer à l’enrôlement une paire de clés asymétrique non exportable dans le Keystore matériel et transmettre la clé publique au PDP.
+EF-21,EF,M,ACTIVE,"L’application DOIT signer toute sortie sensible sur le canonical {compte, montant, bénéficiaire, type, nonce}."
+EF-22,EF,M,ACTIVE,"L’application DOIT afficher solde, historique, décisions reçues et permettre de répondre à un STEP_UP par signature."
+EF-23,EF,M,ACTIVE,L’application DOIT permettre la désignation de contacts de confiance et la confirmation d’une demande reçue en tant que contact.
+EF-24,EF,M,ACTIVE,L’application DOIT permettre le ré-enrôlement (UC-05) et afficher l’état PROBATION et ses restrictions.
+EF-25,EF,M,ACTIVE,L’application DOIT afficher une notification lorsqu’une sortie est gelée ou escaladée.
+EF-26,EF,M,ACTIVE,L’interface DOIT être disponible en français.
+EF-27,EF,S,ACTIVE,L’interface DEVRAIT être disponible en anglais.
+EF-28,EF,M,ACTIVE,L’application DOIT permettre à l’ancien dispositif d’annuler un ré-enrôlement en cours par signature.
+EF-30,EF,M,ACTIVE,"La console DOIT afficher en temps réel le flux des transactions avec décision (ALLOW / STEP_UP / FREEZE), score et raisons."
+EF-31,EF,M,ACTIVE,La console DOIT afficher l’état HLR d’un compte et signaler tout changement d’IMSI.
+EF-32,EF,M,ACTIVE,La console DOIT afficher une chronologie d’attaque alimentée par l’outil attaquant.
+EF-33,EF,M,ACTIVE,"La console DOIT offrir une file de travail des gels avec actions : lever, annuler, marquer faux positif, demander second avis ; justification obligatoire."
+EF-34,EF,M,ACTIVE,La console DOIT afficher l’intégrité du journal d’audit et localiser une rupture.
+EF-35,EF,S,ACTIVE,La console DEVRAIT exposer une page d’évaluation générée depuis le module d’évaluation.
+EF-36,EF,M,ACTIVE,"La console DOIT afficher l’état du PDP (disponible, dégradé, indisponible) et le mode sans couche."
+EF-37,EF,M,ACTIVE,La console DOIT afficher les notifications émises (boîte SMS / push simulée) par compte.
+EF-38,EF,M,ACTIVE,La console DOIT être disponible en français ; l’anglais DEVRAIT l’être.
+EF-40,EF,M,ACTIVE,L’outil attaquant DOIT exécuter chacun des scénarios AC-01 à AC-13 par une commande unique paramétrable.
+EF-41,EF,M,ACTIVE,L’outil DOIT publier chaque étape dans la chronologie de la console.
+EF-42,EF,M,ACTIVE,"L’outil agent HLR DOIT permettre un remplacement de SIM avec motif et identifiant d’agent (UC-11), utilisable en mode légitime ou complice."
+EF-43,EF,M,ACTIVE,L’outil attaquant DOIT pouvoir rejouer une requête signée capturée (AC-11) et saturer /evaluate (AC-12).
+EF-44,EF,M,ACTIVE,"Le canal USSD DOIT permettre la désignation et la révocation de contacts de confiance, chaque désignation étant confirmée par le contact sur son propre canal ; l’agent KYC simulé DOIT pouvoir effectuer la même opération à quatre yeux."
+EI-01,EI,,ACTIVE,"Cœur → PDP : POST /evaluate, GET /nonce, POST /freeze/{id}/release"
+EI-02,EI,,ACTIVE,HLR → Cœur : événement de changement d’IMSI
+EI-03,EI,,ACTIVE,App → Cœur
+EI-04,EI,,ACTIVE,App ↔ Keystore Android
+EI-05,EI,,ACTIVE,USSD → Cœur
+EI-06,EI,,ACTIVE,PDP → Notification
+EI-07,EI,,ACTIVE,Console ↔ PDP / Cœur
+EI-08,EI,,ACTIVE,Outils CLI → Cœur / HLR
+EI-09,EI,,ACTIVE,Générateur → Cœur
+EI-10,EI,,ACTIVE,Évaluation ← Journal
+ENF-01,ENF,M,ACTIVE,"Latence de /evaluate &lt; 500 ms au 95e centile et &lt; 800 ms au 99e centile sur la machine de démonstration, sous le scénario de qualité SQ-30 (ISC-ADD) : 50 transactions/s soutenues pendant 10 min."
+ENF-02,ENF,S,ACTIVE,La console DOIT refléter une décision en &lt; 2 s.
+ENF-03,ENF,M,ACTIVE,Aucune décision perdue ; exactement une entrée d’audit par /evaluate (idempotence par identifiant).
+ENF-04,ENF,M,ACTIVE,"make demo-attack, make demo-defend, make evaluate DOIVENT produire des résultats identiques à graine fixée."
+ENF-05,ENF,M,ACTIVE,"Installation : un tiers DOIT obtenir l’environnement complet opérationnel en &lt; 10 min depuis le README, avec Docker seul (distinct de CR-04 qui mesure la durée de la démonstration elle-même)."
+ENF-06,ENF,M,ACTIVE,Logs structurés JSON corrélés par identifiant de décision.
+ENF-07,ENF,M,ACTIVE,"Aucun numéro, préfixe ou nom d’opérateur réel ; réseau Docker isolé ; TLS entre services."
+ENF-08a,ENF,M,ACTIVE,Couverture de tests ≥ 80 % sur le PDP.
+ENF-08b,ENF,M,ACTIVE,Chaque règle du moteur DOIT avoir au moins un test unitaire positif et un négatif.
+ENF-08c,ENF,M,ACTIVE,"Tout code cryptographique DOIT être relu ligne à ligne par le candidat, revue consignée."
+ENF-09,ENF,M,ACTIVE,Chaque AC DOIT correspondre à un test d’intégration T-AC-xx exécuté en CI.
+ENF-10,ENF,M,ACTIVE,"Services conteneurisés ; Android 9+ avec Keystore matériel (StrongBox si disponible, sinon TEE, documenté)."
+ENF-11,ENF,M,ACTIVE,Le temps est une dépendance injectable ; aucune règle ne lit l’horloge système directement.
+ENF-12,ENF,S,ACTIVE,Console lisible sur vidéoprojecteur ; les décisions distinguables sans couleur (icône + libellé).
+ENF-13,ENF,M,ACTIVE,Conformité déclarée à NIST SP 800-63B §5.1.3.3 ; section éthique et légale citant [I1] et [I2].
+ENF-14,ENF,M,ACTIVE,Toute décision DOIT être justifiable en langage naturel à partir des règles déclenchées.
+ENF-15,ENF,M,ACTIVE,Le mémoire DOIT déclarer l’usage d’outillage IA de génération de code et la procédure de revue appliquée (CT-03).
+ENF-16,ENF,M,ACTIVE,"Tous les artefacts non-code (mémoire, jeux gelés, figures, registres) DOIVENT être versionnés dans le dépôt ou un stockage distant, empreintes publiées."
+ENF-17,ENF,M,ACTIVE,"Toute notification de sécurité DOIT contenir le type d’événement, l’horodatage serveur et l’action possible, et NE DOIT PAS contenir de lien cliquable ni demander de secret (anti-hameçonnage)."
+ES-01,ES,,RETIRÉE,"RETIRÉE (journal v1.1, D-01 : incohérente avec ES-04 et QR-4). Remplacée par ES-01b."
+ES-01b,ES,M,ACTIVE,Le PDP DOIT placer le compte en PROBATION pendant CAR_IMSI dès que l’IMSI courant diffère de l’IMSI de référence ; pendant cette PROBATION les restrictions ES-04 s’appliquent.
+ES-02,ES,M,ACTIVE,"Sur le canal application, le PDP DOIT refuser toute sortie sensible dont la signature n’est pas vérifiable par une clé ACTIVE du compte."
+ES-03,ES,M,ACTIVE,Le PDP DOIT appliquer CAR_IMSI après tout changement d’IMSI et CAR_ENROL après tout ré-enrôlement.
+ES-03b,ES,M,ACTIVE,Une carence DOIT pouvoir être levée par signature de l’ancien dispositif ou confirmation d’un contact de confiance.
+ES-04,ES,M,ACTIVE,"En état PROBATION, le PDP DOIT plafonner les sorties à CAP_PROB et interdire tout nouveau bénéficiaire ; toute violation DOIT produire FREEZE."
+ES-05a,ES,M,ACTIVE,Le PDP DOIT calculer un score comportemental 0–100 agrégeant les contributions des règles ES-05b à ES-05e ; la fonction d’agrégation est fixée par ADR-016 dans le SAD et versionnée (EF-17).
+ES-05b,ES,M,ACTIVE,"Règle bénéficiaire : un bénéficiaire jamais vu sur le compte DOIT contribuer au score ; combiné à un montant ≥ THR_HIGH, la contribution DOIT atteindre au moins le seuil STEP_UP."
+ES-05c,ES,M,ACTIVE,Règle vélocité : le dépassement de VEL DOIT contribuer au score jusqu’au seuil FREEZE.
+ES-05d,ES,M,ACTIVE,Règle horaire : une sortie dans la fenêtre NIGHT DOIT contribuer au score ; cette règle NE DOIT JAMAIS être un veto.
+ES-05e,ES,S,ACTIVE,Règle localité : une localité incohérente avec l’historique DOIT contribuer au score.
+ES-05f,ES,M,ACTIVE,Décision : score ≥ 40 → STEP_UP ; score ≥ 70 → FREEZE ; les vetos court-circuitent le score.
+ES-06,ES,M,ACTIVE,"Sur USSD, un STEP_UP DOIT se résoudre par une politique configurée (DEFER, plafond, contact de confiance) ; JAMAIS par une question de connaissance [N2]."
+ES-07,ES,M,ACTIVE,Toute transaction gelée DOIT être annulée à l’expiration de TTL_FREEZE sans levée autorisée ; elle NE DOIT JAMAIS s’exécuter par défaut.
+ES-08,ES,M,ACTIVE,"Une levée de gel DOIT être portée par une preuve (signature d’un dispositif ACTIVE d’un compte TRUSTED, contact de confiance, décision d’analyste) ; au-dessus de THR_4EYES, deux analystes distincts DOIVENT approuver."
+ES-09,ES,M,ACTIVE,"Toute décision et toute action d’analyste DOIVENT être journalisées en écriture seule, chaque enregistrement portant l’empreinte SHA-256 du précédent ; l’empreinte de tête DOIT être signée et exportée périodiquement."
+ES-10,ES,M,ACTIVE,"Toute signature DOIT inclure un nonce serveur de 128 bits, usage unique, validité 120 s ; tout nonce réutilisé ou expiré DOIT entraîner un refus."
+ES-11,ES,M,ACTIVE,"Le canal cœur↔PDP DOIT être authentifié mutuellement ; si le PDP est indisponible, le cœur DOIT refuser toute sortie &gt; CAP_PROB et journaliser les autres en mode dégradé ; /evaluate DOIT être limité en débit."
+ES-12,ES,M,ACTIVE,L’accès console DOIT être authentifié et contrôlé par rôles ; toute action DOIT porter justification et identité.
+ES-13,ES,M,ACTIVE,Tout changement d’IMSI et tout ré-enrôlement DOIVENT déclencher une notification aux contacts de confiance.
+ES-14,ES,M,ACTIVE,"Au ré-enrôlement, l’ancienne clé NE DOIT être révoquée qu’à la fin de CAR_ENROL ; pendant la probation, sa signature DOIT pouvoir annuler le ré-enrôlement et placer le compte en LOCKED."
+ES-15,ES,M,ACTIVE,Les paramètres nommés DOIVENT être configurables sans modification de code et versionnés.
+ES-16,ES,,RETIRÉE,"RETIRÉE (journal v1.1, D-06 : responsabilité allouée au mauvais composant). Remplacée par ES-16b."
+ES-16b,ES,M,ACTIVE,Le PDP DOIT appliquer la PROBATION indifféremment au motif d’un remplacement de SIM ; le cœur NE DOIT PAS transmettre le motif comme entrée de /evaluate (il le journalise seulement).
+ES-17,ES,M,ACTIVE,Le PDP DOIT refuser tout premier enrôlement de dispositif lorsqu’un changement d’IMSI date de moins de CAR_IMSI ; un premier enrôlement accepté DOIT placer le compte en PROBATION pendant CAR_ENROL et notifier les contacts de confiance existants.
