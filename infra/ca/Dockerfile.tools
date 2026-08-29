@@ -1,0 +1,8 @@
+# Outils d'infrastructure IdentiShield-CM : autorite locale (openssl) et sonde de
+# verification (curl). Base epinglee (ADR-024). AUCUNE cle dans l'image : les cles
+# naissent au demarrage dans le volume `certs`, jamais ici. Sert a deux roles :
+#  - ca-init : genere la CA et les certificats de service (infra/ca/gen-ca.sh) ;
+#  - porte de verification mTLS : rejoue les quatre tentatives (tools/verify_mtls.sh).
+FROM alpine:3.20
+RUN apk add --no-cache openssl curl coreutils
+WORKDIR /work

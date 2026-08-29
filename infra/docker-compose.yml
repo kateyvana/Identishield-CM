@@ -1,4 +1,7 @@
-# TACHE-00 tache 3 - postgres seul ; ISC-DEPLOY §3.2 : isc-net interne, sans acces sortant
+# Pile IdentiShield-CM. ISC-DEPLOY §3.2 : isc-net interne, sans acces sortant.
+# T2-04 ajoute l'autorite locale (ca-init) et le PDP en mTLS direct. Les cles de
+# service vivent dans le volume `certs`, generees au demarrage, jamais dans le
+# depot ni dans une image.
 services:
   postgres:
     image: postgres:16
@@ -16,6 +19,69 @@ services:
       timeout: 3s
       retries: 12
 
+  # Autorite locale : genere CA + certificats de service au premier `up`, dans le
+  # volume `certs`. Idempotent (reutilise si present ; down -v regenere). FORCE=1
+  # force la regeneration. Ne rejoint aucun reseau : il n'ecrit qu'un volume.
+  ca-init:
+    build:
+      context: ./ca
+      dockerfile: Dockerfile.tools
+    image: isc-tools
+    container_name: isc-ca-init
+    command: ["/ca/gen-ca.sh"]
+    environment:
+      FORCE: ${FORCE:-0}
+    volumes:
+      - certs:/certs
+      - ./ca:/ca:ro
+
+  # PDP : terminaison mTLS DIRECTE (Spring Boot Tomcat, client-auth=need), sans
+  # reverse-proxy (OB-5). Demarre seulement une fois la CA generee. Certificats
+  # montes en lecture seule.
+  pdp:
+    build:
+      context: ../pdp
+      dockerfile: Dockerfile
+    image: isc-pdp
+    container_name: isc-pdp
+    depends_on:
+      ca-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    volumes:
+      - certs:/certs:ro
+    networks:
+      - isc-net
+    healthcheck:
+      # Port ouvert = Tomcat TLS a demarre (le handshake mTLS lui-meme est teste
+      # par la porte de verification, pas ici).
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/localhost/8443' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+
+  # Coeur : client du PDP en mTLS (connexions persistantes). Au mois 2 il n'a pas
+  # d'endpoint (USSD et flux transactionnel viennent ensuite) ; il reste en vie en
+  # mode service. Les modes probe/bench sont declenches par CORE_MODE (verification).
+  core:
+    build:
+      context: ../core
+      dockerfile: Dockerfile
+    image: isc-core
+    container_name: isc-core
+    depends_on:
+      ca-init:
+        condition: service_completed_successfully
+      pdp:
+        condition: service_healthy
+    environment:
+      CORE_MODE: ${CORE_MODE:-service}
+    volumes:
+      - certs:/certs:ro
+    networks:
+      - isc-net
+
 networks:
   isc-net:
     name: isc-net
@@ -24,3 +90,5 @@ networks:
 volumes:
   pgdata:
     name: isc-pgdata
+  certs:
+    name: isc-certs
