@@ -36,10 +36,11 @@
 
 Le jalon (« AC-02 réussit, scriptée, **visible** en console ») dépend de T2-01..18. La **chaîne de dépendance la plus longue** est :
 
-> **T2-01 → T2-04 → T2-05 → T2-07 → T2-10 → T2-11 → T2-16 → T2-17** (≈ 14 jours),
-> le test **T2-18** fermant la démonstration après T2-16 et T2-15.
+> **T2-01 → T2-04 → T2-05 → T2-07 → T2-10 → (T2-11 ∥ T2-12) → T2-16 → T2-17 → T2-18** (≈ **15 jours**).
 
-Ces tâches **bloquent le jalon** : tout retard sur l'une le décale. Les autres sont **hors chemin critique** et parallélisables — leur retard n'affecte pas la date du jalon tant qu'elles finissent avant leur dépendante : **T2-02, T2-03, T2-06, T2-08, T2-09, T2-12, T2-13, T2-14, T2-15, T2-19**. (T2-12 alimente T2-16 en parallèle de T2-11 ; T2-06 et T2-08 appartiennent au squelette mais pas au fil de l'attaque AC-02 ; T2-19 est postérieure au jalon dans l'esprit — vues de lecture.)
+**T2-12 (OTP) est sur le chemin critique**, en parallèle de T2-11 : AC-02 est le vidage post-SIM swap sur USSD, et le scénario suppose que l'attaquant **reçoit l'OTP** sur son appareil après la réassignation d'IMSI. Sans OTP fonctionnel, T2-16 ne peut pas exécuter le scénario et T2-18 ne peut rien prouver. T2-11 (réassignation) et T2-12 (OTP) doivent donc **tous deux** être finis avant T2-16.
+
+Ces tâches **bloquent le jalon** : tout retard sur l'une le décale. Les autres sont **hors chemin critique** et parallélisables — leur retard n'affecte pas la date du jalon tant qu'elles finissent avant leur dépendante : **T2-02, T2-03, T2-06, T2-08, T2-09, T2-13, T2-14, T2-15, T2-19**. (T2-06 et T2-08 appartiennent au squelette mais pas au fil de l'attaque AC-02 ; T2-19 est postérieure au jalon dans l'esprit — vues de lecture.)
 
 ---
 
@@ -71,7 +72,7 @@ Ces tâches **bloquent le jalon** : tout retard sur l'une le décale. Les autres
 - **Composant** : `isc-pdp`.
 - **Jalon** : mois 2.
 - **Risque de sécurité** : non.
-- **⚠ Point à clarifier** : la **liste exhaustive des paramètres nommés** (CAP_PROB, CAR_IMSI, NIGHT, VEL, THR_*, TTL_FREEZE, …) et le **mécanisme exact de détection des littéraux** ne sont pas dans ES-15 ; à confirmer contre ISC-TM (paramètres nommés) avant T2-03.
+- **Paramètres et mécanisme (décision, source ISC-TM v1.1 §7)** : la liste fait autorité et compte **onze** paramètres nommés — CAR_IMSI, CAR_ENROL, CAP_PROB, THR_HIGH, THR_4EYES, TTL_FREEZE, NIGHT, VEL, DEFER, plus **ANCHOR_INTERVAL** et **ANCHOR_MAX_DELAY** (ajoutés par SPIKE-3). Le mécanisme de détection des littéraux est une **règle d'architecture**, comme TA-CLOCK-01 : elle interdit toute constante numérique nue dans les classes de règles et de politique, hors du composant de configuration. Comme toute liste noire, elle n'est pas exhaustive (même limite que TA-CLOCK-01) ; la vraie défense est que **les paramètres n'existent qu'à un seul endroit**.
 
 ### T2-04 — mTLS cœur↔PDP
 
@@ -153,7 +154,7 @@ Ces tâches **bloquent le jalon** : tout retard sur l'une le décale. Les autres
 - **Composant** : `isc-core`.
 - **Jalon** : mois 2.
 - **Risque de sécurité** : **oui** — credential à usage unique (proche d'un nonce), au cœur de la faiblesse SIM swap. Revue ligne à ligne consignée (ENF-08c).
-- **⚠ Point à clarifier** : la **durée d'expiration** et la **longueur/forme** de l'OTP ne sont pas dans EF-03 ; à confirmer (ISC-TM / paramètres nommés) avant T2-12.
+- **Forme et stockage (décision)** : EF-03 ne fixe ni durée ni forme **volontairement** — ce sont des paramètres, pas des constantes. **Six chiffres décimaux, expiration cinq minutes, usage unique**, valeurs **versionnées dans la configuration** comme les onze autres paramètres nommés (T2-03). Le **stockage est une empreinte, jamais l'OTP en clair** dans la base — même en sandbox, un OTP en clair est une mauvaise habitude qui se remarque en soutenance.
 
 ### T2-13 — Types d'opération restants
 
@@ -190,7 +191,7 @@ Ces tâches **bloquent le jalon** : tout retard sur l'une le décale. Les autres
 - **Composant** : `isc-attacker`.
 - **Jalon** : mois 2.
 - **Risque de sécurité** : non (outil de test) — mais tout scénario doit rester dans le sandbox (assertion négative ci-dessus).
-- **⚠ Point à clarifier** : les **étapes exactes du scénario AC-02** (séquence, préconditions, oracle de succès) sont dans ISC-TM (cas d'abus AC-02) ; à lire dans ISC-TM avant T2-16, non dérivable d'ISC-SKEL seul.
+- **Scénario (décision, source ISC-TM v1.1 §8)** : AC-02 fait autorité dans **ISC-TM v1.1 §8**, pas dans ISC-SKEL — **à lire avant T2-16**. AC-02 est le vidage post-SIM swap sur USSD : réassignation d'IMSI (agent complice, T2-11) puis interception de l'OTP détourné vers le nouvel appareil (T2-12), puis vidage du solde.
 
 ### T2-17 — Console avancée (attaque)
 
@@ -209,7 +210,7 @@ Ces tâches **bloquent le jalon** : tout retard sur l'une le décale. Les autres
 - **Composant** : `isc-attacker` et la suite de tests d'intégration.
 - **Jalon** : mois 2 (jalon lui-même).
 - **Risque de sécurité** : non (test) — mais c'est un test de cas d'abus (T-AC) qui DOIT porter des assertions négatives.
-- **⚠ Point à clarifier** : l'**oracle de succès de AC-02** (ce que le test vérifie exactement comme « attaque réussie ») dépend de la définition ISC-TM d'AC-02 ; à confirmer avant T2-18.
+- **Oracle de succès (décision, source ISC-TM v1.1 §8)** : la phase 1 est réussie quand, en mode sans couche, **le solde est vidé, le transfert est exécuté vers un bénéficiaire inconnu, aucune alerte n'est émise et le téléphone de la victime reste silencieux**. Ce sont les assertions positives et négatives du test T-AC-02 phase 1.
 
 ### T2-19 — Console : intégrité du journal + boîte de notifications
 
