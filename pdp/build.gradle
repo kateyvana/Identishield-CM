@@ -20,8 +20,13 @@ repositories {
 
 dependencies {
     // -web fournit Tomcat : le PDP termine TLS lui-meme (client-auth=need), sans
-    // reverse-proxy (OB-5 : rejet au handshake). Aucune autre dependance ajoutee.
+    // reverse-proxy (OB-5 : rejet au handshake).
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    // -jdbc : ecriture de l'entree d'audit (le trigger en base assure le chainage
+    // in-lock). -validation : contrat /evaluate (400 sur violation). Stack Spring.
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    runtimeOnly 'org.postgresql:postgresql'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
 }

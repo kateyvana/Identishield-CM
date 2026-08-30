@@ -47,6 +47,8 @@ services:
       dockerfile: Dockerfile
     image: isc-pdp
     container_name: isc-pdp
+    # ISC_PDP_APP_PASSWORD pour la connexion audit (role isc_pdp_app). Jamais versionne.
+    env_file: .env
     depends_on:
       ca-init:
         condition: service_completed_successfully

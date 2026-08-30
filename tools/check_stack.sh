@@ -117,5 +117,14 @@ else
   echo "[ECHEC] mTLS : au moins une tentative n'a pas ete refusee correctement"; sed 's/^/  /' /tmp/isc_verify_mtls.out; fail=1
 fi
 
+# ===================== T2-05 : POST /evaluate (EF-10/11, ENF-03) =====================
+echo "--- /evaluate : idempotence par decisionId + latence ---"
+if bash tools/verify_evaluate.sh >/tmp/isc_verify_eval.out 2>&1; then
+  grep -E '^\[OK\]|verify-evaluate:' /tmp/isc_verify_eval.out | sed 's/^/  /'
+  echo "[OK] /evaluate : ALLOW sans regle, idempotent, une entree d'audit chainee (EF-10/11, ENF-03)"
+else
+  echo "[ECHEC] /evaluate : voir sortie"; sed 's/^/  /' /tmp/isc_verify_eval.out; fail=1
+fi
+
 [ $fail -eq 0 ] && echo "check-stack: VERT" || echo "check-stack: ROUGE"
 exit $fail

@@ -110,9 +110,24 @@ EOF
 probe_reason() {  # $1 = nom conteneur ; $2 = programme serveur ; imprime PROBE_REASON=...
   docker network create --internal "$VNET" >/dev/null 2>&1 || true
   docker run -d --name "$1" --network "$VNET" --network-alias pdp -v "$CERTS":/certs:ro isc-tools sh -c "$2" >/dev/null
-  sleep 3
-  out=$(docker run --rm --network "$VNET" -e CORE_MODE=probe -e CORE_TARGET=https://pdp:8443/health \
-        -v "$CERTS":/certs:ro isc-core java -jar /app/app.jar 2>&1)
+  # Attendre que le faux serveur ACCEPTE des connexions TLS (jusqu'a ~15 s) : sinon
+  # la sonde echouerait sur "serveur pas pret", pas sur le motif de refus.
+  local i out reason
+  for i in $(seq 1 15); do
+    docker run --rm --network "$VNET" isc-tools sh -c \
+      'echo | openssl s_client -connect pdp:8443 2>/dev/null | grep -q CONNECTED' && break
+    sleep 1
+  done
+  # Delai de sonde eleve (5 s) : la VERIFICATION doit observer le MOTIF du refus au
+  # handshake, pas mesurer le budget de 800 ms de production. On reessaie une fois
+  # si le motif reste indetermine (JVM froide sous charge -> timeout -> OTHER).
+  for i in 1 2; do
+    out=$(docker run --rm --network "$VNET" -e CORE_MODE=probe -e CORE_TARGET=https://pdp:8443/health \
+          -v "$CERTS":/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
+          java -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>&1)
+    reason=$(echo "$out" | sed -n 's/^PROBE_REASON=//p')
+    { [ "$reason" = "CHAIN_OR_SIGNATURE" ] || [ "$reason" = "NAME_MISMATCH" ]; } && break
+  done
   docker rm -f "$1" >/dev/null 2>&1
   echo "$out" | grep -E '^PROBE_(REASON|MESSAGE)='
 }

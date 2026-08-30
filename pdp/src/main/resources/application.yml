@@ -19,6 +19,14 @@ spring:
     # Jeu de regles versionne (source unique des parametres nommes, EF-17/ES-15),
     # monte en lecture seule. La version est portee par chaque decision /evaluate.
     import: "file:/config/ruleset.yaml"
+  datasource:
+    # Le PDP ecrit l'audit comme role applicatif isc_pdp_app (SELECT+INSERT sur
+    # audit_entry uniquement ; aucun acces a chain_head : le trigger chaine). Mot
+    # de passe depuis l'environnement (.env), jamais versionne.
+    url: jdbc:postgresql://postgres:5432/identishield
+    username: isc_pdp_app
+    password: ${ISC_PDP_APP_PASSWORD}
+    driver-class-name: org.postgresql.Driver
   ssl:
     bundle:
       pem:

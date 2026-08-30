@@ -133,3 +133,57 @@ REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA pdp FROM PUBLIC;
 -- applicatif). On conserve l'ALTER (correct sur d'autres versions, inoffensif),
 -- mais il ne doit pas etre notre seule ligne de defense.
 ALTER DEFAULT PRIVILEGES FOR ROLE isc_admin IN SCHEMA pdp REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+
+-- ================= T2-05 : chainage in-lock du journal d'audit =================
+-- Reprend le dispositif MESURE en SPIKE-3 / ADR-020 (FERME) en code de production.
+-- Le role applicatif ne fait qu'INSERT (payload, written_at) ; un trigger BEFORE
+-- INSERT SECURITY DEFINER -- la SEULE chose qui touche chain_head -- assigne
+-- l'index d'ordre DANS LE VERROU (OB-2), pose prev_hash et calcule hash, et
+-- ecrase tout chain_index/prev_hash/hash fourni par le client (l'app ne peut pas
+-- forger la chaine). La VERIFICATION (complete + incrementale) est T2-06.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Empreinte d'un enregistrement. Couvre l'ordre de chaine (chain_index) ET
+-- l'identite (seq), le contenu, le lien et l'horodatage UTC (ADR-020 ob4 + Q6 :
+-- sous concurrence seq != ordre, donc l'ordre authoritatif est chain_index).
+CREATE FUNCTION pdp.audit_canonical(
+    p_chain_index bigint, p_seq bigint, p_payload jsonb, p_prev text, p_at timestamptz)
+RETURNS text LANGUAGE sql IMMUTABLE AS $$
+    SELECT p_chain_index::text || '|' || p_seq::text || '|' || p_payload::text || '|' ||
+           p_prev || '|' ||
+           to_char(p_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+$$;
+
+-- Declencheur de chainage. SECURITY DEFINER : il verrouille et met a jour
+-- chain_head, hors de portee du role applicatif. Le verrou de ligne FOR UPDATE
+-- serialise les insertions concurrentes -- c'est LE point de serialisation.
+CREATE FUNCTION pdp.audit_chain() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pdp, public, pg_temp AS $$
+DECLARE
+    h_prev text;
+    cnt    bigint;
+BEGIN
+    SELECT head_hash, entry_count INTO h_prev, cnt FROM pdp.chain_head WHERE id FOR UPDATE;
+    NEW.chain_index := cnt;               -- index d'ordre assigne DANS le verrou (OB-2)
+    NEW.prev_hash   := h_prev;            -- ecrase toute valeur fournie par le client
+    NEW.hash        := encode(
+        digest(pdp.audit_canonical(NEW.chain_index, NEW.seq, NEW.payload, NEW.prev_hash, NEW.written_at), 'sha256'),
+        'hex');
+    UPDATE pdp.chain_head SET last_seq = NEW.seq, head_hash = NEW.hash, entry_count = cnt + 1 WHERE id;
+    RETURN NEW;
+END $$;
+
+CREATE TRIGGER audit_chain_before_insert BEFORE INSERT ON pdp.audit_entry
+    FOR EACH ROW EXECUTE FUNCTION pdp.audit_chain();
+
+-- OB-3 : les deux fonctions ne sont executables par PERSONNE via PUBLIC (le
+-- trigger s'execute hors ACL EXECUTE ; le REVOKE ci-dessus sur ALL FUNCTIONS
+-- s'appliquait AVANT leur creation, d'ou ce REVOKE explicite -- MESURE T2-01).
+REVOKE EXECUTE ON FUNCTION pdp.audit_canonical(bigint, bigint, jsonb, text, timestamptz) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION pdp.audit_chain() FROM PUBLIC;
+
+-- ENF-03 : idempotence par decisionId. Au PLUS une entree d'audit par decisionId
+-- (le payload porte decisionId). L'index unique rend le doublon atomiquement
+-- impossible ; l'app rattrape la violation et renvoie la decision deja ecrite.
+CREATE UNIQUE INDEX audit_entry_decision_id_uk ON pdp.audit_entry ((payload ->> 'decisionId'));
