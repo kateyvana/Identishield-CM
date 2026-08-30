@@ -28,7 +28,10 @@ services:
       dockerfile: Dockerfile.tools
     image: isc-tools
     container_name: isc-ca-init
-    command: ["/ca/gen-ca.sh"]
+    # Invoque via `sh` et non en exec direct : le bit d'execution du script ne
+    # survit pas fiablement a git sous Windows, et un exec direct echoue alors sur
+    # Linux natif (VM/CI) avec « permission denied ». `sh` le rend portable.
+    command: ["sh", "/ca/gen-ca.sh"]
     environment:
       FORCE: ${FORCE:-0}
     volumes:
