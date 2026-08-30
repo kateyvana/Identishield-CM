@@ -4,14 +4,15 @@ SPIKE-2,C-08,Clock/VirtualClock (spikes/spike-2-clock),spikes/spike-2-clock/RESU
 SPIKE-3,ES-09,AuditLog chaîné (spikes/spike-3-audit-chain),spikes/spike-3-audit-chain/RESULT.md,RÉUSSI AVEC RÉSERVES,f0dd0db
 SPIKE-4,ES-11,mTLS cœur-PDP (spikes/spike-4-mtls),spikes/spike-4-mtls/RESULT.md,RÉUSSI AVEC RÉSERVES,a391fcc
 SPIKE-5,SQ-21,Simulateur injection (spikes/spike-5-injection),spikes/spike-5-injection/RESULT.md,RÉUSSI,3b78573
-code,EF-04,core/src/main/java/cm/identishield/core/transfer/TransferService.java,,,06cdceb
-code,EF-05,core/src/main/java/cm/identishield/core/transfer/TransferService.java,core/src/test/java/cm/identishield/core/transfer/TransferServiceTest.java,,06cdceb
-code,EF-10,pdp/src/main/java/cm/identishield/pdp/web/EvaluateController.java,,,06cdceb
-code,EF-11,pdp/src/main/java/cm/identishield/pdp/web/EvaluateController.java,pdp/src/test/java/cm/identishield/pdp/web/EvaluateControllerTest.java,,06cdceb
-code,EF-17,pdp/src/main/java/cm/identishield/pdp/config/RuleSet.java,pdp/src/test/java/cm/identishield/pdp/config/RuleSetTest.java,,06cdceb
-code,EF-18,pdp/src/main/java/cm/identishield/pdp/time/TimeConfig.java,core/src/test/java/cm/identishield/core/time/VirtualClockTest.java;pdp/src/test/java/cm/identishield/pdp/time/TimeConfigTest.java;pdp/src/test/java/cm/identishield/pdp/time/VirtualClockTest.java,,06cdceb
-code,EI-01,core/src/main/java/cm/identishield/core/pdp/PdpClient.java,,,06cdceb
-code,ENF-03,pdp/src/main/java/cm/identishield/pdp/web/EvaluateController.java,pdp/src/test/java/cm/identishield/pdp/web/EvaluateControllerTest.java,,06cdceb
-code,ENF-11,core/src/main/java/cm/identishield/core/time/TimeConfig.java;pdp/src/main/java/cm/identishield/pdp/time/TimeConfig.java,core/src/test/java/cm/identishield/core/ArchitectureTest.java;pdp/src/test/java/cm/identishield/pdp/ArchitectureTest.java,,06cdceb
-code,ES-11,core/src/main/java/cm/identishield/core/pdp/PdpClient.java;pdp/src/main/java/cm/identishield/pdp/web/HealthController.java,core/src/test/java/cm/identishield/core/pdp/CircuitBreakerTest.java;core/src/test/java/cm/identishield/core/pdp/FailClosedPolicyTest.java;core/src/test/java/cm/identishield/core/transfer/TransferServiceTest.java,,06cdceb
-code,ES-15,core/src/main/java/cm/identishield/core/config/RuleSet.java;pdp/src/main/java/cm/identishield/pdp/config/RuleSet.java,core/src/test/java/cm/identishield/core/config/RuleSetTest.java,,06cdceb
+code,EF-04,core/src/main/java/cm/identishield/core/transfer/TransferService.java,,,774c19e
+code,EF-05,core/src/main/java/cm/identishield/core/transfer/TransferService.java,core/src/test/java/cm/identishield/core/transfer/TransferServiceTest.java,,774c19e
+code,EF-06,core/src/main/java/cm/identishield/core/ussd/UssdService.java,core/src/test/java/cm/identishield/core/ussd/UssdServiceTest.java,,774c19e
+code,EF-10,pdp/src/main/java/cm/identishield/pdp/web/EvaluateController.java,,,774c19e
+code,EF-11,pdp/src/main/java/cm/identishield/pdp/web/EvaluateController.java,pdp/src/test/java/cm/identishield/pdp/web/EvaluateControllerTest.java,,774c19e
+code,EF-17,pdp/src/main/java/cm/identishield/pdp/config/RuleSet.java,pdp/src/test/java/cm/identishield/pdp/config/RuleSetTest.java,,774c19e
+code,EF-18,pdp/src/main/java/cm/identishield/pdp/time/TimeConfig.java,core/src/test/java/cm/identishield/core/time/VirtualClockTest.java;pdp/src/test/java/cm/identishield/pdp/time/TimeConfigTest.java;pdp/src/test/java/cm/identishield/pdp/time/VirtualClockTest.java,,774c19e
+code,EI-01,core/src/main/java/cm/identishield/core/pdp/PdpClient.java,,,774c19e
+code,ENF-03,pdp/src/main/java/cm/identishield/pdp/web/EvaluateController.java,pdp/src/test/java/cm/identishield/pdp/web/EvaluateControllerTest.java,,774c19e
+code,ENF-11,core/src/main/java/cm/identishield/core/time/TimeConfig.java;pdp/src/main/java/cm/identishield/pdp/time/TimeConfig.java,core/src/test/java/cm/identishield/core/ArchitectureTest.java;pdp/src/test/java/cm/identishield/pdp/ArchitectureTest.java,,774c19e
+code,ES-11,core/src/main/java/cm/identishield/core/pdp/PdpClient.java;pdp/src/main/java/cm/identishield/pdp/web/HealthController.java,core/src/test/java/cm/identishield/core/pdp/CircuitBreakerTest.java;core/src/test/java/cm/identishield/core/pdp/FailClosedPolicyTest.java;core/src/test/java/cm/identishield/core/transfer/TransferServiceTest.java,,774c19e
+code,ES-15,core/src/main/java/cm/identishield/core/config/RuleSet.java;pdp/src/main/java/cm/identishield/pdp/config/RuleSet.java,core/src/test/java/cm/identishield/core/config/RuleSetTest.java,,774c19e
