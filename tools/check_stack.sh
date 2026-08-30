@@ -126,5 +126,14 @@ else
   echo "[ECHEC] /evaluate : voir sortie"; sed 's/^/  /' /tmp/isc_verify_eval.out; fail=1
 fi
 
+# ===================== T2-06 : verification du journal d'audit (ES-09) =====================
+echo "--- integrite du journal d'audit : detection + localisation (porte #4) ---"
+if bash tools/verify_audit.sh >/tmp/isc_verify_audit.out 2>&1; then
+  grep -E '^\[OK\]|verify-audit:' /tmp/isc_verify_audit.out | sed 's/^/  /'
+  echo "[OK] audit : chaine verifiee, alteration detectee ET localisee, ancre couvre la suppression du dernier (ES-09)"
+else
+  echo "[ECHEC] audit : voir sortie"; sed 's/^/  /' /tmp/isc_verify_audit.out; fail=1
+fi
+
 [ $fail -eq 0 ] && echo "check-stack: VERT" || echo "check-stack: ROUGE"
 exit $fail
