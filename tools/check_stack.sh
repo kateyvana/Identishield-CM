@@ -144,5 +144,14 @@ else
   echo "[ECHEC] coeur/transfert : voir sortie"; sed 's/^/  /' /tmp/isc_verify_transfer.out; fail=1
 fi
 
+# ===================== T2-08 : canal USSD (EF-06) =====================
+echo "--- USSD : une session traverse le fil et est executee ---"
+if bash tools/verify_ussd.sh >/tmp/isc_verify_ussd.out 2>&1; then
+  grep -E '^\[OK\]|verify-ussd:' /tmp/isc_verify_ussd.out | sed 's/^/  /'
+  echo "[OK] USSD : session -> transfert -> /evaluate -> EXECUTED (EF-06)"
+else
+  echo "[ECHEC] USSD : voir sortie"; sed 's/^/  /' /tmp/isc_verify_ussd.out; fail=1
+fi
+
 [ $fail -eq 0 ] && echo "check-stack: VERT" || echo "check-stack: ROUGE"
 exit $fail
