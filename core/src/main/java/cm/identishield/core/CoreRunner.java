@@ -73,7 +73,7 @@ public class CoreRunner implements ApplicationRunner {
     pdp.warmup(); // etablit la connexion persistante avant l'appel /evaluate (JVM froide)
     String from = env("FROM_MSISDN", "699000001");
     String beneficiary = env("BENEFICIARY_MSISDN", "699000002");
-    long amount = Long.parseLong(env("AMOUNT_XAF", "25000"));
+    long amount = Long.parseLong(env("AMOUNT_XAF", "15000")); // montant de demo (non-parametre)
     TransferResult r = transfers.transferP2P(from, beneficiary, amount, "USSD");
     System.out.println("TRANSFER_STATE=" + r.state());
     System.out.println("TRANSFER_DECISION_ID=" + r.decisionId());
