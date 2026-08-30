@@ -7,6 +7,8 @@ import cm.identishield.core.pdp.ProbeResult;
 import cm.identishield.core.time.MonotonicTimer;
 import cm.identishield.core.transfer.TransferResult;
 import cm.identishield.core.transfer.TransferService;
+import cm.identishield.core.ussd.UssdResponse;
+import cm.identishield.core.ussd.UssdService;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -42,16 +44,19 @@ public class CoreRunner implements ApplicationRunner {
 
   private final PdpClient pdp;
   private final TransferService transfers;
+  private final UssdService ussd;
   private final AccountBootstrap accountBootstrap;
   private final AccountRepository accounts;
 
   public CoreRunner(
       PdpClient pdp,
       TransferService transfers,
+      UssdService ussd,
       AccountBootstrap accountBootstrap,
       AccountRepository accounts) {
     this.pdp = pdp;
     this.transfers = transfers;
+    this.ussd = ussd;
     this.accountBootstrap = accountBootstrap;
     this.accounts = accounts;
   }
@@ -63,8 +68,38 @@ public class CoreRunner implements ApplicationRunner {
       case "probe" -> probe();
       case "bench" -> bench();
       case "transfer" -> transfer();
+      case "ussd" -> ussd();
       default -> service();
     }
+  }
+
+  /** Rejoue une session USSD scriptee de bout en bout (le fil ISC-SKEL etape 1). */
+  private void ussd() {
+    accountBootstrap.ensureSeedAccounts();
+    pdp.warmup(); // l'etape finale appelle /evaluate
+    String from = env("FROM_MSISDN", "699000001");
+    String beneficiary = env("BENEFICIARY_MSISDN", "699000002");
+    String amount = env("AMOUNT_XAF", "15000");
+
+    UssdService.Interaction dial = ussd.dial(from);
+    System.out.println("USSD> " + dial.response().message());
+    reply(dial.sessionId(), amount);
+    reply(dial.sessionId(), beneficiary);
+    UssdResponse fin = replyEcho(dial.sessionId(), "1");
+    System.out.println("USSD_FINAL=" + fin.message());
+    System.exit(0);
+  }
+
+  private void reply(java.util.UUID sessionId, String input) {
+    System.out.println("USSD< " + input);
+    System.out.println("USSD> " + ussd.input(sessionId, input).message());
+  }
+
+  private UssdResponse replyEcho(java.util.UUID sessionId, String input) {
+    System.out.println("USSD< " + input);
+    UssdResponse r = ussd.input(sessionId, input);
+    System.out.println("USSD> " + r.message());
+    return r;
   }
 
   /** Un transfert P2P de bout en bout (verification du fil du squelette). */
