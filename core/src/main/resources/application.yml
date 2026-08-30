@@ -1,6 +1,17 @@
 spring:
   application:
     name: isc-core
+  datasource:
+    # Comptes et transactions, role isc_core_app (SELECT/INSERT/UPDATE/DELETE sur
+    # le schema core). Mot de passe depuis l'environnement (.env), jamais versionne.
+    # initialization-fail-timeout: -1 => connexion PARESSEUSE : le coeur demarre meme
+    # sans base joignable (modes probe/bench sur un reseau sans postgres).
+    url: jdbc:postgresql://postgres:5432/identishield
+    username: isc_core_app
+    password: ${ISC_CORE_APP_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      initialization-fail-timeout: -1
   config:
     # Jeu de regles versionne (source unique des parametres nommes, ES-15), monte
     # en lecture seule dans le conteneur. Le coeur y lit CAP_PROB.

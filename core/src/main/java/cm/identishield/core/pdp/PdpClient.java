@@ -1,11 +1,13 @@
 package cm.identishield.core.pdp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import org.slf4j.Logger;
@@ -36,9 +38,12 @@ public final class PdpClient {
   private final PdpClientProperties props;
   private final CircuitBreaker breaker;
   private final FailClosedPolicy policy;
+  private final ObjectMapper json;
 
-  public PdpClient(PdpClientProperties props, long capProbXaf, SSLContext ssl, Clock clock) {
+  public PdpClient(
+      PdpClientProperties props, long capProbXaf, SSLContext ssl, Clock clock, ObjectMapper json) {
     this.props = props;
+    this.json = json;
     SSLParameters params = new SSLParameters();
     params.setEndpointIdentificationAlgorithm("HTTPS"); // verifie le NOM du serveur
     this.http =
@@ -89,6 +94,46 @@ public final class PdpClient {
           "PDP indisponible : sortie de {} XAF autorisee en mode DEGRADE (<= CAP_PROB)", amountXaf);
     }
     return outcome;
+  }
+
+  /**
+   * Appelle POST /evaluate (mTLS, connexion persistante) et renvoie la decision. Sur
+   * indisponibilite (disjoncteur ouvert, code != 200, erreur), renvoie une issue indisponible : le
+   * coeur applique alors sa politique fail-closed (ES-11).
+   */
+  public EvaluateOutcome evaluate(String requestJson) {
+    if (!breaker.allowRequest()) {
+      return EvaluateOutcome.unavailable();
+    }
+    try {
+      HttpRequest req =
+          HttpRequest.newBuilder(URI.create(props.baseUrl() + "/evaluate"))
+              .timeout(Duration.ofMillis(props.timeoutMs()))
+              .header("Content-Type", "application/json")
+              .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+              .build();
+      HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+      if (resp.statusCode() == 200) {
+        breaker.recordSuccess();
+        Map<String, Object> body = parseBody(resp.body());
+        return EvaluateOutcome.of((String) body.get("decision"), (String) body.get("decisionId"));
+      }
+      breaker.recordFailure();
+      return EvaluateOutcome.unavailable();
+    } catch (Exception e) {
+      breaker.recordFailure();
+      return EvaluateOutcome.unavailable();
+    }
+  }
+
+  private Map<String, Object> parseBody(String body) {
+    try {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> m = json.readValue(body, Map.class);
+      return m;
+    } catch (Exception e) {
+      throw new IllegalStateException("reponse /evaluate illisible", e);
+    }
   }
 
   /**

@@ -76,6 +76,8 @@ services:
       dockerfile: Dockerfile
     image: isc-core
     container_name: isc-core
+    # ISC_CORE_APP_PASSWORD pour la connexion aux comptes/transactions (isc_core_app).
+    env_file: .env
     depends_on:
       ca-init:
         condition: service_completed_successfully

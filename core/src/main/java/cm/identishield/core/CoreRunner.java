@@ -1,8 +1,12 @@
 package cm.identishield.core;
 
+import cm.identishield.core.account.AccountBootstrap;
+import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.pdp.PdpClient;
 import cm.identishield.core.pdp.ProbeResult;
 import cm.identishield.core.time.MonotonicTimer;
+import cm.identishield.core.transfer.TransferResult;
+import cm.identishield.core.transfer.TransferService;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -37,9 +41,19 @@ public class CoreRunner implements ApplicationRunner {
   private static final Logger log = LoggerFactory.getLogger(CoreRunner.class);
 
   private final PdpClient pdp;
+  private final TransferService transfers;
+  private final AccountBootstrap accountBootstrap;
+  private final AccountRepository accounts;
 
-  public CoreRunner(PdpClient pdp) {
+  public CoreRunner(
+      PdpClient pdp,
+      TransferService transfers,
+      AccountBootstrap accountBootstrap,
+      AccountRepository accounts) {
     this.pdp = pdp;
+    this.transfers = transfers;
+    this.accountBootstrap = accountBootstrap;
+    this.accounts = accounts;
   }
 
   @Override
@@ -48,8 +62,25 @@ public class CoreRunner implements ApplicationRunner {
     switch (mode) {
       case "probe" -> probe();
       case "bench" -> bench();
+      case "transfer" -> transfer();
       default -> service();
     }
+  }
+
+  /** Un transfert P2P de bout en bout (verification du fil du squelette). */
+  private void transfer() {
+    accountBootstrap.ensureSeedAccounts();
+    pdp.warmup(); // etablit la connexion persistante avant l'appel /evaluate (JVM froide)
+    String from = env("FROM_MSISDN", "699000001");
+    String beneficiary = env("BENEFICIARY_MSISDN", "699000002");
+    long amount = Long.parseLong(env("AMOUNT_XAF", "25000"));
+    TransferResult r = transfers.transferP2P(from, beneficiary, amount, "USSD");
+    System.out.println("TRANSFER_STATE=" + r.state());
+    System.out.println("TRANSFER_DECISION_ID=" + r.decisionId());
+    System.out.println(
+        "TRANSFER_BALANCE_AFTER="
+            + accounts.findByMsisdn(from).map(a -> a.balanceXaf()).orElse(-1L));
+    System.exit(0);
   }
 
   private void probe() {
@@ -82,6 +113,7 @@ public class CoreRunner implements ApplicationRunner {
   }
 
   private void service() throws InterruptedException {
+    accountBootstrap.ensureSeedAccounts(); // le coeur en marche a des comptes
     pdp.warmup(); // etablit la connexion persistante : 1re decision reelle deja chaude
     log.info(
         "coeur pret (mode service). Client PDP initialise, connexions persistantes chauffees.");
