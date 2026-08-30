@@ -187,3 +187,64 @@ REVOKE EXECUTE ON FUNCTION pdp.audit_chain() FROM PUBLIC;
 -- (le payload porte decisionId). L'index unique rend le doublon atomiquement
 -- impossible ; l'app rattrape la violation et renvoie la decision deja ecrite.
 CREATE UNIQUE INDEX audit_entry_decision_id_uk ON pdp.audit_entry ((payload ->> 'decisionId'));
+
+-- ================= T2-06 : verification du journal d'audit =================
+-- Reprend SPIKE-3 (verify.sql) / ADR-020 en production. DEUX couches independantes.
+-- CORRECTION de production (Q6) : la couche A ordonne par chain_index (l'ordre
+-- assigne DANS le verrou), PAS par seq -- sous concurrence seq != ordre de chaine
+-- (4589 fausses ruptures / 5000 sinon). Fonctions possedees par l'admin, EXECUTE
+-- revoque a PUBLIC (OB-3) : la verification est operationnelle, pas exposee au
+-- role applicatif. L'ancre SIGNEE (Ed25519) est au mois 4 (ES-09 partiel).
+
+-- Couche A -- chainage seul : recalcule chaque empreinte et verifie la continuite.
+-- Detecte ET LOCALISE (au chain_index) : alteration de contenu, d'empreinte,
+-- suppression du milieu, reordonnancement, lien forge. p_from > 0 => verification
+-- INCREMENTALE depuis un index (l'entree limite est reliee a p_from-1). Ne voit ni
+-- la suppression du dernier enregistrement ni la reecriture complete (couche B / ancre).
+CREATE FUNCTION pdp.audit_verify(p_from bigint DEFAULT 0)
+RETURNS TABLE(chain_index bigint, hash_mismatch boolean, chain_break boolean)
+LANGUAGE sql STABLE AS $$
+    WITH boundary AS (
+        SELECT CASE WHEN p_from <= 0 THEN repeat('0', 64)
+                    ELSE COALESCE(
+                        (SELECT e.hash FROM pdp.audit_entry e WHERE e.chain_index = p_from - 1),
+                        repeat('0', 64))
+               END AS prev_hash
+    ), v AS (
+        SELECT e.chain_index, e.prev_hash, e.hash,
+               encode(digest(
+                   pdp.audit_canonical(e.chain_index, e.seq, e.payload, e.prev_hash, e.written_at),
+                   'sha256'), 'hex') AS recomputed,
+               lag(e.hash) OVER (ORDER BY e.chain_index) AS prev_row_hash
+        FROM pdp.audit_entry e WHERE e.chain_index >= p_from
+    )
+    SELECT v.chain_index,
+           (v.hash <> v.recomputed) AS hash_mismatch,
+           (COALESCE(v.prev_row_hash, (SELECT prev_hash FROM boundary)) <> v.prev_hash) AS chain_break
+    FROM v
+    WHERE (v.hash <> v.recomputed)
+       OR (COALESCE(v.prev_row_hash, (SELECT prev_hash FROM boundary)) <> v.prev_hash)
+    ORDER BY v.chain_index;
+$$;
+
+-- Couche B -- ancre chain_head : la tete (que le role applicatif ne peut atteindre)
+-- comparee a la realite de la table. Couvre la suppression du DERNIER enregistrement,
+-- que la couche A ne voit pas (une chaine plus courte reste coherente).
+CREATE FUNCTION pdp.audit_anchor_check()
+RETURNS TABLE(anchored_count bigint, actual_count bigint,
+              anchored_last_seq bigint, actual_last_seq bigint, head_matches boolean)
+LANGUAGE sql STABLE AS $$
+    SELECT h.entry_count,
+           (SELECT count(*) FROM pdp.audit_entry),
+           h.last_seq,
+           (SELECT COALESCE(max(e.seq), 0) FROM pdp.audit_entry e),
+           (h.entry_count = (SELECT count(*) FROM pdp.audit_entry)
+            AND h.head_hash = COALESCE(
+                (SELECT e.hash FROM pdp.audit_entry e ORDER BY e.chain_index DESC LIMIT 1),
+                repeat('0', 64)))
+    FROM pdp.chain_head h;
+$$;
+
+-- OB-3 : verification non exposee au role applicatif (admin seul l'execute).
+REVOKE EXECUTE ON FUNCTION pdp.audit_verify(bigint) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION pdp.audit_anchor_check() FROM PUBLIC;
