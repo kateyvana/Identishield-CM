@@ -11,7 +11,7 @@ GRADLE_PROJECTS := core pdp
 PY_PROJECTS     := simulator attacker hlr-agent evaluation
 
 .PHONY: help up down reset check test abuse evaluate diagrams check-docs check-stack \
-        build format unit arch contract secrets fictitious-msisdn traceability
+        build format unit arch contract secrets fictitious-msisdn named-params traceability
 
 help:
 	@echo "Cibles : up down reset check test abuse evaluate diagrams check-docs check-stack"
@@ -31,7 +31,7 @@ check-stack:
 	@bash tools/check_stack.sh
 
 ## ---- portes legeres (ISC-DEV §4) -------------------------------------------
-check: build format unit arch contract check-docs secrets fictitious-msisdn
+check: build format unit arch contract check-docs secrets fictitious-msisdn named-params
 	@echo "make check : VERT"
 
 build:
@@ -88,6 +88,9 @@ secrets:
 
 fictitious-msisdn:
 	@$(PY) tools/check_msisdn.py
+
+named-params:
+	@$(PY) tools/check_named_params.py
 
 ## ---- autres cibles ----------------------------------------------------------
 test: unit

@@ -37,7 +37,7 @@ public final class PdpClient {
   private final CircuitBreaker breaker;
   private final FailClosedPolicy policy;
 
-  public PdpClient(PdpClientProperties props, SSLContext ssl, Clock clock) {
+  public PdpClient(PdpClientProperties props, long capProbXaf, SSLContext ssl, Clock clock) {
     this.props = props;
     SSLParameters params = new SSLParameters();
     params.setEndpointIdentificationAlgorithm("HTTPS"); // verifie le NOM du serveur
@@ -50,7 +50,7 @@ public final class PdpClient {
             .build();
     this.breaker =
         new CircuitBreaker(props.breaker().failureThreshold(), props.breaker().cooldownMs(), clock);
-    this.policy = new FailClosedPolicy(props.capProbXaf());
+    this.policy = new FailClosedPolicy(capProbXaf);
   }
 
   /** Vrai si le PDP repond 200 sur son point de sante, disjoncteur respecte. */

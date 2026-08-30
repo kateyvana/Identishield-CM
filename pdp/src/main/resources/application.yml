@@ -15,6 +15,10 @@ server:
 spring:
   application:
     name: isc-pdp
+  config:
+    # Jeu de regles versionne (source unique des parametres nommes, EF-17/ES-15),
+    # monte en lecture seule. La version est portee par chaque decision /evaluate.
+    import: "file:/config/ruleset.yaml"
   ssl:
     bundle:
       pem:

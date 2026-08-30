@@ -1,5 +1,6 @@
 package cm.identishield.core.pdp;
 
+import cm.identishield.core.config.RuleSet;
 import java.nio.file.Path;
 import java.time.Clock;
 import javax.net.ssl.SSLContext;
@@ -10,10 +11,11 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Racine de composition du client PDP : c'est le seul endroit qui fournit l'horloge concrete
  * ({@link Clock#systemUTC()}) et lit les fichiers PEM. Les classes metier recoivent le temps et le
- * SSLContext injectes (CLAUDE.md §3).
+ * SSLContext injectes (CLAUDE.md §3). CAP_PROB vient du jeu de regles versionne (RuleSet), pas d'un
+ * litteral.
  */
 @Configuration
-@EnableConfigurationProperties(PdpClientProperties.class)
+@EnableConfigurationProperties({PdpClientProperties.class, RuleSet.class})
 public class PdpClientConfig {
 
   // L'horloge est fournie par cm.identishield.core.time.TimeConfig (seul package
@@ -26,7 +28,8 @@ public class PdpClientConfig {
   }
 
   @Bean
-  PdpClient pdpClient(PdpClientProperties props, SSLContext pdpSslContext, Clock clock) {
-    return new PdpClient(props, pdpSslContext, clock);
+  PdpClient pdpClient(
+      PdpClientProperties props, RuleSet ruleSet, SSLContext pdpSslContext, Clock clock) {
+    return new PdpClient(props, ruleSet.capProbDailyXaf(), pdpSslContext, clock);
   }
 }
