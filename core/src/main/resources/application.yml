@@ -6,6 +6,14 @@ spring:
     # viennent aux taches suivantes) : il vit via CoreRunner (mode service).
     web-application-type: none
 
+# Horloge injectable (ADR-019, ENF-11). system = temps reel ; virtual demarre une
+# VirtualClock a virtual-start (simulation, EF-18). Aucune classe ne lit l'horloge
+# directement : tout recoit ce Clock injecte.
+isc:
+  clock:
+    mode: system
+    # virtual-start: "2026-01-01T00:00:00Z"   # utilise seulement en mode virtual
+
 # Client PDP (ES-11, EI-01). CAP_PROB est un parametre NOMME (ISC-TM §7) : sa
 # valeur vient d'ici, jamais d'un litteral dans le code. Les chemins pointent
 # vers le volume `certs` monte au runtime ; aucun secret ici.
