@@ -135,5 +135,14 @@ else
   echo "[ECHEC] audit : voir sortie"; sed 's/^/  /' /tmp/isc_verify_audit.out; fail=1
 fi
 
+# ===================== T2-07 : coeur minimal, transfert P2P (EF-04/EF-05) =====================
+echo "--- coeur : transfert P2P avec appel /evaluate AVANT commit + fail-closed ---"
+if bash tools/verify_transfer.sh >/tmp/isc_verify_transfer.out 2>&1; then
+  grep -E '^\[OK\]|verify-transfer:' /tmp/isc_verify_transfer.out | sed 's/^/  /'
+  echo "[OK] coeur : transfert EXECUTED apres /evaluate, solde debite, audit ecrit (EF-04/EF-05)"
+else
+  echo "[ECHEC] coeur/transfert : voir sortie"; sed 's/^/  /' /tmp/isc_verify_transfer.out; fail=1
+fi
+
 [ $fail -eq 0 ] && echo "check-stack: VERT" || echo "check-stack: ROUGE"
 exit $fail
