@@ -88,5 +88,34 @@ else
   echo "[OK] isc-net sans acces sortant (resolution DNS externe en echec, attendu)"
 fi
 
+# ===================== T2-04 : mTLS coeur<->PDP (OB-5, OB-6, RA-10) =====================
+hp=$(docker inspect --format '{{.State.Health.Status}}' isc-pdp 2>/dev/null)
+if [ "$hp" = "healthy" ]; then echo "[OK] PDP en bonne sante (terminaison TLS directe)"; else echo "[ECHEC] PDP: ${hp:-absent}"; fail=1; fi
+
+# RA-10 : validite des certificats. Un certificat qui expire dans moins de 30 jours
+# fait echouer la porte (prevention de l'incident du jour J : ADR-021 obligation 7).
+echo "--- validite des certificats (RA-10, echec si expiration < 30 jours) ---"
+cv=$(docker run --rm -v isc-certs:/certs:ro isc-tools sh -c '
+  for c in ca pdp core; do
+    if openssl x509 -in /certs/$c.crt -noout -checkend 2592000 >/dev/null 2>&1; then st=OK; else st=SOON; fi
+    echo "$st|$c|$(openssl x509 -in /certs/$c.crt -noout -enddate | cut -d= -f2)"
+  done' 2>/dev/null)
+echo "$cv" | while IFS='|' read -r st c end; do echo "  $c.crt : $end [$st]"; done
+if echo "$cv" | grep -q '^SOON'; then
+  echo "[ECHEC] RA-10 : un certificat expire dans moins de 30 jours"; fail=1
+else
+  echo "[OK] tous les certificats de service valides > 30 jours"
+fi
+
+# Les quatre tentatives de SPIKE-4 rejouees contre le PDP reel (OB-5 handshake ;
+# OB-6 chaine ET nom). Deleguees a tools/verify_mtls.sh.
+echo "--- mTLS : les quatre tentatives contre le PDP Spring Boot reel ---"
+if bash tools/verify_mtls.sh >/tmp/isc_verify_mtls.out 2>&1; then
+  grep -E '^\[OK\]|refusee|PROBE_REASON=' /tmp/isc_verify_mtls.out | sed 's/^/  /'
+  echo "[OK] mTLS : 4 tentatives refusees au handshake, chaine ET nom verifies (OB-5, OB-6)"
+else
+  echo "[ECHEC] mTLS : au moins une tentative n'a pas ete refusee correctement"; sed 's/^/  /' /tmp/isc_verify_mtls.out; fail=1
+fi
+
 [ $fail -eq 0 ] && echo "check-stack: VERT" || echo "check-stack: ROUGE"
 exit $fail

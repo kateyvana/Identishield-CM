@@ -1,0 +1,127 @@
+package cm.identishield.core;
+
+import cm.identishield.core.pdp.PdpClient;
+import cm.identishield.core.pdp.ProbeResult;
+import cm.identishield.core.time.MonotonicTimer;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+/**
+ * Point d'entree operationnel du coeur. Trois modes, choisis par la variable d'environnement
+ * CORE_MODE :
+ *
+ * <ul>
+ *   <li><b>service</b> (defaut) : le coeur reste en vie (il hebergera l'USSD et le flux
+ *       transactionnel des taches suivantes).
+ *   <li><b>probe</b> : sonde CORE_TARGET et imprime le motif de refus (4a/4b).
+ *   <li><b>bench</b> : mesure la latence mTLS persistante vs sans-TLS (rendu).
+ * </ul>
+ *
+ * <p>Les temps du bench sont pris avec {@link System#nanoTime()} : c'est un minuteur monotone
+ * d'INSTRUMENTATION, pas l'horloge systeme d'une regle metier (ENF-11 vise les regles, pas la
+ * mesure de performance).
+ */
+@Component
+public class CoreRunner implements ApplicationRunner {
+
+  private static final Logger log = LoggerFactory.getLogger(CoreRunner.class);
+
+  private final PdpClient pdp;
+
+  public CoreRunner(PdpClient pdp) {
+    this.pdp = pdp;
+  }
+
+  @Override
+  public void run(ApplicationArguments args) throws Exception {
+    String mode = env("CORE_MODE", "service");
+    switch (mode) {
+      case "probe" -> probe();
+      case "bench" -> bench();
+      default -> service();
+    }
+  }
+
+  private void probe() {
+    URI target = URI.create(env("CORE_TARGET", "https://pdp:8443/health"));
+    pdp.probe(target); // rechauffe la pile TLS (JVM froide) ; resultat ignore
+    ProbeResult r = pdp.probe(target);
+    System.out.println("PROBE_TARGET=" + target);
+    System.out.println("PROBE_ACCEPTED=" + r.isAccepted());
+    System.out.println("PROBE_REASON=" + r.reason());
+    System.out.println("PROBE_MESSAGE=" + r.rawMessage());
+    System.exit(0);
+  }
+
+  private void bench() throws Exception {
+    int count = Integer.parseInt(env("CORE_BENCH_COUNT", "1000"));
+    URI mtls = URI.create(env("CORE_BENCH_MTLS", "https://pdp:8443/health"));
+    URI plain = URI.create(env("CORE_BENCH_PLAIN", "http://plain:8080/health"));
+    HttpClient plainClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+
+    long[] mtlsNs = measure(count, () -> pdp.getStatus(mtls));
+    long[] plainNs = measure(count, () -> plainStatus(plainClient, plain));
+
+    System.out.println("BENCH_COUNT=" + count);
+    report("mtls_persistant", mtlsNs);
+    report("plain_sans_tls", plainNs);
+    double overheadMs = (p(mtlsNs, 95) - p(plainNs, 95)) / 1_000_000.0;
+    System.out.printf("BENCH_SURCOUT_P95_MS=%.3f%n", overheadMs);
+    System.out.printf("BENCH_SURCOUT_PCT_ENF01=%.3f%n", overheadMs / 500.0 * 100.0);
+    System.exit(0);
+  }
+
+  private void service() throws InterruptedException {
+    pdp.warmup(); // etablit la connexion persistante : 1re decision reelle deja chaude
+    log.info(
+        "coeur pret (mode service). Client PDP initialise, connexions persistantes chauffees.");
+    new CountDownLatch(1).await(); // reste en vie ; T2-05+ ajouteront l'USSD et /evaluate
+  }
+
+  private interface Call {
+    int run() throws Exception;
+  }
+
+  private static long[] measure(int count, Call call) throws Exception {
+    call.run(); // rechauffe (etablit la connexion persistante)
+    long[] ns = new long[count];
+    for (int i = 0; i < count; i++) {
+      long t0 = MonotonicTimer.nanos();
+      call.run();
+      ns[i] = MonotonicTimer.nanos() - t0;
+    }
+    Arrays.sort(ns);
+    return ns;
+  }
+
+  private static int plainStatus(HttpClient c, URI uri) throws Exception {
+    HttpRequest req = HttpRequest.newBuilder(uri).timeout(Duration.ofMillis(800)).GET().build();
+    return c.send(req, HttpResponse.BodyHandlers.discarding()).statusCode();
+  }
+
+  private static void report(String label, long[] sortedNs) {
+    System.out.printf(
+        "BENCH_%s_MS p50=%.3f p95=%.3f p99=%.3f%n",
+        label, p(sortedNs, 50) / 1e6, p(sortedNs, 95) / 1e6, p(sortedNs, 99) / 1e6);
+  }
+
+  private static double p(long[] sortedNs, int pct) {
+    int idx = (int) Math.ceil(pct / 100.0 * sortedNs.length) - 1;
+    return sortedNs[Math.max(0, Math.min(idx, sortedNs.length - 1))];
+  }
+
+  private static String env(String key, String fallback) {
+    String v = System.getenv(key);
+    return (v == null || v.isBlank()) ? fallback : v;
+  }
+}

@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: isc-core
+  main:
+    # Le coeur n'expose pas de serveur web au mois 2 (USSD et flux transactionnel
+    # viennent aux taches suivantes) : il vit via CoreRunner (mode service).
+    web-application-type: none
+
+# Client PDP (ES-11, EI-01). CAP_PROB est un parametre NOMME (ISC-TM §7) : sa
+# valeur vient d'ici, jamais d'un litteral dans le code. Les chemins pointent
+# vers le volume `certs` monte au runtime ; aucun secret ici.
+core:
+  pdp:
+    base-url: https://pdp:8443
+    health-path: /health
+    timeout-ms: 800
+    cap-prob-xaf: 50000 # CAP_PROB : plafond des sorties tolerees en mode degrade
+    cert-path: /certs/core.crt
+    key-path: /certs/core.key
+    ca-path: /certs/ca.crt
+    breaker:
+      failure-threshold: 3
+      cooldown-ms: 5000
