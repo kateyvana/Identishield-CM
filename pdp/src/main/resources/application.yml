@@ -28,3 +28,11 @@ spring:
 
 # Aucun endpoint metier : /evaluate est T2-05. Le PDP n'expose qu'un point de
 # sante minimal (voir HealthController).
+
+# Horloge injectable (ADR-019, EF-18, ENF-11). system = temps reel ; virtual demarre
+# une VirtualClock a virtual-start (simulation). Aucune classe ne lit l'horloge
+# directement : l'evaluateur et le journal d'audit (a venir) recoivent ce Clock injecte.
+isc:
+  clock:
+    mode: system
+    # virtual-start: "2026-01-01T00:00:00Z"   # utilise seulement en mode virtual

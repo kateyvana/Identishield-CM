@@ -26,6 +26,8 @@ import org.junit.jupiter.api.Test;
  */
 class ArchitectureTest {
 
+  // @covers ENF-11
+
   /** All compiled production classes - not a package list (TACHE-01 correction 1). */
   private static final JavaClasses PRODUCTION_CLASSES =
       new ClassFileImporter().importPath(Paths.get("build/classes/java/main"));
