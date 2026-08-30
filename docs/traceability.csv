@@ -4,7 +4,9 @@ SPIKE-2,C-08,Clock/VirtualClock (spikes/spike-2-clock),spikes/spike-2-clock/RESU
 SPIKE-3,ES-09,AuditLog chaîné (spikes/spike-3-audit-chain),spikes/spike-3-audit-chain/RESULT.md,RÉUSSI AVEC RÉSERVES,f0dd0db
 SPIKE-4,ES-11,mTLS cœur-PDP (spikes/spike-4-mtls),spikes/spike-4-mtls/RESULT.md,RÉUSSI AVEC RÉSERVES,a391fcc
 SPIKE-5,SQ-21,Simulateur injection (spikes/spike-5-injection),spikes/spike-5-injection/RESULT.md,RÉUSSI,3b78573
-code,EF-18,pdp/src/main/java/cm/identishield/pdp/time/TimeConfig.java,core/src/test/java/cm/identishield/core/time/VirtualClockTest.java;pdp/src/test/java/cm/identishield/pdp/time/TimeConfigTest.java;pdp/src/test/java/cm/identishield/pdp/time/VirtualClockTest.java,,42c7f1e
-code,EI-01,core/src/main/java/cm/identishield/core/pdp/PdpClient.java,,,42c7f1e
-code,ENF-11,core/src/main/java/cm/identishield/core/time/TimeConfig.java;pdp/src/main/java/cm/identishield/pdp/time/TimeConfig.java,core/src/test/java/cm/identishield/core/ArchitectureTest.java;pdp/src/test/java/cm/identishield/pdp/ArchitectureTest.java,,42c7f1e
-code,ES-11,core/src/main/java/cm/identishield/core/pdp/PdpClient.java;pdp/src/main/java/cm/identishield/pdp/web/HealthController.java,core/src/test/java/cm/identishield/core/pdp/CircuitBreakerTest.java;core/src/test/java/cm/identishield/core/pdp/FailClosedPolicyTest.java,,42c7f1e
+code,EF-17,pdp/src/main/java/cm/identishield/pdp/config/RuleSet.java,pdp/src/test/java/cm/identishield/pdp/config/RuleSetTest.java,,bb5c0a2
+code,EF-18,pdp/src/main/java/cm/identishield/pdp/time/TimeConfig.java,core/src/test/java/cm/identishield/core/time/VirtualClockTest.java;pdp/src/test/java/cm/identishield/pdp/time/TimeConfigTest.java;pdp/src/test/java/cm/identishield/pdp/time/VirtualClockTest.java,,bb5c0a2
+code,EI-01,core/src/main/java/cm/identishield/core/pdp/PdpClient.java,,,bb5c0a2
+code,ENF-11,core/src/main/java/cm/identishield/core/time/TimeConfig.java;pdp/src/main/java/cm/identishield/pdp/time/TimeConfig.java,core/src/test/java/cm/identishield/core/ArchitectureTest.java;pdp/src/test/java/cm/identishield/pdp/ArchitectureTest.java,,bb5c0a2
+code,ES-11,core/src/main/java/cm/identishield/core/pdp/PdpClient.java;pdp/src/main/java/cm/identishield/pdp/web/HealthController.java,core/src/test/java/cm/identishield/core/pdp/CircuitBreakerTest.java;core/src/test/java/cm/identishield/core/pdp/FailClosedPolicyTest.java,,bb5c0a2
+code,ES-15,core/src/main/java/cm/identishield/core/config/RuleSet.java;pdp/src/main/java/cm/identishield/pdp/config/RuleSet.java,core/src/test/java/cm/identishield/core/config/RuleSetTest.java,,bb5c0a2

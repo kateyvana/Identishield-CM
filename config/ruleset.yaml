@@ -1,0 +1,32 @@
+# Jeu de règles versionné du PDP (EF-17, ES-15). SOURCE UNIQUE des paramètres
+# nommés : ils vivent ici, jamais en littéral dans le code (porte
+# tools/check_named_params.py). Le cœur ET le PDP lisent ce même fichier (monté
+# en lecture seule dans les deux conteneurs) — « les paramètres à un seul endroit ».
+#
+# Valeurs = ISC-TM v1.1 §7 « Valeur v1 » (initiales ; le protocole d'évaluation
+# du mois 4 mesurera leur sensibilité). Durées en ISO-8601 ; montants en FCFA
+# entiers (ED-05) ; NIGHT = fenêtre horloge murale UTC serveur (ED-04).
+#
+# La version DOIT figurer dans chaque décision /evaluate (EF-11 ruleSetVersion,
+# EF-17). Toute modification d'un paramètre s'accompagne d'un incrément de version.
+ruleset:
+  version: rs-0.1.0
+  parameters:
+    CAR_IMSI: PT72H # carence post-changement d'IMSI (72 h, état PROBATION)
+    CAR_ENROL: PT48H # carence post-ré-enrôlement (48 h)
+    CAP_PROB: # plafond de sortie en PROBATION : min(dailyXaf ; balancePct % du solde)
+      dailyXaf: 25000
+      balancePct: 10
+    THR_HIGH: # seuil « montant élevé » : min(absoluteXaf ; medianFactor × médiane 30 j)
+      absoluteXaf: 50000
+      medianFactor: 3
+    THR_4EYES: # seuil quatre-yeux SOC
+      xaf: 100000
+    TTL_FREEZE: PT24H # TTL de gel, puis annulation
+    NIGHT: "23:00-05:00" # fenêtre nuit, heure serveur UTC (signal secondaire, jamais veto)
+    VEL: # fenêtre de vélocité : > count sorties / window OU > newBeneficiaries nouveaux / beneficiaryWindow
+      count: 3
+      window: PT10M
+      newBeneficiaries: 3
+      beneficiaryWindow: PT24H
+    DEFER: PT4H # temporisation STEP_UP sur USSD

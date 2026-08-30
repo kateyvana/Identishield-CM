@@ -12,11 +12,12 @@ public record PdpClientProperties(
     String baseUrl,
     String healthPath,
     long timeoutMs,
-    long capProbXaf,
     String certPath,
     String keyPath,
     String caPath,
     Breaker breaker) {
+  // CAP_PROB ne vit PAS ici : c'est un parametre nomme, lu du jeu de regles
+  // versionne (RuleSet / config/ruleset.yaml), source unique (ES-15).
 
   /** Seuils du disjoncteur (fait maison, sans dependance : ADR-021 / §4). */
   public record Breaker(int failureThreshold, long cooldownMs) {}

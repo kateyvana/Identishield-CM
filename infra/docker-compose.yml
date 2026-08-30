@@ -54,6 +54,7 @@ services:
         condition: service_healthy
     volumes:
       - certs:/certs:ro
+      - ../config:/config:ro # jeu de regles versionne (EF-17), source unique
     networks:
       - isc-net
     healthcheck:
@@ -82,6 +83,7 @@ services:
       CORE_MODE: ${CORE_MODE:-service}
     volumes:
       - certs:/certs:ro
+      - ../config:/config:ro # jeu de regles versionne (CAP_PROB), source unique
     networks:
       - isc-net
 
