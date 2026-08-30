@@ -29,7 +29,11 @@ public class PdpClientConfig {
 
   @Bean
   PdpClient pdpClient(
-      PdpClientProperties props, RuleSet ruleSet, SSLContext pdpSslContext, Clock clock) {
-    return new PdpClient(props, ruleSet.capProbDailyXaf(), pdpSslContext, clock);
+      PdpClientProperties props,
+      RuleSet ruleSet,
+      SSLContext pdpSslContext,
+      Clock clock,
+      com.fasterxml.jackson.databind.ObjectMapper json) {
+    return new PdpClient(props, ruleSet.capProbDailyXaf(), pdpSslContext, clock, json);
   }
 }

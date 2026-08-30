@@ -20,6 +20,12 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
+    // -json : ObjectMapper (le coeur serialise la requete /evaluate) ; le starter de
+    // base n'inclut pas jackson. -jdbc : comptes et transactions (role isc_core_app).
+    // Stack Spring. Le coeur reste sans serveur web (l'USSD viendra en T2-08).
+    implementation 'org.springframework.boot:spring-boot-starter-json'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    runtimeOnly 'org.postgresql:postgresql'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
 }
