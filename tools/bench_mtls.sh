@@ -23,4 +23,4 @@ docker run --rm --network "$NET" \
   -e CORE_MODE=bench -e CORE_BENCH_COUNT="$COUNT" \
   -e CORE_BENCH_MTLS=https://pdp:8443/health \
   -e CORE_BENCH_PLAIN=http://plain:80/ \
-  -v "$CERTS":/certs:ro isc-core java -jar /app/app.jar 2>&1 | grep -E '^BENCH_'
+  -v "$CERTS":/certs:ro -v "$(pwd)/config:/config:ro" isc-core java -jar /app/app.jar 2>&1 | grep -E '^BENCH_'
