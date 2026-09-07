@@ -2,7 +2,7 @@
 
 | Champ | Valeur |
 |---|---|
-| Version | 1.2 — Refonte du modèle d'authentification (ISC-AMD-01, 07/09/2026) : AC-08 et AC-13 révisés, AC-14 à AC-16 ajoutés, T-02 chiffré par déclaration publique de l'opérateur |
+| Version | 1.2.1 — Refonte du modèle d'authentification (ISC-AMD-01, 07/09/2026) : AC-08 et AC-13 révisés, AC-14 à AC-16 ajoutés, T-02 chiffré par déclaration publique de l'opérateur. Correctif 1.2.1 : S-03, S-08, T-AC-03 et le paramètre CAR_ENROL citaient encore la logique renversée (écart trouvé par l'agent de codage en TACHE-04) |
 | Date | 20 août 2026 |
 | Méthode | STRIDE (Microsoft SDL) appliqué aux flux de données + scénarios d'attaque + cas d'abus |
 | Statut | APPROVED (encadrement technique) — à présenter à Engr. Moune Daniel |
@@ -96,7 +96,7 @@ Chaque scénario est exécuté par l'outil attaquant CLI, injecté par le géné
 |---|---|---|---|---|
 | S-01 | Ingénierie sociale simple : PIN extorqué, transfert depuis le propre téléphone de la victime manipulée | T-01 | app/USSD | Hors du pouvoir du device binding ; dépend du comportemental (nouveau bénéficiaire, montant) → STEP_UP |
 | S-02 | SIM swap + vidage immédiat (< 10 min) vers un bénéficiaire inconnu | T-02 | USSD | PROBATION (changement IMSI) → FREEZE (nouveau bénéficiaire / dépassement CAP_PROB, ES-04) |
-| S-03 | SIM swap + vidage immédiat via l'app réinstallée sur le téléphone de l'attaquant | T-02 | app | Refus : absence de signature valide (ES-02) ; enrôlement refusé (ES-17) |
+| S-03 | SIM swap + vidage immédiat via l'app réinstallée sur le téléphone de l'attaquant | T-02 | app | Refus : absence de signature valide (ES-02) ; le ré-enrôlement exige le code de récupération, jamais l'OTP (ES-19) ; l'attaquant ne le détient pas |
 | S-04 | SIM swap + attente 48 h puis vidage | T-05 | USSD | FREEZE si dans la carence, sinon STEP_UP (nouveau bénéficiaire + montant) ; mesure la durée de carence nécessaire |
 | S-05 | SIM swap + vidage fractionné : n petits transferts vers m bénéficiaires | T-02 | USSD | PROBATION → FREEZE dès le premier bénéficiaire nouveau (ES-04) ; sans signal IMSI, détection par VEL (ES-05c) |
 | S-06 | SIM swap + attaque de nuit (02h–05h) | T-02 | USSD | PROBATION → FREEZE (ES-04) ; règle horaire comme signal secondaire (ES-05d) |
@@ -117,7 +117,7 @@ Chaque valeur est un **paramètre de configuration** du PDP, pas une constante. 
 | Paramètre | Valeur v1 | Justification | Sensibilité à mesurer |
 |---|---|---|---|
 | Carence post-changement d'IMSI (CAR_IMSI) | **72 h** en état PROBATION (pas FROZEN) : sorties ≤ CAP_PROB vers bénéficiaires connus autorisées ; tout le reste FREEZE ; levée anticipée par contact de confiance ou signature d'un dispositif ACTIVE (ADR-012) | Fenêtre observée des vidages : minutes à 24 h (Safaricom 2021 ; FHNW 2025). 72 h couvre l'attaquant patient à 48 h (S-04) avec marge ; Safaricom applique une suspension « pendant une période » non publiée ; Sayibu 2025 confirme l'efficacité des hold periods. | Courbe rappel/friction pour 24 h, 48 h, 72 h, 7 j |
-| Carence post-ré-enrôlement (CAR_ENROL) | **48 h**, levée immédiate si confirmation par ancien dispositif ou contact de confiance | Le ré-enrôlement est un événement plus rare et mieux contrôlé que le swap ; 48 h suffit si la probation plafonne les sorties. | Idem |
+| Carence post-ré-enrôlement (CAR_ENROL) | **RETIRÉ (v1.2)** — aucune carence propre à l'enrôlement | Le ré-enrôlement est authentifié par le code de récupération (ADR-029) ; une carence supplémentaire n'apporterait rien et pénaliserait l'utilisateur légitime. L'état transactionnel reste gouverné par CAR_IMSI (ES-01b). | — |
 | Plafond de sortie en PROBATION (CAP_PROB) | **min(25 000 FCFA/jour ; 10 % du solde)** ; nouveaux bénéficiaires interdits | 25 000 FCFA ≈ ordre de grandeur d'un retrait courant ; limite la perte maximale à un montant absorbable sans bloquer la vie quotidienne. | Perte max vs % de transactions légitimes gênées |
 | Seuil « montant élevé » (THR_HIGH) | **50 000 FCFA** ou **> 3× la médiane des 30 derniers jours** du compte (le plus bas) | Règle absolue + règle relative : protège le petit compte comme le gros. | FPR par persona |
 | Seuil quatre-yeux SOC (THR_4EYES) | **100 000 FCFA** | Au-dessus, la levée d'un gel par un seul analyste est un risque d'insider (S-09). | — |
@@ -160,7 +160,7 @@ Gabarit : Scénario | Acteur | Préconditions | Déroulé | Résultat sans contr
 | Préconditions | MSISDN réassigné à l'IMSI attaquant via agent complice ; PIN obtenu ; mule prête |
 | Déroulé | 1. OTP reçu sur l'appareil attaquant 2. Authentification USSD 3. Transfert du solde vers bénéficiaire inconnu 4. Cash-out sous 30 min |
 | Sans contre-mesure | Perte totale, irréversible |
-| Contre-mesures | ES-01b (changement IMSI → PROBATION) ; ES-03 (CAR_IMSI 72 h) ; ES-04 (solde entier vers bénéficiaire inconnu viole le plafond et la règle de nouveau bénéficiaire → FREEZE) ; ES-05 en secours |
+| Contre-mesures | ES-01b (changement IMSI → PROBATION) ; ES-03c (CAR_IMSI 72 h) ; ES-04 (solde entier vers bénéficiaire inconnu viole le plafond et la règle de nouveau bénéficiaire → FREEZE) ; ES-05 en secours |
 | Sources | Safaricom 2021 ; Rest of World 2023 ; FHNW 2025 ; MINPOSTEL |
 | Test | T-AC-02 : FREEZE, latence p95 < 500 ms |
 
@@ -171,9 +171,9 @@ Gabarit : Scénario | Acteur | Préconditions | Déroulé | Résultat sans contr
 | Préconditions | Comme AC-02 ; l'attaquant installe l'app sur son propre téléphone |
 | Déroulé | 1. Tentative d'enrôlement du nouvel appareil 2. OTP + PIN acceptés par un système naïf 3. Transfert |
 | Sans contre-mesure | Identique à AC-02 |
-| Contre-mesures | ES-02 : la clé du nouvel appareil n'est pas la clé enrôlée → refus de signature ; l'enrôlement d'un second appareil déclenche S-08 (PROBATION) ; ES-17 refuse tout enrôlement sous CAR_IMSI ; ES-01b place le compte en PROBATION |
+| Contre-mesures | ES-02 : la clé du nouvel appareil n'est pas la clé enrôlée → refus de signature ; la tentative d'enrôlement d'un second appareil est un ré-enrôlement (ES-17b) qui exige le code de récupération (ES-19) ; ES-01b place le compte en PROBATION du fait du changement d'IMSI |
 | Sources | NIST 800-63B §5.1.3.3 (liaison numéro ↔ appareil physique) ; SIM binding |
-| Test | T-AC-03 : refus cryptographique (ES-02) et refus d'enrôlement (ES-17) |
+| Test | T-AC-03 : refus cryptographique (ES-02) ; tentative de ré-enrôlement sans code de récupération → refusée au premier facteur, aucun OTP émis (ES-19) |
 
 ### AC-04 — Attaquant patient (48 h après le swap)
 | Champ | Contenu |
@@ -182,7 +182,7 @@ Gabarit : Scénario | Acteur | Préconditions | Déroulé | Résultat sans contr
 | Préconditions | Comme AC-02 ; l'attaquant sait qu'une carence existe |
 | Déroulé | 1. Swap 2. Silence 48 h (la victime n'a pas remarqué, ou pense à une panne réseau) 3. Transfert |
 | Sans contre-mesure | Carence de 24 h : attaque réussit. Carence de 72 h : bloquée. |
-| Contre-mesures | ES-03 CAR_IMSI = 72 h ; ES-05 nouveau bénéficiaire + montant → STEP_UP même après la carence ; **notification à la victime sur un canal alternatif (contact de confiance) dès le swap** — l'information est la meilleure arme contre la patience |
+| Contre-mesures | ES-03c CAR_IMSI = 72 h ; ES-05 nouveau bénéficiaire + montant → STEP_UP même après la carence ; **notification à la victime sur un canal alternatif (contact de confiance) dès le swap** — l'information est la meilleure arme contre la patience |
 | Sources | Logique M-Pesa ; construit |
 | Test | T-AC-04 : exécuté à t+24 h, t+48 h, t+72 h, t+8 j ; attendu FREEZE (ES-04, nouveau bénéficiaire en PROBATION) / FREEZE / STEP_UP / STEP_UP |
 
