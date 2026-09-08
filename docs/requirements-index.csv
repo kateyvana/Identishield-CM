@@ -47,7 +47,10 @@ EF-24,EF,M,ACTIVE,L’application DOIT permettre le ré-enrôlement (UC-05) et a
 EF-25,EF,M,ACTIVE,L’application DOIT afficher une notification lorsqu’une sortie est gelée ou escaladée.
 EF-26,EF,M,ACTIVE,L’interface DOIT être disponible en français.
 EF-27,EF,S,ACTIVE,L’interface DEVRAIT être disponible en anglais.
-EF-28,EF,M,ACTIVE,L’application DOIT permettre à l’ancien dispositif d’annuler un ré-enrôlement en cours par signature.
+EF-28,EF,,RETIRÉE,"RETIRÉE (v1.3, ISC-AMD-01 constat 2 : la confirmation ou l’annulation par l’ancien dispositif donne à un voleur le pouvoir d’approuver). Parcours supprimé avec ES-14."
+EF-45,EF,M,ACTIVE,"L’application DOIT afficher le code de récupération une seule fois, avec un avertissement indiquant qu’il doit être conservé hors de l’appareil et qu’aucun agent ne le demandera jamais ; l’utilisateur DOIT confirmer explicitement l’avoir noté avant de poursuivre."
+EF-46,EF,M,ACTIVE,L’application DOIT présenter le parcours de ré-enrôlement sans jamais solliciter de mot de passe à usage unique.
+EF-47,EF,S,ACTIVE,"Le cœur DOIT notifier l’appareil précédemment enrôlé de toute tentative de ré-enrôlement, échouée ou réussie ; cette notification est informative et NE DOIT comporter aucune action à confirmer ni à refuser."
 EF-30,EF,M,ACTIVE,"La console DOIT afficher en temps réel le flux des transactions avec décision (ALLOW / STEP_UP / FREEZE), score et raisons."
 EF-31,EF,M,ACTIVE,La console DOIT afficher l’état HLR d’un compte et signaler tout changement d’IMSI.
 EF-32,EF,M,ACTIVE,La console DOIT afficher une chronologie d’attaque alimentée par l’outil attaquant.
@@ -94,8 +97,9 @@ ENF-17,ENF,M,ACTIVE,"Toute notification de sécurité DOIT contenir le type d’
 ES-01,ES,,RETIRÉE,"RETIRÉE (journal v1.1, D-01 : incohérente avec ES-04 et QR-4). Remplacée par ES-01b."
 ES-01b,ES,M,ACTIVE,Le PDP DOIT placer le compte en PROBATION pendant CAR_IMSI dès que l’IMSI courant diffère de l’IMSI de référence ; pendant cette PROBATION les restrictions ES-04 s’appliquent.
 ES-02,ES,M,ACTIVE,"Sur le canal application, le PDP DOIT refuser toute sortie sensible dont la signature n’est pas vérifiable par une clé ACTIVE du compte."
-ES-03,ES,M,ACTIVE,Le PDP DOIT appliquer CAR_IMSI après tout changement d’IMSI et CAR_ENROL après tout ré-enrôlement.
-ES-03b,ES,M,ACTIVE,Une carence DOIT pouvoir être levée par signature de l’ancien dispositif ou confirmation d’un contact de confiance.
+ES-03,ES,,RETIRÉE,"RETIRÉE (v1.3, ISC-AMD-01 : le ré-enrôlement authentifié par code de récupération ne déclenche plus de carence propre). Remplacée par ES-03c."
+ES-03c,ES,M,ACTIVE,Le PDP DOIT appliquer CAR_IMSI après tout changement d’IMSI. Aucune carence propre n’est attachée à l’enrôlement ou au ré-enrôlement.
+ES-03b,ES,,RETIRÉE,"RETIRÉE (v1.3, ISC-AMD-01 : la levée par l’ancien dispositif est supprimée — constat 2 ; la levée par contact de confiance est DIFFÉRÉE au traitement du canal USSD, QO-19)."
 ES-04,ES,M,ACTIVE,"En état PROBATION, le PDP DOIT plafonner les sorties à CAP_PROB et interdire tout nouveau bénéficiaire ; toute violation DOIT produire FREEZE."
 ES-05a,ES,M,ACTIVE,Le PDP DOIT calculer un score comportemental 0–100 agrégeant les contributions des règles ES-05b à ES-05e ; la fonction d’agrégation est fixée par ADR-016 dans le SAD et versionnée (EF-17).
 ES-05b,ES,M,ACTIVE,"Règle bénéficiaire : un bénéficiaire jamais vu sur le compte DOIT contribuer au score ; combiné à un montant ≥ THR_HIGH, la contribution DOIT atteindre au moins le seuil STEP_UP."
@@ -110,9 +114,19 @@ ES-09,ES,M,ACTIVE,"Toute décision et toute action d’analyste DOIVENT être jo
 ES-10,ES,M,ACTIVE,"Toute signature DOIT inclure un nonce serveur de 128 bits, usage unique, validité 120 s ; tout nonce réutilisé ou expiré DOIT entraîner un refus."
 ES-11,ES,M,ACTIVE,"Le canal cœur↔PDP DOIT être authentifié mutuellement ; si le PDP est indisponible, le cœur DOIT refuser toute sortie &gt; CAP_PROB et journaliser les autres en mode dégradé ; /evaluate DOIT être limité en débit."
 ES-12,ES,M,ACTIVE,L’accès console DOIT être authentifié et contrôlé par rôles ; toute action DOIT porter justification et identité.
-ES-13,ES,M,ACTIVE,Tout changement d’IMSI et tout ré-enrôlement DOIVENT déclencher une notification aux contacts de confiance.
-ES-14,ES,M,ACTIVE,"Au ré-enrôlement, l’ancienne clé NE DOIT être révoquée qu’à la fin de CAR_ENROL ; pendant la probation, sa signature DOIT pouvoir annuler le ré-enrôlement et placer le compte en LOCKED."
+ES-13,ES,,RETIRÉE,"RETIRÉE (v1.3, ISC-AMD-01 : notification aux contacts de confiance DIFFÉRÉE, QO-19). Remplacée par ES-13b."
+ES-13b,ES,M,ACTIVE,Tout changement d’IMSI DOIT déclencher une notification au titulaire sur les canaux disponibles ; tout ré-enrôlement DOIT déclencher une notification informative à l’appareil précédemment enrôlé (EF-47).
+ES-14,ES,,RETIRÉE,"RETIRÉE (v1.3, ISC-AMD-01 constat 2 : la conservation de l’ancienne clé ne servait qu’aux voies de confirmation et d’annulation, supprimées). Remplacée par ES-14b."
+ES-14b,ES,M,ACTIVE,Le PDP DOIT révoquer la clé de dispositif précédente immédiatement après enregistrement d’une nouvelle clé ; une seule clé est ACTIVE par compte à tout instant ; la révocation est journalisée.
 ES-15,ES,M,ACTIVE,Les paramètres nommés DOIVENT être configurables sans modification de code et versionnés.
 ES-16,ES,,RETIRÉE,"RETIRÉE (journal v1.1, D-06 : responsabilité allouée au mauvais composant). Remplacée par ES-16b."
 ES-16b,ES,M,ACTIVE,Le PDP DOIT appliquer la PROBATION indifféremment au motif d’un remplacement de SIM ; le cœur NE DOIT PAS transmettre le motif comme entrée de /evaluate (il le journalise seulement).
-ES-17,ES,M,ACTIVE,Le PDP DOIT refuser tout premier enrôlement de dispositif lorsqu’un changement d’IMSI date de moins de CAR_IMSI ; un premier enrôlement accepté DOIT placer le compte en PROBATION pendant CAR_ENROL et notifier les contacts de confiance existants.
+ES-17,ES,,RETIRÉE,"RETIRÉE (v1.3, ISC-AMD-01 constat 4 : le serveur ne peut distinguer une reconduction légitime d’une frauduleuse ; le refus pénalise la victime). Remplacée par ES-17b."
+ES-17b,ES,M,ACTIVE,"Le PDP DOIT déterminer la nature de l’opération d’enrôlement uniquement à partir de la présence ou de l’absence d’une clé publique enregistrée pour le compte ; aucun signal réseau, aucun motif déclaré, aucune donnée fournie par l’appelant n’entre dans cette détermination."
+ES-18,ES,M,ACTIVE,"Le PDP DOIT générer un code de récupération lors de tout enrôlement réussi, le transmettre une seule fois, n’en conserver qu’une empreinte cryptographique à sel unique, invalider tout code consommé et en générer un nouveau à chaque ré-enrôlement réussi."
+ES-19,ES,M,ACTIVE,"Pour tout ré-enrôlement, le PDP DOIT exiger successivement le code de récupération puis le PIN ; il NE DOIT ni émettre ni accepter de mot de passe à usage unique sur ce parcours ; l’échec de l’un des deux facteurs interrompt le parcours sans révéler lequel a échoué."
+ES-20,ES,M,ACTIVE,Le PDP DOIT garantir qu’un compte ne possède jamais plus d’une clé de dispositif ACTIVE ; toute transaction signée par une clé révoquée DOIT être refusée.
+ES-21,ES,M,ACTIVE,"Le PDP DOIT limiter les tentatives de ré-enrôlement échouées par un délai croissant appliqué à l’appareil demandeur et à l’origine réseau, jamais au compte visé ; le compte NE DOIT JAMAIS être rendu indisponible à son titulaire du fait de tentatives émanant d’un tiers ; le délai est plafonné par LOCK_MAX."
+ES-22,ES,M,ACTIVE,"Le PDP DOIT retourner une réponse identique en contenu, code de statut et temps, que le compte existe ou non, qu’il soit ralenti ou non, et quel que soit le facteur échoué ; aucune réponse ne DOIT permettre d’inférer l’existence d’un compte ni l’état de sa limitation."
+ES-23,ES,M,ACTIVE,"L’application DOIT interdire la capture et l’enregistrement d’écran sur toute vue affichant le code de récupération, par le drapeau système prévu à cet effet."
+ES-24,ES,S,ACTIVE,Le PDP DOIT comptabiliser les tentatives de ré-enrôlement échouées par compte et émettre une alerte vers la console au-delà d’ALERT_REENROL ; ce comptage NE DOIT produire aucune restriction sur le compte.

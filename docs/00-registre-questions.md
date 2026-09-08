@@ -11,6 +11,7 @@
 | QO-15 | L'agent complice est-il dans le modèle de menace ? | ISC-TM | Encadrement | — | FERMÉ — oui (ADR-008) |
 | QO-17 | Confirmation que la plage MSISDN fictive 699000000–699009999 est hors de tout bloc attribué par l'ART | ED-09 | Candidat | Semaine 3 | OUVERT |
 | QO-18 | Quelle proportion des appareils du marché camerounais dispose d'un TEE exploitable (Keystore matériel) ? Limite constatée par SPIKE-1 : TEE sans StrongBox sur les deux appareils du projet | Mémoire (limite ES-02 / HP-2) | Candidat | Mois 4 | OUVERT |
+| QO-19 | Rôle des contacts de confiance sur le canal USSD, après leur retrait du parcours applicatif | ES-06, EF-44, composant TrustedContactManager | Candidat | Avant le découpage du mois 4 | OUVERT — DIFFÉRÉ par décision du propriétaire du 07/09/2026 |
 
 Règle : une question est fermée uniquement par une réponse écrite dans la colonne Statut. Une question bloquante ouverte depuis plus de deux semaines est remontée en revue hebdomadaire.
 
