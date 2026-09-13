@@ -15,7 +15,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -147,12 +146,11 @@ public class CoreRunner implements ApplicationRunner {
     System.exit(0);
   }
 
-  private void service() throws InterruptedException {
+  private void service() {
     accountBootstrap.ensureSeedAccounts(); // le coeur en marche a des comptes
     pdp.warmup(); // etablit la connexion persistante : 1re decision reelle deja chaude
-    log.info(
-        "coeur pret (mode service). Client PDP initialise, connexions persistantes chauffees.");
-    new CountDownLatch(1).await(); // reste en vie ; T2-05+ ajouteront l'USSD et /evaluate
+    // Le serveur web (GET /flux pour la console) garde le coeur en vie : pas d'attente.
+    log.info("coeur pret (mode service). /flux expose pour la console ; client PDP chauffe.");
   }
 
   private interface Call {

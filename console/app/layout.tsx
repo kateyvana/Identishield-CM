@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
+import './globals.css';
 
 export const metadata = {
-  title: 'IdentiShield-CM — Console',
-  description: 'Console opérateur et SOC (squelette, TACHE-00)',
+  title: 'IdentiShield-CM — Console opérateur',
+  description: 'Flux des transactions et décisions en temps réel (EF-30).',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
