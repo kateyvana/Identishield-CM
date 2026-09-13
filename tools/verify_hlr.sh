@@ -17,7 +17,7 @@ MSISDN=699000001
 IMSI0=624010000000001
 IMSI1=624010000000002
 IMSI2=624010000000003
-MOTIF_SECRET="MOTIF-COMPLICE-INSPECTION"
+MOTIF_INSPECTION="MOTIF-COMPLICE-INSPECTION"
 fail=0
 
 psqla() {
@@ -36,7 +36,7 @@ psqla "DELETE FROM core.hlr_reassignment WHERE msisdn='$MSISDN'; DELETE FROM cor
 
 # --- Reattribution 1 : (amorce IMSI0) puis IMSI0 -> IMSI1 ---
 out1=$(run_hlr -e HLR_MSISDN=$MSISDN -e HLR_INITIAL_IMSI=$IMSI0 -e HLR_NEW_IMSI=$IMSI1 \
-               -e HLR_AGENT=agent-007 -e HLR_REASON="$MOTIF_SECRET")
+               -e HLR_AGENT=agent-007 -e HLR_REASON="$MOTIF_INSPECTION")
 old1=$(field "$out1" HLR_OLD_IMSI)
 event1=$(field "$out1" HLR_EVENT)
 
@@ -49,7 +49,7 @@ else echo "[ECHEC] IMSI actif : count=$active current=$current"; fail=1; fi
 
 # 2) la reattribution a cree une ligne d'historique COMPLETE et bascule l'IMSI (old1 = IMSI0)
 row1=$(psqla "SELECT old_imsi||'|'||new_imsi||'|'||agent_id||'|'||reason||'|'||(occurred_at IS NOT NULL)::text FROM core.hlr_reassignment WHERE msisdn='$MSISDN' ORDER BY occurred_at LIMIT 1;")
-if [ "$old1" = "$IMSI0" ] && [ "$row1" = "$IMSI0|$IMSI1|agent-007|$MOTIF_SECRET|true" ]; then
+if [ "$old1" = "$IMSI0" ] && [ "$row1" = "$IMSI0|$IMSI1|agent-007|$MOTIF_INSPECTION|true" ]; then
   echo "[OK] reattribution : ligne d'historique complete (old/new/agent/motif/horodatage) + IMSI bascule"
 else echo "[ECHEC] ligne d'historique : old1=$old1 row1=$row1"; fail=1; fi
 
@@ -84,7 +84,7 @@ else echo "[ECHEC] la ligne 1 a change : $snap1 -> $snap1_after"; fail=1; fi
 # Assertion negative OBLIGATOIRE : le motif ne transite pas vers le PDP (inspection de la requete emise)
 if [ -z "$req" ]; then
   echo "[ECHEC] requete /evaluate emise introuvable"; fail=1
-elif echo "$req" | grep -q "$MOTIF_SECRET"; then
+elif echo "$req" | grep -q "$MOTIF_INSPECTION"; then
   echo "[ECHEC] le MOTIF apparait dans la requete /evaluate transmise au PDP (ES-16b viole)"; fail=1
 else
   echo "[OK] assertion negative : le motif n'apparait PAS dans la requete /evaluate emise (ES-16b)"
