@@ -113,6 +113,12 @@ VALUES (true, 0, repeat('0', 64), 0);   -- genese
 GRANT USAGE ON SCHEMA core TO isc_core_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA core TO isc_core_app;
 
+-- ADR-032 : historique HLR en ecriture seule AU NIVEAU BASE (constat T2-10). Le role
+-- applicatif ne peut qu'INSERT et SELECT sur hlr_reassignment -- ni UPDATE ni DELETE :
+-- l'historique des reassignations (preuve a posteriori d'un SIM swap) ne depend plus de la
+-- seule discipline applicative. account/transaction/hlr_subscriber gardent leurs droits.
+REVOKE UPDATE, DELETE ON core.hlr_reassignment FROM isc_core_app;
+
 -- pdp : le role applicatif ne touche QUE l'audit, en SELECT + INSERT (ED-06).
 GRANT USAGE ON SCHEMA pdp TO isc_pdp_app;
 GRANT SELECT, INSERT ON pdp.audit_entry TO isc_pdp_app;

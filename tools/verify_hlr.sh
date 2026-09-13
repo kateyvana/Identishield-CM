@@ -24,6 +24,11 @@ psqla() {
   docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" isc-postgres \
     psql -qtAX -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1" 2>/dev/null | tr -d '[:space:]'
 }
+# En tant que ROLE APPLICATIF (isc_core_app), stderr conserve (pour lire "permission denied").
+psqlapp() {
+  docker exec -e PGPASSWORD="$ISC_CORE_APP_PASSWORD" isc-postgres \
+    psql -qtAX -U isc_core_app -d "$POSTGRES_DB" -c "$1" 2>&1
+}
 run_hlr() {
   docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=hlr "$@" \
     -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
@@ -80,6 +85,13 @@ snap1_after=$(psqla "SELECT md5(t::text) FROM (SELECT id,msisdn,old_imsi,new_ims
 if [ "$snap1" = "$snap1_after" ] && [ -n "$snap1" ]; then
   echo "[OK] historique en ecriture seule : la ligne existante est inchangee (on n'y revient pas ; append)"
 else echo "[ECHEC] la ligne 1 a change : $snap1 -> $snap1_after"; fail=1; fi
+
+# 5b) immutabilite EN BASE (ADR-032) : le ROLE APPLICATIF ne peut ni UPDATE ni DELETE l'historique
+upd_app=$(psqlapp "UPDATE core.hlr_reassignment SET reason='ALTERE' WHERE id='$id1';")
+del_app=$(psqlapp "DELETE FROM core.hlr_reassignment WHERE id='$id1';")
+if echo "$upd_app" | grep -qi 'permission denied' && echo "$del_app" | grep -qi 'permission denied'; then
+  echo "[OK] immutabilite en base : isc_core_app ne peut ni modifier ni supprimer l'historique (permission denied)"
+else echo "[ECHEC] isc_core_app peut modifier/supprimer l'historique : upd=[$upd_app] del=[$del_app]"; fail=1; fi
 
 # Assertion negative OBLIGATOIRE : le motif ne transite pas vers le PDP (inspection de la requete emise)
 if [ -z "$req" ]; then
