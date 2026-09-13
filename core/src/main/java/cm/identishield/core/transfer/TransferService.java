@@ -3,6 +3,7 @@ package cm.identishield.core.transfer;
 import cm.identishield.core.account.Account;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.config.RuleSet;
+import cm.identishield.core.hlr.HlrService;
 import cm.identishield.core.pdp.EvaluateOutcome;
 import cm.identishield.core.pdp.FailClosedPolicy;
 import cm.identishield.core.pdp.Outcome;
@@ -44,6 +45,7 @@ public class TransferService {
   private final RuleSet ruleSet;
   private final Clock clock;
   private final ObjectMapper json;
+  private final HlrService hlr;
 
   public TransferService(
       AccountRepository accounts,
@@ -51,13 +53,15 @@ public class TransferService {
       PdpClient pdp,
       RuleSet ruleSet,
       Clock clock,
-      ObjectMapper json) {
+      ObjectMapper json,
+      HlrService hlr) {
     this.accounts = accounts;
     this.transactions = transactions;
     this.pdp = pdp;
     this.ruleSet = ruleSet;
     this.clock = clock;
     this.json = json;
+    this.hlr = hlr;
   }
 
   public TransferResult transferP2P(
@@ -121,7 +125,11 @@ public class TransferService {
     req.put("decisionId", decisionId);
     req.put("accountId", from.id().toString());
     req.put("msisdn", from.msisdn());
-    req.put("currentImsi", PLACEHOLDER_IMSI);
+    // IMSI courant résolu depuis le HLR (T2-10) ; PLACEHOLDER seulement si le numéro n'a pas encore
+    // d'IMSI enregistré. Le MOTIF d'une éventuelle réattribution N'EST JAMAIS ajouté ici : le cœur
+    // ne
+    // transmet pas le motif au PDP (ES-16b), il ne fait que le journaliser côté HLR.
+    req.put("currentImsi", hlr.currentImsi(from.msisdn()).orElse(PLACEHOLDER_IMSI));
     req.put("channel", channel);
     req.put("type", "P2P");
     req.put("amountXaf", amountXaf);
@@ -133,5 +141,21 @@ public class TransferService {
     } catch (Exception e) {
       throw new IllegalStateException("requete /evaluate non serialisable", e);
     }
+  }
+
+  /**
+   * Requête /evaluate EXACTE que le cœur émettrait pour ce transfert, construite par le MÊME chemin
+   * que {@link #transferP2P} (dont l'IMSI courant résolu depuis le HLR). Sert à INSPECTER la charge
+   * utile émise — preuve que le motif de réattribution n'y figure pas (ES-16b) — sans créer de
+   * transaction. Le decisionId est un marqueur d'inspection.
+   */
+  // @implements ES-16b
+  public String evaluateRequestPreview(
+      String fromMsisdn, String beneficiaryMsisdn, long amountXaf, String channel) {
+    Account from =
+        accounts
+            .findByMsisdn(fromMsisdn)
+            .orElseThrow(() -> new IllegalArgumentException("compte inconnu : " + fromMsisdn));
+    return buildRequest("inspection", from, beneficiaryMsisdn, amountXaf, channel, clock.instant());
   }
 }

@@ -1,6 +1,8 @@
 package cm.identishield.core.transfer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -12,6 +14,7 @@ import static org.mockito.Mockito.when;
 import cm.identishield.core.account.Account;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.config.RuleSet;
+import cm.identishield.core.hlr.HlrService;
 import cm.identishield.core.pdp.EvaluateOutcome;
 import cm.identishield.core.pdp.PdpClient;
 import cm.identishield.core.transaction.PendingTransaction;
@@ -41,6 +44,7 @@ class TransferServiceTest {
   private final PdpClient pdp = Mockito.mock(PdpClient.class);
   private final RuleSet ruleSet =
       new RuleSet("rs-0.1.0", Map.of("CAP_PROB", Map.of("dailyXaf", 25000)));
+  private final HlrService hlr = Mockito.mock(HlrService.class);
 
   private final TransferService service =
       new TransferService(
@@ -49,7 +53,8 @@ class TransferServiceTest {
           pdp,
           ruleSet,
           Clock.fixed(Instant.parse("2026-08-26T09:15:00Z"), ZoneOffset.UTC),
-          new ObjectMapper());
+          new ObjectMapper(),
+          hlr);
 
   private final Account sender = new Account(UUID.randomUUID(), FROM, 1_000_000);
   private final PendingTransaction pending = new PendingTransaction(UUID.randomUUID(), "did-1");
@@ -93,5 +98,19 @@ class TransferServiceTest {
 
     assertEquals(TransferResult.State.EXECUTED_DEGRADED, r.state());
     verify(accounts).debit(eq(sender.id()), eq(CAP_PROB));
+  }
+
+  /** La requête /evaluate porte l'IMSI courant du HLR et JAMAIS le motif d'une réattribution. */
+  // @covers ES-16b
+  @Test
+  void evaluateRequestUsesHlrImsiAndNeverCarriesMotif() {
+    when(hlr.currentImsi(FROM)).thenReturn(Optional.of("624019999999999"));
+
+    String req = service.evaluateRequestPreview(FROM, BENEF, 15_000, "USSD");
+
+    assertTrue(req.contains("624019999999999")); // IMSI courant résolu depuis le HLR (EF-02)
+    assertFalse(req.toLowerCase(java.util.Locale.ROOT).contains("motif"));
+    assertFalse(req.contains("reason"));
+    assertFalse(req.contains("agent"));
   }
 }
