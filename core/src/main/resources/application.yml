@@ -1,3 +1,9 @@
+# GET /flux pour la console (EF-30), HTTP simple sur isc-net (interne). Les modes
+# CLI (probe/bench/transfer/ussd) desactivent le serveur via
+# -Dspring.main.web-application-type=none.
+server:
+  port: 8080
+
 spring:
   application:
     name: isc-core
@@ -16,10 +22,6 @@ spring:
     # Jeu de regles versionne (source unique des parametres nommes, ES-15), monte
     # en lecture seule dans le conteneur. Le coeur y lit CAP_PROB.
     import: "file:/config/ruleset.yaml"
-  main:
-    # Le coeur n'expose pas de serveur web au mois 2 (USSD et flux transactionnel
-    # viennent aux taches suivantes) : il vit via CoreRunner (mode service).
-    web-application-type: none
 
 # Horloge injectable (ADR-019, ENF-11). system = temps reel ; virtual demarre une
 # VirtualClock a virtual-start (simulation, EF-18). Aucune classe ne lit l'horloge

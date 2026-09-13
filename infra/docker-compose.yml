@@ -91,10 +91,34 @@ services:
     networks:
       - isc-net
 
+  # Console operateur : lit GET /flux du coeur (isc-net) et l'affiche en temps reel
+  # (EF-30). Sur isc-web (bridge) pour etre joignable au navigateur (port publie) ;
+  # le coeur et le PDP restent internes. Ne se connecte a aucune base.
+  console:
+    build:
+      context: ../console
+      dockerfile: Dockerfile
+    image: isc-console
+    container_name: isc-console
+    environment:
+      CORE_URL: http://core:8080
+    depends_on:
+      - core
+    networks:
+      - isc-net
+      - isc-web
+    ports:
+      - "3000:3000"
+
 networks:
   isc-net:
     name: isc-net
     internal: true
+  # Reseau externe (bridge) reserve a l'acces navigateur de la console. Le coeur,
+  # le PDP et postgres restent sur isc-net interne, jamais exposes a l'hote.
+  isc-web:
+    name: isc-web
+    driver: bridge
 
 volumes:
   pgdata:

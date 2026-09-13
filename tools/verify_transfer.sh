@@ -18,7 +18,7 @@ before=$(adm "SELECT balance_xaf FROM core.account WHERE msisdn='$FROM';")
 
 out=$(docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=transfer -e AMOUNT_XAF=$AMOUNT \
       -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
-      java -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>&1)
+      java -Dspring.main.web-application-type=none -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>&1)
 state=$(echo "$out" | sed -n 's/^TRANSFER_STATE=//p' | tr -d '[:space:]')
 did=$(echo "$out" | sed -n 's/^TRANSFER_DECISION_ID=//p' | tr -d '[:space:]')
 after=$(adm "SELECT balance_xaf FROM core.account WHERE msisdn='$FROM';")
