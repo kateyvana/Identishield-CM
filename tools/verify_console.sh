@@ -15,11 +15,20 @@ did=$(docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=trans
       java -Dspring.main.web-application-type=none -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>&1 \
       | sed -n 's/^TRANSFER_DECISION_ID=//p' | tr -d '[:space:]')
 
+# Garde anti-faux-positif : sans decisionId (UUID), le transfert a echoue. Il ne
+# faut JAMAIS chercher un motif vide dans le flux -- `grep ""` matcherait
+# n'importe quel flux non vide et donnerait un [OK] mensonger.
+if ! printf '%s' "$did" | grep -qiE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+  echo "[ECHEC] le transfert n'a produit aucun decisionId valide (transfert echoue) : '$did'"
+  echo "verify-console: ROUGE"
+  exit 1
+fi
+
 # La console interroge le coeur toutes les secondes : la transaction doit apparaitre < 2 s.
 found=0
 for _ in 1 2 3 4; do
   body=$(curl -sS "$CONSOLE/api/flux" 2>/dev/null || true)
-  if echo "$body" | grep -q "$did"; then found=1; break; fi
+  if echo "$body" | grep -qF -- "$did"; then found=1; break; fi
   sleep 0.5
 done
 
