@@ -19,7 +19,7 @@ help:
 ## ---- pile ------------------------------------------------------------------
 up:
 	@bash infra/gen-secrets.sh
-	@$(COMPOSE) up -d --wait
+	@$(COMPOSE) up -d --build --wait   # --build : jamais tourner sur une image perimee (cache Docker => quasi gratuit si rien n'a change)
 
 down:
 	@$(COMPOSE) down

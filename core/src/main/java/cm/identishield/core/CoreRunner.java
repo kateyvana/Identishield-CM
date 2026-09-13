@@ -2,6 +2,8 @@ package cm.identishield.core;
 
 import cm.identishield.core.account.AccountBootstrap;
 import cm.identishield.core.account.AccountRepository;
+import cm.identishield.core.hlr.HlrService;
+import cm.identishield.core.hlr.ImsiChangeEvent;
 import cm.identishield.core.pdp.PdpClient;
 import cm.identishield.core.pdp.ProbeResult;
 import cm.identishield.core.time.MonotonicTimer;
@@ -46,18 +48,21 @@ public class CoreRunner implements ApplicationRunner {
   private final UssdService ussd;
   private final AccountBootstrap accountBootstrap;
   private final AccountRepository accounts;
+  private final HlrService hlr;
 
   public CoreRunner(
       PdpClient pdp,
       TransferService transfers,
       UssdService ussd,
       AccountBootstrap accountBootstrap,
-      AccountRepository accounts) {
+      AccountRepository accounts,
+      HlrService hlr) {
     this.pdp = pdp;
     this.transfers = transfers;
     this.ussd = ussd;
     this.accountBootstrap = accountBootstrap;
     this.accounts = accounts;
+    this.hlr = hlr;
   }
 
   @Override
@@ -68,6 +73,7 @@ public class CoreRunner implements ApplicationRunner {
       case "bench" -> bench();
       case "transfer" -> transfer();
       case "ussd" -> ussd();
+      case "hlr" -> hlr();
       default -> service();
     }
   }
@@ -114,6 +120,50 @@ public class CoreRunner implements ApplicationRunner {
     System.out.println(
         "TRANSFER_BALANCE_AFTER="
             + accounts.findByMsisdn(from).map(a -> a.balanceXaf()).orElse(-1L));
+    System.exit(0);
+  }
+
+  /**
+   * Pilote de vérification du HLR (T2-10), déclenché par CORE_MODE=hlr. Ce n'est PAS l'outil agent
+   * (T2-11) : c'est un harnais, comme le mode transfer. Amorce un IMSI initial, puis — si
+   * HLR_NEW_IMSI est fourni — effectue UNE réattribution paramétrée (agent, motif) et imprime
+   * l'événement émis, l'IMSI actif, la taille de l'historique, et la requête /evaluate EXACTE que
+   * le cœur émettrait (pour prouver que le motif n'y transite pas, ES-16b). verify_hlr.sh l'invoque
+   * en plusieurs temps.
+   */
+  private void hlr() {
+    accountBootstrap.ensureSeedAccounts();
+    String msisdn = env("HLR_MSISDN", "699000001");
+    hlr.ensureSubscriber(msisdn, env("HLR_INITIAL_IMSI", "624010000000001"));
+    String newImsi = env("HLR_NEW_IMSI", "");
+    if (!newImsi.isBlank()) {
+      ImsiChangeEvent ev =
+          hlr.reassign(
+              msisdn,
+              newImsi,
+              env("HLR_AGENT", "agent-kyc-01"),
+              env("HLR_REASON", "remplacement SIM"));
+      System.out.println("HLR_OLD_IMSI=" + ev.oldImsi());
+      System.out.println("HLR_NEW_IMSI=" + ev.newImsi());
+      System.out.println("HLR_CHANGED_AT=" + ev.changedAt());
+      System.out.println(
+          "HLR_EVENT="
+              + ev.msisdn()
+              + "|"
+              + ev.oldImsi()
+              + "|"
+              + ev.newImsi()
+              + "|"
+              + ev.changedAt()
+              + "|"
+              + ev.agentId());
+    }
+    System.out.println("HLR_CURRENT_IMSI=" + hlr.currentImsi(msisdn).orElse("(aucun)"));
+    System.out.println("HLR_HISTORY_COUNT=" + hlr.history(msisdn).size());
+    System.out.println(
+        "HLR_EVALUATE_REQUEST="
+            + transfers.evaluateRequestPreview(
+                msisdn, env("BENEFICIARY_MSISDN", "699000002"), 15000, "USSD"));
     System.exit(0);
   }
 

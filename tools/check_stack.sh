@@ -81,6 +81,14 @@ ch=$(adm -tAc "SELECT bool_or(has_table_privilege('isc_pdp_app','pdp.chain_head'
               FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE']) AS priv;" 2>/dev/null | tr -d '[:space:]')
 if [ "$ch" = "f" ]; then echo "[OK] chain_head : aucun acces pour isc_pdp_app"; else echo "[ECHEC] chain_head accessible: $ch"; fail=1; fi
 
+# ADR-032 / T2-10 : historique HLR immuable pour le role applicatif. isc_core_app peut
+# SELECT+INSERT sur core.hlr_reassignment mais NI UPDATE NI DELETE (ni TRUNCATE) : l'immutabilite
+# de l'historique des reassignations est enforcee en base, pas seulement par discipline applicative.
+ph=$(adm -tAc "SELECT string_agg(priv || '=' || has_table_privilege('isc_core_app','core.hlr_reassignment',priv)::text, ',' ORDER BY priv)
+              FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE']) AS priv;" 2>/dev/null | tr -d '[:space:]')
+exph="DELETE=false,INSERT=true,SELECT=true,TRUNCATE=false,UPDATE=false"
+if [ "$ph" = "$exph" ]; then echo "[OK] hlr_reassignment immuable (ADR-032): $ph"; else echo "[ECHEC] hlr_reassignment: $ph (attendu $exph)"; fail=1; fi
+
 # CT-02 : aucun acces sortant depuis isc-net - une resolution DNS externe doit echouer.
 if docker run --rm --network isc-net postgres:16 timeout 8 getent hosts deb.debian.org >/dev/null 2>&1; then
   echo "[ECHEC] isc-net resout un nom externe : le reseau n'est pas isole"; fail=1

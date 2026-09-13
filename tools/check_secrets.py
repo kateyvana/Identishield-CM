@@ -19,7 +19,11 @@ FORBIDDEN_NAMES = re.compile(r"(^|/)\.env$|\.(pem|key|jks|keystore|p12|pfx)$")
 CONTENT_PATTERNS = [
     (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "bloc de cle privee"),
     (
-        re.compile(r"(?i)(password|passwd|secret|token)\s*[:=]\s*['\"][^'\"\s]{8,}['\"]"),
+        # Un secret EN DUR : `password = "..."` avec une valeur litterale. La valeur NE DOIT PAS
+        # etre une REFERENCE de variable (`"$VAR"`, `"${VAR}"`, `"%VAR%"`) : une reference n'est
+        # jamais un secret en dur (ordre du proprietaire, 2026-08-28 : affiner le detecteur, pas
+        # tordre le code). Ex. legitime : `PGPASSWORD="$POSTGRES_PASSWORD"`.
+        re.compile(r"(?i)(password|passwd|secret|token)\s*[:=]\s*['\"](?![$%])[^'\"\s]{8,}['\"]"),
         "secret potentiel en dur",
     ),
 ]

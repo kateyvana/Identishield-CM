@@ -1,5 +1,6 @@
 package cm.identishield.core.config;
 
+import java.time.Duration;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -20,5 +21,14 @@ public record RuleSet(String version, Map<String, Object> parameters) {
       return n.longValue();
     }
     throw new IllegalStateException("CAP_PROB.dailyXaf absent du jeu de règles versionné");
+  }
+
+  /** Carence post-changement d'IMSI (fenêtre PROBATION), depuis CAR_IMSI du jeu de règles. */
+  public Duration carImsi() {
+    Object v = parameters == null ? null : parameters.get("CAR_IMSI");
+    if (v instanceof CharSequence s) {
+      return Duration.parse(s);
+    }
+    throw new IllegalStateException("CAR_IMSI absent du jeu de règles versionné");
   }
 }
