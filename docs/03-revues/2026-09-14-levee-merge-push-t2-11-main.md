@@ -5,7 +5,7 @@
 
 ## Motif (ordre du propriétaire)
 
-Ordre explicite du propriétaire, en session : « je lève, fusionne T2-11 puis la branche ADR-033, et pousse ». T2-11 (outil agent HLR, EF-42) est validée dans la VM (`verify_hlr_agent.sh` VERT), `make check` VERT, carte en In Review.
+Ordre explicite du propriétaire, en session : lever la 8e interdiction pour fusionner T2-11 puis la branche `docs/adr-033-outils-stdlib`, et pousser. T2-11 (outil agent HLR, EF-42) est validée dans la VM (`verify_hlr_agent.sh` VERT), `make check` VERT, carte en In Review.
 
 ## Ce qui est fait sur la forge — et rien d'autre
 
