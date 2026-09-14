@@ -1,9 +1,12 @@
 [project]
 name = "isc-hlr-agent"
 version = "0.1.0"
-description = "IdentiShield-CM hlr-agent (skeleton only, TACHE-00; no applicative code yet)"
+description = "IdentiShield-CM hlr-agent : outil agent operateur, remplacement de SIM (EF-42)"
 requires-python = ">=3.12,<3.13"
 dependencies = []
+
+[project.scripts]
+isc-hlr-agent = "isc_hlr_agent.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
