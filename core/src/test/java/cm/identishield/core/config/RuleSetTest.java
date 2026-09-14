@@ -28,7 +28,7 @@ class RuleSetTest {
   @Test
   void loadsVersionAndCapProbFromVersionedConfig() throws IOException {
     RuleSet rs = load();
-    assertEquals("rs-0.1.0", rs.version());
+    assertEquals("rs-0.2.0", rs.version()); // bump T2-12 : paramètres OTP ajoutés
     assertEquals(25000L, rs.capProbDailyXaf(), "CAP_PROB.dailyXaf = valeur v1 d'ISC-TM §7");
   }
 }

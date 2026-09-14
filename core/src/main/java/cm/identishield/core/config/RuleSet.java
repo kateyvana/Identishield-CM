@@ -31,4 +31,24 @@ public record RuleSet(String version, Map<String, Object> parameters) {
     }
     throw new IllegalStateException("CAR_IMSI absent du jeu de règles versionné");
   }
+
+  /** Longueur de l'OTP (chiffres décimaux), depuis OTP.length du jeu de règles (EF-03). */
+  public int otpLength() {
+    if (parameters != null
+        && parameters.get("OTP") instanceof Map<?, ?> m
+        && m.get("length") instanceof Number n) {
+      return n.intValue();
+    }
+    throw new IllegalStateException("OTP.length absent du jeu de règles versionné");
+  }
+
+  /** Durée de validité de l'OTP, depuis OTP.ttl du jeu de règles (EF-03). */
+  public Duration otpTtl() {
+    if (parameters != null
+        && parameters.get("OTP") instanceof Map<?, ?> m
+        && m.get("ttl") instanceof CharSequence s) {
+      return Duration.parse(s);
+    }
+    throw new IllegalStateException("OTP.ttl absent du jeu de règles versionné");
+  }
 }
