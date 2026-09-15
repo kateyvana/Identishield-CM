@@ -58,6 +58,15 @@ public final class PdpClient {
     this.policy = new FailClosedPolicy(capProbXaf);
   }
 
+  /**
+   * État courant du disjoncteur, pour l'affichage console (EF-36) : reflète l'historique des appels
+   * réels, sans appel réseau supplémentaire. CLOSED = disponible, HALF_OPEN = dégradé, OPEN =
+   * indisponible.
+   */
+  public CircuitBreaker.State circuitState() {
+    return breaker.state();
+  }
+
   /** Vrai si le PDP repond 200 sur son point de sante, disjoncteur respecte. */
   public boolean pdpReachable() {
     if (!breaker.allowRequest()) {

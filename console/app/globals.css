@@ -184,3 +184,29 @@ tbody tr:hover {
     background: var(--refus-fond);
     border: 1px solid #6b2723;
 }
+
+/* Bandeau d'état (EF-07/EF-36) : mode sans couche + état du PDP, sans ambiguïté. */
+.bandeau {
+    padding: 12px 20px;
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.5;
+    border-bottom: 1px solid var(--bordure);
+}
+
+.bandeau-sans-couche {
+    color: #ff8078;
+    background: var(--refus-fond);
+    border-bottom-color: #6b2723;
+}
+
+.bandeau-protege {
+    color: #56d364;
+    background: var(--ok-fond);
+    border-bottom-color: #1f5c2e;
+}
+
+.bandeau-inconnu {
+    color: var(--sourdine);
+    background: var(--panneau);
+}

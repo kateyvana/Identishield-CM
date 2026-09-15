@@ -24,6 +24,10 @@ Trace du garde-fou déjà en place : `tools/verify_transfer.sh:6` note que « le
 
 Chaque occurrence a été **contournée**, jamais tranchée. En T2-14, l'assertion de `verify_notification.sh` a été écrite pour porter sur la PRÉSENCE de la notification (`P2P_EXECUTED`), pas sur l'état du transfert — précisément pour rester verte quel que soit `EXECUTED` ou `EXECUTED_DEGRADED`. C'est un contournement **délibéré du symptôme** : légitime une fois (l'objet de T2-14 est la notification, pas la latence), mais c'est le cinquième. Une observation qui atteint cinq occurrences et qu'on continue de contourner n'est plus une observation, c'est une **dette** : les contournements masquent le signal et un jour l'un d'eux masquera un vrai défaut. La question de la section suivante doit être **tranchée avant le mois 5** ; d'ici là, tout nouveau contournement est à consigner ici, pas à normaliser.
 
+## Famille voisine — à garder en vue (mécanisme distinct)
+
+Constaté en T2-15 : le **premier appel serveur→cœur de la console** (fetch Next.js vers `core:8080`), juste après le démarrage, peut échouer à froid — `verify_layerless.sh` a d'abord vu « cœur injoignable », puis VERT une fois la pile chaude. Même **motif** (« le premier appel à froid n'est pas représentatif »), mais **mécanisme différent** de celui d'`/evaluate` (serveur Next côté console, pas le PDP) : ce n'est donc PAS une sixième occurrence. Traité par une porte de disponibilité (attente que `/api/mode` réponde) dans `verify_layerless.sh`. Noté ici pour que le motif complet — « premier appel à froid », toutes couches confondues — soit visible quand la dette sera tranchée.
+
 ## La question posée (à trancher avant le mois 5)
 
 Deux lectures possibles, mutuellement exclusives dans leurs conséquences :

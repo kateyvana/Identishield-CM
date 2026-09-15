@@ -4,6 +4,7 @@ import cm.identishield.core.account.Account;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.config.RuleSet;
 import cm.identishield.core.hlr.HlrService;
+import cm.identishield.core.mode.LayerMode;
 import cm.identishield.core.notification.NotificationChannel;
 import cm.identishield.core.notification.NotificationService;
 import cm.identishield.core.pdp.EvaluateOutcome;
@@ -51,6 +52,7 @@ public class TransferService {
   private final ObjectMapper json;
   private final HlrService hlr;
   private final NotificationService notifications;
+  private final LayerMode layerMode;
 
   public TransferService(
       AccountRepository accounts,
@@ -60,7 +62,8 @@ public class TransferService {
       Clock clock,
       ObjectMapper json,
       HlrService hlr,
-      NotificationService notifications) {
+      NotificationService notifications,
+      LayerMode layerMode) {
     this.accounts = accounts;
     this.transactions = transactions;
     this.pdp = pdp;
@@ -69,6 +72,7 @@ public class TransferService {
     this.json = json;
     this.hlr = hlr;
     this.notifications = notifications;
+    this.layerMode = layerMode;
   }
 
   /**
@@ -104,6 +108,16 @@ public class TransferService {
     PendingTransaction tx =
         transactions.createPending(
             initiator.id(), type.name(), amountXaf, counterparty, channel, now);
+
+    if (layerMode.isLayerless()) {
+      // Mode sans couche (EF-07) : la couche de sécurité est DÉSACTIVÉE — aucun appel /evaluate.
+      // C'est l'état « avant » de la démonstration, où une sortie sensible passe sans être décidée.
+      log.warn(
+          "MODE SANS COUCHE : {} de {} XAF exécuté SANS la couche de sécurité (démonstration)",
+          type,
+          amountXaf);
+      return commit(tx, initiator, type, counterparty, amountXaf, TransferResult.State.EXECUTED);
+    }
 
     EvaluateOutcome outcome =
         pdp.evaluate(
