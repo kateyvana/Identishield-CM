@@ -16,6 +16,7 @@ import cm.identishield.core.account.Account;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.config.RuleSet;
 import cm.identishield.core.hlr.HlrService;
+import cm.identishield.core.notification.NotificationService;
 import cm.identishield.core.pdp.EvaluateOutcome;
 import cm.identishield.core.pdp.PdpClient;
 import cm.identishield.core.transaction.PendingTransaction;
@@ -54,6 +55,7 @@ class OperationTest {
   private final RuleSet ruleSet =
       new RuleSet("rs-test", Map.of("CAP_PROB", Map.of("dailyXaf", 25000)));
   private final HlrService hlr = mock(HlrService.class);
+  private final NotificationService notifications = mock(NotificationService.class);
 
   private final TransferService service =
       new TransferService(
@@ -63,7 +65,8 @@ class OperationTest {
           ruleSet,
           Clock.fixed(Instant.parse("2026-09-15T09:00:00Z"), ZoneOffset.UTC),
           new ObjectMapper(),
-          hlr);
+          hlr,
+          notifications);
 
   private final Account initiator = new Account(UUID.randomUUID(), MSISDN, 1_000_000);
   private final PendingTransaction pending = new PendingTransaction(UUID.randomUUID(), "did-op");

@@ -77,10 +77,11 @@ CREATE TABLE core.otp (
 
 CREATE TABLE core.notification (
     id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipient_ref text NOT NULL,
+    msisdn        core.msisdn_fictif NOT NULL,   -- numero destinataire : consultation par numero (EF-09)
+    recipient_ref text NOT NULL,                 -- cible de livraison : IMSI courant (SMS) ou ref appareil (PUSH)
     channel       text NOT NULL,
     type          text NOT NULL,
-    body          text NOT NULL,        -- contenu contraint (ENF-17), verifie applicativement
+    body          text NOT NULL,        -- contenu contraint (ENF-17), verifie applicativement a l'emission
     sent_at       timestamptz NOT NULL
 );
 
