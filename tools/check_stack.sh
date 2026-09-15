@@ -7,6 +7,26 @@ COMPOSE="docker compose -f infra/docker-compose.yml"
 export MSYS_NO_PATHCONV=1
 fail=0
 
+# --- Garde-fou espace disque (premier, pour une reponse immediate) ---
+# Le 15/09, un disque plein a suspendu la VM a repetition et a ete diagnostique a
+# tort comme un manque de memoire pendant des heures. Cette porte donne la reponse
+# en une seconde. Elle mesure le systeme de fichiers qui porte les donnees Docker
+# (images, volumes, logs de build) ; en dessous de 10 Go, un build peut le remplir
+# et faire echouer ou suspendre la pile.
+# PORTEE : mesure le disque de CETTE machine (le systeme de fichiers hote de Docker).
+# Quand la pile tourne dans la VM, c'est le disque INVITE. Le disque HOTE qui porte
+# le .vdi dynamique de la VM n'est PAS visible d'ici : sa saturation (cause du 15/09)
+# releve d'un garde-fou cote hote, distinct de cette porte.
+disk_target=/
+if df -Pk /var/lib/docker >/dev/null 2>&1; then disk_target=/var/lib/docker; fi
+avail_kb=$(df -Pk "$disk_target" 2>/dev/null | awk 'NR==2{print $4}')
+avail_gb=$(( ${avail_kb:-0} / 1024 / 1024 ))
+if [ "${avail_kb:-0}" -ge $((10 * 1024 * 1024)) ]; then
+  echo "[OK] espace disque : ${avail_gb} Go libres sur $disk_target (seuil 10 Go)"
+else
+  echo "[ECHEC] espace disque : ${avail_gb} Go libres sur $disk_target (< 10 Go requis) -- liberer de l'espace avant de relancer la pile"; fail=1
+fi
+
 # psql en tant que isc_admin (proprietaire, socket local du conteneur).
 adm() { $COMPOSE exec -T postgres psql -U isc_admin -d identishield "$@"; }
 # psql en tant que isc_pdp_app (role applicatif, TCP + mot de passe du conteneur).
