@@ -21,14 +21,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Transfert P2P (EF-04) avec appel au PDP AVANT commit (EF-05). Le fil du squelette (ISC-SKEL §2) :
- * creer la transaction PENDING_DECISION (+ decisionId genere en base) -> POST /evaluate en mTLS ->
- * appliquer la decision (ALLOW => debit + EXECUTED). Si le PDP est indisponible, politique
- * fail-closed (ES-11) : refus au-dessus de CAP_PROB, mode degrade en dessous.
+ * Opérations du cœur (EF-04) avec appel au PDP AVANT tout commit (EF-05). Le fil du squelette
+ * (ISC-SKEL §2), identique pour les six types (P2P + cash-in, cash-out, marchand, facture, crédit)
+ * : créer la transaction PENDING_DECISION (+ decisionId généré en base) -> POST /evaluate en mTLS
+ * -> appliquer la décision (ALLOW => mouvement de solde + EXECUTED). Si le PDP est indisponible,
+ * politique fail-closed (ES-11) sur les SORTIES uniquement : refus au-dessus de CAP_PROB, mode
+ * dégradé en dessous ; une entrée (CASH_IN) passe toujours en mode dégradé, quel que soit le
+ * montant (ES-11 ne vise que les sorties — décision 15/09, correction SRS à venir).
  *
- * <p>Perimetre mois 2 (ISC-SKEL §3) : un seul type (P2P), aucune regle, aucune machine a etats de
- * confiance. currentImsi est un PLACEHOLDER en attendant le HLR (T2-10). decisionId genere en base
- * (gen_random_uuid), jamais UUID.randomUUID.
+ * <p>Aucune règle ni machine à états de confiance au mois 2. currentImsi est résolu depuis le HLR
+ * (T2-10). decisionId généré en base (gen_random_uuid), jamais UUID.randomUUID.
  */
 // @implements EF-04
 // @implements EF-05
@@ -64,52 +66,96 @@ public class TransferService {
     this.hlr = hlr;
   }
 
+  /**
+   * Transfert P2P (EF-04) : cas particulier de {@link #operate} qui débite l'initiateur et crédite
+   * le bénéficiaire intra-système. Signature conservée pour les appelants existants (USSD,
+   * console).
+   */
   public TransferResult transferP2P(
       String fromMsisdn, String beneficiaryMsisdn, long amountXaf, String channel) {
-    Account from =
+    return operate(fromMsisdn, OperationType.P2P, amountXaf, beneficiaryMsisdn, channel);
+  }
+
+  /**
+   * Exécute une opération de N'IMPORTE QUEL type (EF-04) en passant par le PDP AVANT tout commit
+   * (EF-05) — chemin unique pour les six types. Créer la transaction PENDING_DECISION (+ decisionId
+   * généré en base) -> POST /evaluate en mTLS -> appliquer la décision. ALLOW => commit (débit ou
+   * crédit selon la direction) + EXECUTED ; refus explicite => REJECTED. PDP indisponible =>
+   * fail-closed (ES-11) sur les SORTIES : refus au-dessus de CAP_PROB, dégradé en dessous ; une
+   * entrée (CASH_IN) passe toujours en dégradé. Aucun type ne modifie un solde avant d'avoir appelé
+   * /evaluate.
+   *
+   * <p>{@code counterparty} remplit le champ {@code beneficiaryId} requis par le contrat : le
+   * bénéficiaire (P2P) ou l'identifiant de la contrepartie externe simulée (agent, marchand,
+   * facturier, opérateur) pour les autres types.
+   */
+  public TransferResult operate(
+      String msisdn, OperationType type, long amountXaf, String counterparty, String channel) {
+    Account initiator =
         accounts
-            .findByMsisdn(fromMsisdn)
-            .orElseThrow(() -> new IllegalArgumentException("compte inconnu : " + fromMsisdn));
+            .findByMsisdn(msisdn)
+            .orElseThrow(() -> new IllegalArgumentException("compte inconnu : " + msisdn));
     Instant now = clock.instant();
     PendingTransaction tx =
-        transactions.createPending(from.id(), "P2P", amountXaf, beneficiaryMsisdn, channel, now);
+        transactions.createPending(
+            initiator.id(), type.name(), amountXaf, counterparty, channel, now);
 
     EvaluateOutcome outcome =
         pdp.evaluate(
-            buildRequest(tx.decisionId(), from, beneficiaryMsisdn, amountXaf, channel, now));
+            buildRequest(tx.decisionId(), initiator, type, counterparty, amountXaf, channel, now));
 
     if (outcome.available()) {
       if (outcome.isAllow()) {
-        return execute(tx, from, beneficiaryMsisdn, amountXaf, TransferResult.State.EXECUTED);
+        return commit(tx, initiator, type, counterparty, amountXaf, TransferResult.State.EXECUTED);
       }
       transactions.markRejected(tx.id());
       return TransferResult.rejected(tx.decisionId(), "decision=" + outcome.decision());
     }
 
-    // PDP indisponible : fail-closed (ES-11).
-    Outcome policy = new FailClosedPolicy(ruleSet.capProbDailyXaf()).onPdpUnavailable(amountXaf);
-    if (policy == Outcome.REFUSED_FAIL_CLOSED) {
-      transactions.markRejected(tx.id());
-      log.warn(
-          "PDP indisponible : transfert de {} XAF REFUSE (> CAP_PROB), fail-closed", amountXaf);
-      return TransferResult.rejected(
-          tx.decisionId(), "fail-closed : PDP indisponible, montant > CAP_PROB");
+    // PDP indisponible : le fail-closed (ES-11) ne protège que les SORTIES. Une entrée (CASH_IN)
+    // passe TOUJOURS, en mode dégradé et journalisée, quel que soit le montant : refuser un dépôt
+    // quand le PDP est indisponible ne protège personne — ça bloque un client légitime devant un
+    // agent sans gêner l'attaquant (même défaut que le verrouillage écarté en ADR-030). ES-11 ne
+    // vise que les sorties. Décision du propriétaire (15/09), correction ES-11 à remonter au SRS :
+    // voir docs/03-revues/2026-09-15-correction-es-11-fail-closed-sorties-seulement.md.
+    if (type.isOutflow()) {
+      Outcome policy = new FailClosedPolicy(ruleSet.capProbDailyXaf()).onPdpUnavailable(amountXaf);
+      if (policy == Outcome.REFUSED_FAIL_CLOSED) {
+        transactions.markRejected(tx.id());
+        log.warn(
+            "PDP indisponible : {} de {} XAF REFUSE (> CAP_PROB), fail-closed", type, amountXaf);
+        return TransferResult.rejected(
+            tx.decisionId(), "fail-closed : PDP indisponible, montant > CAP_PROB");
+      }
     }
-    log.warn("PDP indisponible : transfert de {} XAF en mode DEGRADE (<= CAP_PROB)", amountXaf);
-    return execute(tx, from, beneficiaryMsisdn, amountXaf, TransferResult.State.EXECUTED_DEGRADED);
+    log.warn("PDP indisponible : {} de {} XAF appliqué en mode DEGRADE", type, amountXaf);
+    return commit(
+        tx, initiator, type, counterparty, amountXaf, TransferResult.State.EXECUTED_DEGRADED);
   }
 
-  private TransferResult execute(
+  /**
+   * Applique le mouvement de solde APRÈS décision : une sortie débite l'initiateur (et, pour le
+   * P2P, crédite le bénéficiaire intra-système s'il existe) ; une entrée (CASH_IN) crédite
+   * l'initiateur. N'est jamais atteint sans un passage préalable par /evaluate.
+   */
+  private TransferResult commit(
       PendingTransaction tx,
-      Account from,
-      String beneficiaryMsisdn,
+      Account initiator,
+      OperationType type,
+      String counterparty,
       long amountXaf,
       TransferResult.State state) {
-    if (!accounts.debit(from.id(), amountXaf)) {
-      transactions.markRejected(tx.id());
-      return TransferResult.rejected(tx.decisionId(), "solde insuffisant");
+    if (type.isOutflow()) {
+      if (!accounts.debit(initiator.id(), amountXaf)) {
+        transactions.markRejected(tx.id());
+        return TransferResult.rejected(tx.decisionId(), "solde insuffisant");
+      }
+      if (type.settlesCounterparty()) {
+        accounts.findByMsisdn(counterparty).ifPresent(b -> accounts.credit(b.id(), amountXaf));
+      }
+    } else {
+      accounts.credit(initiator.id(), amountXaf);
     }
-    accounts.findByMsisdn(beneficiaryMsisdn).ifPresent(b -> accounts.credit(b.id(), amountXaf));
     transactions.markExecuted(tx.id());
     return new TransferResult(state, tx.decisionId(), null);
   }
@@ -117,7 +163,8 @@ public class TransferService {
   private String buildRequest(
       String decisionId,
       Account from,
-      String beneficiaryMsisdn,
+      OperationType type,
+      String counterparty,
       long amountXaf,
       String channel,
       Instant at) {
@@ -131,9 +178,9 @@ public class TransferService {
     // transmet pas le motif au PDP (ES-16b), il ne fait que le journaliser côté HLR.
     req.put("currentImsi", hlr.currentImsi(from.msisdn()).orElse(PLACEHOLDER_IMSI));
     req.put("channel", channel);
-    req.put("type", "P2P");
+    req.put("type", type.name());
     req.put("amountXaf", amountXaf);
-    req.put("beneficiaryId", beneficiaryMsisdn);
+    req.put("beneficiaryId", counterparty);
     req.put("serverTimestamp", DateTimeFormatter.ISO_INSTANT.format(at));
     req.put("proofType", "NONE");
     try {
@@ -156,6 +203,13 @@ public class TransferService {
         accounts
             .findByMsisdn(fromMsisdn)
             .orElseThrow(() -> new IllegalArgumentException("compte inconnu : " + fromMsisdn));
-    return buildRequest("inspection", from, beneficiaryMsisdn, amountXaf, channel, clock.instant());
+    return buildRequest(
+        "inspection",
+        from,
+        OperationType.P2P,
+        beneficiaryMsisdn,
+        amountXaf,
+        channel,
+        clock.instant());
   }
 }
