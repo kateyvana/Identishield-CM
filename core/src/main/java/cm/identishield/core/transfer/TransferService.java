@@ -4,6 +4,8 @@ import cm.identishield.core.account.Account;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.config.RuleSet;
 import cm.identishield.core.hlr.HlrService;
+import cm.identishield.core.notification.NotificationChannel;
+import cm.identishield.core.notification.NotificationService;
 import cm.identishield.core.pdp.EvaluateOutcome;
 import cm.identishield.core.pdp.FailClosedPolicy;
 import cm.identishield.core.pdp.Outcome;
@@ -48,6 +50,7 @@ public class TransferService {
   private final Clock clock;
   private final ObjectMapper json;
   private final HlrService hlr;
+  private final NotificationService notifications;
 
   public TransferService(
       AccountRepository accounts,
@@ -56,7 +59,8 @@ public class TransferService {
       RuleSet ruleSet,
       Clock clock,
       ObjectMapper json,
-      HlrService hlr) {
+      HlrService hlr,
+      NotificationService notifications) {
     this.accounts = accounts;
     this.transactions = transactions;
     this.pdp = pdp;
@@ -64,6 +68,7 @@ public class TransferService {
     this.clock = clock;
     this.json = json;
     this.hlr = hlr;
+    this.notifications = notifications;
   }
 
   /**
@@ -157,7 +162,25 @@ public class TransferService {
       accounts.credit(initiator.id(), amountXaf);
     }
     transactions.markExecuted(tx.id());
+    notifyExecuted(initiator, type);
     return new TransferResult(state, tx.decisionId(), null);
+  }
+
+  /**
+   * Notifie l'initiateur qu'une opération a été exécutée (EF-09). L'émission est NON BLOQUANTE :
+   * une notification en échec ne défait pas une transaction déjà exécutée. Le contenu est fixe et
+   * propre (ni lien, ni numéro, ni demande de secret), donc jamais refusé par le garde-fou ENF-17.
+   */
+  private void notifyExecuted(Account initiator, OperationType type) {
+    try {
+      notifications.emit(
+          initiator.msisdn(),
+          NotificationChannel.SMS,
+          type.name() + "_EXECUTED",
+          "Si vous n'êtes pas à l'origine de cette opération, rendez-vous en agence.");
+    } catch (RuntimeException e) {
+      log.warn("notification post-opération non émise : {}", e.getMessage());
+    }
   }
 
   private String buildRequest(
