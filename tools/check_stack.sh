@@ -8,15 +8,15 @@ export MSYS_NO_PATHCONV=1
 fail=0
 
 # --- Garde-fou espace disque (premier, pour une reponse immediate) ---
-# Le 15/09, un disque plein a suspendu la VM a repetition et a ete diagnostique a
-# tort comme un manque de memoire pendant des heures. Cette porte donne la reponse
-# en une seconde. Elle mesure le systeme de fichiers qui porte les donnees Docker
-# (images, volumes, logs de build) ; en dessous de 10 Go, un build peut le remplir
-# et faire echouer ou suspendre la pile.
-# PORTEE : mesure le disque de CETTE machine (le systeme de fichiers hote de Docker).
-# Quand la pile tourne dans la VM, c'est le disque INVITE. Le disque HOTE qui porte
-# le .vdi dynamique de la VM n'est PAS visible d'ici : sa saturation (cause du 15/09)
-# releve d'un garde-fou cote hote, distinct de cette porte.
+# CE QU'IL COUVRE : le remplissage du systeme de fichiers qui porte les donnees
+# Docker de la machine ou tourne la pile (images, volumes, logs de build). En
+# dessous de 10 Go, un build peut le saturer et faire echouer ou suspendre la pile.
+# CE QU'IL NE COUVRE PAS : quand la pile tourne dans la VM, ce controle mesure le
+# disque INVITE. Le disque HOTE qui porte le .vdi dynamique de la VM n'est PAS
+# visible d'ici. La saturation du disque hote -- cause reelle des pauses de VM du
+# 15/09/2026, d'abord prises a tort pour un manque de memoire -- ECHAPPE donc a
+# cette porte ; la detecter demande un controle cote hote, distinct (hygiene de
+# poste, hors du code du projet).
 disk_target=/
 if df -Pk /var/lib/docker >/dev/null 2>&1; then disk_target=/var/lib/docker; fi
 avail_kb=$(df -Pk "$disk_target" 2>/dev/null | awk 'NR==2{print $4}')
