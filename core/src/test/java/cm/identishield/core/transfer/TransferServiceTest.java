@@ -15,6 +15,7 @@ import cm.identishield.core.account.Account;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.config.RuleSet;
 import cm.identishield.core.hlr.HlrService;
+import cm.identishield.core.mode.LayerMode;
 import cm.identishield.core.notification.NotificationService;
 import cm.identishield.core.pdp.EvaluateOutcome;
 import cm.identishield.core.pdp.PdpClient;
@@ -47,6 +48,7 @@ class TransferServiceTest {
       new RuleSet("rs-0.1.0", Map.of("CAP_PROB", Map.of("dailyXaf", 25000)));
   private final HlrService hlr = Mockito.mock(HlrService.class);
   private final NotificationService notifications = Mockito.mock(NotificationService.class);
+  private final LayerMode layerMode = Mockito.mock(LayerMode.class);
 
   private final TransferService service =
       new TransferService(
@@ -57,7 +59,8 @@ class TransferServiceTest {
           Clock.fixed(Instant.parse("2026-08-26T09:15:00Z"), ZoneOffset.UTC),
           new ObjectMapper(),
           hlr,
-          notifications);
+          notifications,
+          layerMode);
 
   private final Account sender = new Account(UUID.randomUUID(), FROM, 1_000_000);
   private final PendingTransaction pending = new PendingTransaction(UUID.randomUUID(), "did-1");

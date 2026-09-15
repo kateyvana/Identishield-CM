@@ -16,6 +16,7 @@ import cm.identishield.core.account.Account;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.config.RuleSet;
 import cm.identishield.core.hlr.HlrService;
+import cm.identishield.core.mode.LayerMode;
 import cm.identishield.core.notification.NotificationService;
 import cm.identishield.core.pdp.EvaluateOutcome;
 import cm.identishield.core.pdp.PdpClient;
@@ -56,6 +57,7 @@ class OperationTest {
       new RuleSet("rs-test", Map.of("CAP_PROB", Map.of("dailyXaf", 25000)));
   private final HlrService hlr = mock(HlrService.class);
   private final NotificationService notifications = mock(NotificationService.class);
+  private final LayerMode layerMode = mock(LayerMode.class);
 
   private final TransferService service =
       new TransferService(
@@ -66,7 +68,8 @@ class OperationTest {
           Clock.fixed(Instant.parse("2026-09-15T09:00:00Z"), ZoneOffset.UTC),
           new ObjectMapper(),
           hlr,
-          notifications);
+          notifications,
+          layerMode);
 
   private final Account initiator = new Account(UUID.randomUUID(), MSISDN, 1_000_000);
   private final PendingTransaction pending = new PendingTransaction(UUID.randomUUID(), "did-op");
@@ -148,5 +151,21 @@ class OperationTest {
     verify(pdp).evaluate(anyString()); // /evaluate a bien été tenté
     verify(accounts, never()).debit(any(), anyLong()); // aucune sortie sensible commise
     verify(transactions).markRejected(pending.id());
+  }
+
+  /**
+   * Mode sans couche (EF-07) : la couche de sécurité est désactivée — l'opération s'exécute SANS
+   * appel /evaluate (l'état « avant » de la démonstration). L'opération passe quand même.
+   */
+  @Test
+  void layerlessModeExecutesWithoutCallingEvaluate() {
+    when(layerMode.isLayerless()).thenReturn(true);
+
+    TransferResult r = service.operate(MSISDN, OperationType.CASH_OUT, 10_000, COUNTERPARTY, "APP");
+
+    assertEquals(TransferResult.State.EXECUTED, r.state());
+    verify(pdp, never()).evaluate(anyString()); // couche désactivée : /evaluate jamais appelé
+    verify(accounts).debit(eq(initiator.id()), eq(10_000L)); // l'opération passe quand même
+    verify(transactions).markExecuted(pending.id());
   }
 }
