@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -167,5 +168,24 @@ class OperationTest {
     verify(pdp, never()).evaluate(anyString()); // couche désactivée : /evaluate jamais appelé
     verify(accounts).debit(eq(initiator.id()), eq(10_000L)); // l'opération passe quand même
     verify(transactions).markExecuted(pending.id());
+  }
+
+  /**
+   * Mode INACTIF (couche active, le défaut) : le chemin de contournement est INATTEIGNABLE. {@code
+   * pdp.evaluate} est appelé EXACTEMENT une fois — donc le raccourci sans couche (qui retourne
+   * AVANT d'appeler /evaluate) n'a PAS été emprunté. Preuve inverse de {@link
+   * #layerlessModeExecutesWithoutCallingEvaluate} : vérifier que la porte se ferme, pas seulement
+   * qu'elle s'ouvre.
+   */
+  @Test
+  void layeredModeAlwaysGoesThroughEvaluateExactlyOnce() {
+    when(layerMode.isLayerless()).thenReturn(false); // couche active, rendu explicite
+    when(pdp.evaluate(anyString())).thenReturn(EvaluateOutcome.of("ALLOW", "did-op"));
+
+    TransferResult r = service.operate(MSISDN, OperationType.CASH_OUT, 10_000, COUNTERPARTY, "APP");
+
+    assertEquals(TransferResult.State.EXECUTED, r.state());
+    verify(layerMode).isLayerless(); // le test de mode a bien été consulté
+    verify(pdp, times(1)).evaluate(anyString()); // exactement une fois => raccourci NON emprunté
   }
 }
