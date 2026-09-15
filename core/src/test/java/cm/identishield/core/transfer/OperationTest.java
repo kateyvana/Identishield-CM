@@ -112,6 +112,23 @@ class OperationTest {
   }
 
   /**
+   * Correction ES-11 (décision du propriétaire, 15/09) : une ENTRÉE n'est jamais refusée pour
+   * fail-closed. PDP indisponible, CASH_IN de 100 000 FCFA (bien au-dessus de CAP_PROB) : le compte
+   * est crédité, état EXECUTED_DEGRADED. Assertion négative : aucun CASH_IN n'est jamais rejeté.
+   */
+  @Test
+  void cashInNeverFailsClosedAndRunsDegradedWhenPdpUnavailable() {
+    when(pdp.evaluate(anyString())).thenReturn(EvaluateOutcome.unavailable());
+
+    TransferResult r = service.operate(MSISDN, OperationType.CASH_IN, 100_000, COUNTERPARTY, "APP");
+
+    assertEquals(TransferResult.State.EXECUTED_DEGRADED, r.state());
+    verify(accounts).credit(eq(initiator.id()), eq(100_000L)); // crédité malgré PDP indisponible
+    verify(transactions, never()).markRejected(any()); // jamais refusé pour fail-closed
+    verify(transactions).markExecuted(pending.id());
+  }
+
+  /**
    * Assertion négative (EF-04) : PDP indisponible au-dessus de CAP_PROB, aucune sortie sensible
    * n'est commise (fail-closed), pour chacune des quatre sorties.
    */
