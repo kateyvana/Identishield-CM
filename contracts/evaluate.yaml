@@ -78,7 +78,7 @@ paths:
                         explanation: velocity within configured window
                     vetoApplied: NONE
                     decisionId: 5f1e7c1a-9d3b-4e6a-8c2f-0b7d9a4e6c1d
-                    ruleSetVersion: rs-0.1.0
+                    ruleSetVersion: rs-0.2.0
                     evaluatedAt: '2026-08-26T09:15:00Z'
                     latencyMs: 18
         '400':

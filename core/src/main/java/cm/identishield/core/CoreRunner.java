@@ -4,6 +4,8 @@ import cm.identishield.core.account.AccountBootstrap;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.hlr.HlrService;
 import cm.identishield.core.hlr.ImsiChangeEvent;
+import cm.identishield.core.otp.OtpEmission;
+import cm.identishield.core.otp.OtpService;
 import cm.identishield.core.pdp.PdpClient;
 import cm.identishield.core.pdp.ProbeResult;
 import cm.identishield.core.time.MonotonicTimer;
@@ -49,6 +51,7 @@ public class CoreRunner implements ApplicationRunner {
   private final AccountBootstrap accountBootstrap;
   private final AccountRepository accounts;
   private final HlrService hlr;
+  private final OtpService otp;
 
   public CoreRunner(
       PdpClient pdp,
@@ -56,13 +59,15 @@ public class CoreRunner implements ApplicationRunner {
       UssdService ussd,
       AccountBootstrap accountBootstrap,
       AccountRepository accounts,
-      HlrService hlr) {
+      HlrService hlr,
+      OtpService otp) {
     this.pdp = pdp;
     this.transfers = transfers;
     this.ussd = ussd;
     this.accountBootstrap = accountBootstrap;
     this.accounts = accounts;
     this.hlr = hlr;
+    this.otp = otp;
   }
 
   @Override
@@ -74,6 +79,7 @@ public class CoreRunner implements ApplicationRunner {
       case "transfer" -> transfer();
       case "ussd" -> ussd();
       case "hlr" -> hlr();
+      case "otp" -> otp();
       default -> service();
     }
   }
@@ -164,6 +170,37 @@ public class CoreRunner implements ApplicationRunner {
         "HLR_EVALUATE_REQUEST="
             + transfers.evaluateRequestPreview(
                 msisdn, env("BENEFICIARY_MSISDN", "699000002"), 15000, "USSD"));
+    System.exit(0);
+  }
+
+  /**
+   * Pilote de vérification de l'OTP (T2-12), déclenché par CORE_MODE=otp. Harnais (pas un chemin de
+   * production ; l'émetteur réel viendra avec l'enrôlement/step-up au mois 4). Amorce l'IMSI, émet
+   * un OTP vers l'IMSI courant, puis le vérifie : code correct (accepté, consommé), rejeu (refusé
+   * consommé), mauvais code (refusé inconnu). verify_otp.sh l'appelle avant et après une
+   * réattribution pour prouver que l'OTP suit l'IMSI courant.
+   */
+  private void otp() {
+    accountBootstrap.ensureSeedAccounts();
+    String msisdn = env("OTP_MSISDN", "699000001");
+    hlr.ensureSubscriber(msisdn, env("OTP_INITIAL_IMSI", "624010000000001"));
+    switch (env("OTP_ACTION", "scenario")) {
+      case "issue" -> {
+        OtpEmission em = otp.issue(msisdn);
+        System.out.println("OTP_CODE=" + em.code());
+        System.out.println("OTP_TARGET_IMSI=" + em.targetImsi());
+      }
+      case "verify" -> System.out.println("OTP_OUTCOME=" + otp.verify(msisdn, env("OTP_CODE", "")));
+      default -> {
+        // scenario : emet + verifie correct (accepte, consomme) / rejeu / mauvais code, en un run.
+        OtpEmission em = otp.issue(msisdn);
+        System.out.println("OTP_TARGET_IMSI=" + em.targetImsi());
+        System.out.println("OTP_VERIFY_CORRECT=" + otp.verify(msisdn, em.code()));
+        System.out.println("OTP_VERIFY_REUSE=" + otp.verify(msisdn, em.code()));
+        String wrong = em.code().equals("000000") ? "111111" : "000000";
+        System.out.println("OTP_VERIFY_WRONG=" + otp.verify(msisdn, wrong));
+      }
+    }
     System.exit(0);
   }
 
