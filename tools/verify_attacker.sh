@@ -47,8 +47,8 @@ adm "DELETE FROM core.transaction WHERE account_id IN (SELECT id FROM core.accou
 
 # 3) Lancer l'outil attaquant : une commande, contre le coeur, sur isc-net.
 echo "======== SORTIE BRUTE DE isc-attacker ac02 ========"
-out=$(docker run --rm --network isc-net -e CORE_URL=http://core:8080 -e PYTHONPATH=/src \
-  -v "$(pwd)/attacker/src:/src:ro" python:3.12-alpine \
+out=$(docker run --rm --network isc-net -e CORE_URL=http://core:8080 -e SIM_URL=http://sim:8080 \
+  -e PYTHONPATH=/src -v "$(pwd)/attacker/src:/src:ro" python:3.12-alpine \
   python -m isc_attacker ac02 --victim $VICTIM --victim-imsi $VICTIM_IMSI \
   --attacker-imsi $ATTACKER_IMSI --beneficiary $BENEFICIARY \
   --agent-id agent-kyc-07 --motif "remplacement SIM" 2>&1)

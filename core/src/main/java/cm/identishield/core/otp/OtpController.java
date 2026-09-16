@@ -2,44 +2,38 @@ package cm.identishield.core.otp;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Surface HTTP de l'OTP (EF-03), sur le réseau interne isc-net. Trois points, qui reproduisent le
- * cycle réel d'un OTP par SMS :
+ * Surface HTTP de l'OTP (EF-03), sur le réseau interne isc-net. Le cœur ÉMET et CONSOMME l'OTP ; il
+ * ne le LIVRE ni ne le RELIT — la livraison part vers le réseau SMS simulé ({@code isc-sim}) et
+ * l'interception se lit là-bas (ADR-034). Deux points seulement :
  *
  * <ul>
- *   <li>{@code POST /otp/issue} : émet un OTP vers l'IMSI COURANT du numéro et le LIVRE dans la
- *       boîte SIM de cet IMSI. Renvoie l'IMSI cible, JAMAIS le code (le code ne s'obtient qu'en
- *       lisant la boîte).
- *   <li>{@code GET /sim/inbox?imsi=...} : lit le code livré à un IMSI — l'INTERCEPTION par qui
- *       détient la SIM. Après un SIM swap, c'est l'attaquant (AC-02).
+ *   <li>{@code POST /otp/issue} : émet un OTP vers l'IMSI COURANT du numéro (empreinte stockée en
+ *       base) et le REMET au réseau via la passerelle SMS. Renvoie l'IMSI cible, JAMAIS le code.
  *   <li>{@code POST /otp/verify} : consomme un OTP (usage unique).
  * </ul>
  *
- * <p>Aucun jeton d'outil au mois 2 (différé, ADR/§ mois 4) : comme /hlr/reassign, l'appel est
- * ouvert sur le réseau interne. C'est délibéré pour la démonstration : l'outil attaquant ne fait
- * que ce qu'un porteur de SIM peut faire.
+ * <p>Il n'existe volontairement AUCUN endpoint « lire l'OTP livré » ici : ce serait une porte
+ * dérobée dans le cœur de production. Cette lecture n'existe que sur isc-sim.
  *
- * <p><b>Revue ligne à ligne requise</b> : credential à usage unique (OTP), et canal d'interception.
+ * <p><b>Revue ligne à ligne requise</b> : credential à usage unique (OTP).
  */
 // @implements EF-03
 @RestController
 public class OtpController {
 
   private final OtpService otp;
-  private final SimInbox sim;
+  private final SmsGateway sms;
 
-  public OtpController(OtpService otp, SimInbox sim) {
+  public OtpController(OtpService otp, SmsGateway sms) {
     this.otp = otp;
-    this.sim = sim;
+    this.sms = sms;
   }
 
   @PostMapping("/otp/issue")
@@ -47,26 +41,22 @@ public class OtpController {
     if (blank(req.msisdn())) {
       return error(HttpStatus.BAD_REQUEST, "msisdn obligatoire");
     }
+    OtpEmission em;
     try {
-      OtpEmission em = otp.issue(req.msisdn());
-      sim.deliver(em.targetImsi(), em.code()); // livraison SMS simulée vers l'IMSI courant
-      Map<String, Object> body = new LinkedHashMap<>();
-      body.put("msisdn", em.msisdn());
-      body.put("targetImsi", em.targetImsi());
-      body.put("delivered", true);
-      return ResponseEntity.ok(body);
+      em = otp.issue(req.msisdn());
     } catch (IllegalStateException e) {
       return error(HttpStatus.NOT_FOUND, e.getMessage());
     }
-  }
-
-  @GetMapping("/sim/inbox")
-  public ResponseEntity<Map<String, Object>> inbox(@RequestParam String imsi) {
-    Optional<String> code = sim.read(imsi);
-    if (code.isEmpty()) {
-      return error(HttpStatus.NOT_FOUND, "aucun message pour l'IMSI " + imsi);
+    try {
+      sms.deliver(em.targetImsi(), em.code()); // remise au réseau ; le cœur ne relit jamais
+    } catch (SmsDeliveryException e) {
+      return error(HttpStatus.BAD_GATEWAY, e.getMessage());
     }
-    return ResponseEntity.ok(Map.of("imsi", imsi, "code", code.get()));
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("msisdn", em.msisdn());
+    body.put("targetImsi", em.targetImsi());
+    body.put("delivered", true);
+    return ResponseEntity.ok(body);
   }
 
   @PostMapping("/otp/verify")

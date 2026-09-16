@@ -1,5 +1,9 @@
 """Tests de l'outil attaquant (EF-40) : l'orchestration d'AC-02 et l'ABSENCE de toute connaissance
-du mode sans couche — sans cœur vivant (un faux cœur en mémoire)."""
+du mode sans couche — sans cœur ni réseau vivants (un faux cœur + faux isc-sim en mémoire).
+
+Le refactor : l'OTP s'intercepte sur isc-sim (GET /inbox), plus sur le cœur ; le vidage passe par
+le canal USSD (dial + saisies), plus par un /operation générique.
+"""
 
 from __future__ import annotations
 
@@ -13,14 +17,15 @@ ATTACKER_IMSI = "624010000000666"
 VICTIM_IMSI = "624010000000001"
 
 
-class FakeCore:
-    """Un cœur en mémoire : juste assez pour dérouler AC-02 et vérifier l'orchestration."""
+class FakeStack:
+    """Cœur + isc-sim en mémoire : juste assez pour dérouler AC-02 et vérifier l'orchestration."""
 
     def __init__(self, balance: int = 500_000) -> None:
         self.balance = balance
         self.current_imsi = VICTIM_IMSI
-        self.inbox: dict[str, str] = {}
+        self.inbox: dict[str, str] = {}  # tenu par isc-sim, pas par le cœur
         self.notifs: list[dict] = []
+        self.session: dict = {}
 
     def request(self, method: str, url: str, body: dict | None = None) -> tuple[int, dict]:
         path = urlparse(url).path
@@ -32,22 +37,38 @@ class FakeCore:
             self.current_imsi = body["newImsi"]
             return 200, {"oldImsi": old, "newImsi": self.current_imsi, "eventEmitted": True}
         if method == "POST" and path == "/otp/issue":
-            self.inbox[self.current_imsi] = "483920"  # livraison vers l'IMSI courant
+            self.inbox[self.current_imsi] = "483920"  # le cœur REMET au réseau (isc-sim)
             return 200, {"targetImsi": self.current_imsi, "delivered": True}
-        if method == "GET" and path == "/sim/inbox":
+        if method == "GET" and path == "/inbox":  # lecture sur isc-sim = interception
             imsi = query["imsi"][0]
             if imsi in self.inbox:
                 return 200, {"imsi": imsi, "code": self.inbox[imsi]}
             return 404, {"error": "aucun message"}
         if method == "POST" and path == "/otp/verify":
             return 200, {"outcome": "ACCEPTED"}
-        if method == "POST" and path == "/operation":
-            self.balance -= body["amountXaf"]
-            self.notifs.append({"recipientRef": self.current_imsi, "type": "P2P_EXECUTED"})
-            return 200, {"state": "EXECUTED", "decisionId": "did-fake"}
+        if method == "POST" and path == "/ussd/dial":
+            self.session = {"step": "amount"}
+            return 200, {"sessionId": "sess-fake", "message": "Montant ?", "sessionOpen": True}
+        if method == "POST" and path == "/ussd/input":
+            return self._ussd_input(body["text"])
         if method == "GET" and path == "/notifications":
             return 200, self.notifs
         raise AssertionError(f"appel inattendu : {method} {path}")
+
+    def _ussd_input(self, text: str) -> tuple[int, dict]:
+        step = self.session.get("step")
+        if step == "amount":
+            self.session["amount"] = int(text)
+            self.session["step"] = "beneficiary"
+            return 200, {"message": "Beneficiaire ?", "sessionOpen": True}
+        if step == "beneficiary":
+            self.session["step"] = "confirm"
+            return 200, {"message": "Confirmer ? 1=Oui", "sessionOpen": True}
+        if step == "confirm":
+            self.balance -= self.session["amount"]
+            self.notifs.append({"recipientRef": self.current_imsi, "type": "P2P_EXECUTED"})
+            return 200, {"message": "Transfert EXECUTED. Reference did-fake", "sessionOpen": False}
+        raise AssertionError("etape USSD inattendue")
 
 
 def _args():
@@ -71,10 +92,10 @@ def _args():
 
 
 def test_ac02_empties_the_account_and_reports_facts(monkeypatch, capsys) -> None:
-    fake = FakeCore()
+    fake = FakeStack()
     monkeypatch.setattr(cli, "_request", fake.request)
 
-    code = cli.run_ac02("http://core:8080", _args())
+    code = cli.run_ac02("http://core:8080", "http://sim:8080", _args())
 
     assert code == 0
     out = capsys.readouterr().out
@@ -87,10 +108,10 @@ def test_ac02_empties_the_account_and_reports_facts(monkeypatch, capsys) -> None
 
 def test_otp_targets_the_attacker_imsi_after_the_swap(monkeypatch) -> None:
     """L'OTP part vers l'IMSI COURANT, qui après le swap est celui de l'attaquant."""
-    fake = FakeCore()
+    fake = FakeStack()
     monkeypatch.setattr(cli, "_request", fake.request)
 
-    cli.run_ac02("http://core:8080", _args())
+    cli.run_ac02("http://core:8080", "http://sim:8080", _args())
 
     assert fake.current_imsi == ATTACKER_IMSI
     assert ATTACKER_IMSI in fake.inbox  # le code a été livré à l'appareil attaquant, pas à l'ancien

@@ -71,8 +71,23 @@ def _need(status: int, payload: dict, what: str) -> dict:
     return payload
 
 
-def run_ac02(core: str, args: argparse.Namespace) -> int:
-    """AC-02 — vidage immédiat post-SIM swap (ISC-TM v1.2.1 §8). Observe et rapporte des faits."""
+def _parse_ussd_result(message: str) -> tuple[str, str]:
+    """Extrait (état, référence) du message final USSD : « Transfert EXECUTED. Reference <id> »."""
+    state = "INCONNU"
+    decision = ""
+    if message.startswith("Transfert "):
+        state = message[len("Transfert ") :].split(".", 1)[0].strip()
+    if "Reference " in message:
+        decision = message.split("Reference ", 1)[1].strip()
+    return state, decision
+
+
+def run_ac02(core: str, sim: str, args: argparse.Namespace) -> int:
+    """AC-02 — vidage immédiat post-SIM swap (ISC-TM v1.2.1 §8). Observe et rapporte des faits.
+
+    Deux interlocuteurs : le CŒUR (réattribution, émission/consommation OTP, canal USSD, lectures) et
+    le RÉSEAU SMS simulé isc-sim (interception : lire la boîte de l'IMSI qu'on contrôle).
+    """
     victim = args.victim
 
     # 1) Constat initial du solde.
@@ -103,10 +118,11 @@ def run_ac02(core: str, args: argparse.Namespace) -> int:
     target_imsi = emission["targetImsi"]
     _publish(f"OTP emis vers l'IMSI courant {target_imsi} (l'appareil attaquant)")
 
-    # 4) Interception : l'attaquant lit le code sur la SIM qu'il contrôle désormais.
-    code = _need(*_get(core, "/sim/inbox", imsi=args.attacker_imsi), what="interception OTP")
+    # 4) Interception : l'attaquant lit le code sur la SIM qu'il contrôle — sur le RÉSEAU (isc-sim),
+    #    jamais sur le cœur. Le cœur de production n'expose aucun moyen de relire un OTP livré.
+    code = _need(*_get(sim, "/inbox", imsi=args.attacker_imsi), what="interception OTP (isc-sim)")
     code = code["code"]
-    _publish(f"OTP intercepte sur l'appareil attaquant : {code}")
+    _publish(f"OTP intercepte sur l'appareil attaquant (via isc-sim) : {code}")
 
     # 5) Authentification par l'OTP intercepté (consommation, usage unique).
     verify = _need(
@@ -114,22 +130,26 @@ def run_ac02(core: str, args: argparse.Namespace) -> int:
     )
     _publish(f"authentification par OTP intercepte : {verify['outcome']}")
 
-    # 6) Vidage : sortie du solde vers un bénéficiaire contrôlé par l'attaquant. Une sortie refusée
-    #    n'est PAS une erreur opérationnelle : c'est un fait à constater (ce que ferait le mode protégé).
-    op_status, op = _post(
-        core,
-        "/operation",
-        {
-            "msisdn": victim,
-            "type": "P2P",
-            "amountXaf": balance0,
-            "counterparty": args.beneficiary,
-            "channel": "USSD",
-        },
+    # 6) Vidage par le VRAI canal USSD (l'« authentification USSD » d'AC-02) : composer, saisir le
+    #    montant, le bénéficiaire, confirmer. La machine à états mène au même transferP2P/operate. Une
+    #    sortie refusée n'est PAS une erreur opérationnelle : c'est un fait à constater (mode protégé).
+    dial = _need(*_post(core, "/ussd/dial", {"msisdn": victim}), what="USSD composition")
+    session = dial["sessionId"]
+    _need(
+        *_post(core, "/ussd/input", {"sessionId": session, "text": str(balance0)}),
+        what="USSD montant",
     )
-    state = op.get("state", f"HTTP_{op_status}")
-    decision = op.get("decisionId", "")
-    _publish(f"sortie : {balance0} FCFA -> {args.beneficiary} (etat {state}, decision {decision})")
+    _need(
+        *_post(core, "/ussd/input", {"sessionId": session, "text": args.beneficiary}),
+        what="USSD beneficiaire",
+    )
+    final = _need(
+        *_post(core, "/ussd/input", {"sessionId": session, "text": "1"}), what="USSD confirmation"
+    )
+    state, decision = _parse_ussd_result(final["message"])
+    _publish(
+        f"sortie USSD : {balance0} FCFA -> {args.beneficiary} (etat {state}, decision {decision})"
+    )
 
     # 7) Constat final du solde.
     balance1 = _need(*_get(core, "/account", msisdn=victim), what="lecture du solde final")
@@ -183,8 +203,9 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     core = os.environ.get("CORE_URL", "http://core:8080")
+    sim = os.environ.get("SIM_URL", "http://sim:8080")
     try:
-        return SCENARIOS[args.scenario](core, args)
+        return SCENARIOS[args.scenario](core, sim, args)
     except AttackAborted as exc:
         print(f"ATTACK_ABORTED : {exc}", file=sys.stderr)
         return 1
