@@ -129,7 +129,8 @@ services:
     networks:
       - isc-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health || exit 1"]
+      # 127.0.0.1 (IPv4) explicite : le serveur n'ecoute qu'en IPv4 ; localhost resout ::1 en premier.
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 12
