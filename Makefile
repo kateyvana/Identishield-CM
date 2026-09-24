@@ -105,7 +105,9 @@ named-params:
 test: unit
 
 abuse:
-	@echo "non implémenté — jalon M3 (exige la pile complète et les T-AC)"
+	@echo ">>> abuse : tests des cas d'abus T-AC (ENF-09) — exige la pile debout (make up)"
+	@echo "    hors pile (ex. poste sans Docker), les T-AC s'ignorent proprement ; ils tournent en VM/CI."
+	@(cd evaluation && uv run --quiet pytest -q -rs)
 
 evaluate:
 	@echo "non implémenté — jalon M4 (protocole ISC-EVAL)"
