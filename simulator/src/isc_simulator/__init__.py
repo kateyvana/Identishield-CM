@@ -1,3 +1,3 @@
-"""IdentiShield-CM simulator. Skeleton only (TACHE-00): no applicative code yet."""
+"""IdentiShield-CM simulator (isc-sim) : simulateur de réseau SMS — transport et interception OTP."""
 
 __version__ = "0.1.0"

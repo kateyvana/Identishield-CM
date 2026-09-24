@@ -83,8 +83,12 @@ services:
         condition: service_completed_successfully
       pdp:
         condition: service_healthy
+      sim:
+        condition: service_healthy
     environment:
       CORE_MODE: ${CORE_MODE:-service}
+      # Passerelle SMS : le coeur REMET l'OTP au reseau simule (isc-sim), jamais il ne le relit.
+      SIM_URL: http://sim:8080
     volumes:
       - certs:/certs:ro
       - ../config:/config:ro # jeu de regles versionne (CAP_PROB), source unique
@@ -109,6 +113,27 @@ services:
       - isc-web
     ports:
       - "3000:3000"
+
+  # Reseau SMS simule (isc-sim) : recoit l'OTP livre par le coeur (POST /deliver, appel
+  # coeur->reseau, comme vers une passerelle SMS) et laisse lire la boite d'un IMSI (GET
+  # /inbox). Le canal d'INTERCEPTION d'AC-02 vit ICI, jamais dans le coeur (ADR-034, conforme
+  # a ISC-SAD §5 qui nomme isc-sim). Stdlib Python, sur isc-net interne, aucune base.
+  sim:
+    image: python:3.12-alpine
+    container_name: isc-sim
+    command: ["python", "-m", "isc_simulator"]
+    environment:
+      PYTHONPATH: /src
+    volumes:
+      - ../simulator/src:/src:ro
+    networks:
+      - isc-net
+    healthcheck:
+      # 127.0.0.1 (IPv4) explicite : le serveur n'ecoute qu'en IPv4 ; localhost resout ::1 en premier.
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
 networks:
   isc-net:

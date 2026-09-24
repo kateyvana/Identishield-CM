@@ -1,9 +1,12 @@
 [project]
 name = "isc-attacker"
 version = "0.1.0"
-description = "IdentiShield-CM attacker (skeleton only, TACHE-00; no applicative code yet)"
+description = "IdentiShield-CM attacker : outil d'orchestration des cas d'abus (EF-40 ; AC-02)"
 requires-python = ">=3.12,<3.13"
 dependencies = []
+
+[project.scripts]
+isc-attacker = "isc_attacker.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]

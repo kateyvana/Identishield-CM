@@ -1,9 +1,12 @@
 [project]
 name = "isc-simulator"
 version = "0.1.0"
-description = "IdentiShield-CM simulator (skeleton only, TACHE-00; no applicative code yet)"
+description = "IdentiShield-CM isc-sim : simulateur de réseau SMS (transport et interception OTP)"
 requires-python = ">=3.12,<3.13"
 dependencies = []
+
+[project.scripts]
+isc-simulator = "isc_simulator.network:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
