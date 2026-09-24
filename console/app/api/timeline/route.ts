@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 type Step = {
   step: number;
   message: string;
+  messageEn?: string;
   ts?: string;
   sensitive?: boolean;
   [k: string]: unknown;
@@ -30,8 +31,15 @@ export async function GET() {
       return Response.json({ error: 'reseau simule indisponible' }, { status: 502 });
     }
     const data = (await res.json()) as { steps?: Step[] };
+    // On masque l'OTP dans LES DEUX langues : le code clair ne quitte jamais le serveur de la console.
     const steps = (data.steps ?? []).map((s) =>
-      s.sensitive ? { ...s, message: maskCode(s.message) } : s,
+      s.sensitive
+        ? {
+            ...s,
+            message: maskCode(s.message),
+            messageEn: s.messageEn ? maskCode(s.messageEn) : s.messageEn,
+          }
+        : s,
     );
     return Response.json({ steps });
   } catch {

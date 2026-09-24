@@ -133,6 +133,9 @@ def test_publishes_the_eight_steps_to_isc_sim_in_order(monkeypatch) -> None:
     steps = fake.timeline
     assert [s["step"] for s in steps] == [1, 2, 3, 4, 5, 6, 7, 8]  # 8 étapes, dans l'ordre
     assert all("ts" in s and "message" in s for s in steps)
+    # Chaque étape est publiée en FR ET EN (console bilingue, anglais par défaut).
+    assert all(s.get("messageEn") for s in steps)
+    assert "victim" in steps[0]["messageEn"]  # l'anglais est bien rempli, pas un doublon du FR
     assert steps[0]["victim"] == "699000007"  # l'étape 1 porte la victime (la console lit son HLR)
     otp = next(s for s in steps if s.get("sensitive"))  # l'étape OTP est marquée sensible
     assert otp["step"] == 4

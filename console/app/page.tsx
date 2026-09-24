@@ -4,15 +4,25 @@
 // du HLR du numéro visé (EF-31/EF-32) et — dans le layout, au-dessus — le bandeau de mode (EF-07/
 // EF-36). La chronologie vient d'isc-sim (donnée de simulation, JAMAIS du cœur : ADR-034) ; l'OTP y
 // est déjà masqué par la route serveur. L'état du HLR est une lecture LÉGITIME du cœur.
+//
+// BILINGUE anglais/français, ANGLAIS PAR DÉFAUT, sélecteur visible (décision propriétaire 2026-09-24 :
+// mémoire et soutenance en anglais ; EF-26/EF-38 à amender au SRS). Chaque étape est publiée en FR ET
+// EN par l'outil ; la console choisit selon la langue. Le flux (T2-09) et le bandeau (T2-15) restent
+// en français pour l'instant — traduction ultérieure (carte dédiée).
 // @implements EF-41
 // @implements EF-31
 // @implements EF-32
+// @implements EF-26
+// @implements EF-38
 
 import { useEffect, useRef, useState } from 'react';
+
+type Lang = 'en' | 'fr';
 
 type Step = {
   step: number;
   message: string;
+  messageEn?: string;
   ts?: string;
   sensitive?: boolean;
   victim?: string;
@@ -32,6 +42,42 @@ type FluxEntry = {
   createdAt: string;
 };
 
+const STR: Record<Lang, Record<string, string>> = {
+  en: {
+    title: 'Operator console',
+    subtitle: 'IdentiShield-CM — AC-02 demonstration: account takeover after SIM swap',
+    live: 'live',
+    offline: 'network unreachable',
+    timelineTitle: 'Attack timeline (AC-02)',
+    noAttack: 'No attack in progress.',
+    step: 'Step',
+    hlrTitle: 'HLR state',
+    waiting: 'Waiting for attack data…',
+    targetNumber: 'Target number',
+    currentImsi: 'Current IMSI',
+    originalImsi: 'Original IMSI',
+    updated: 'Updated',
+    imsiAlert: '⚠ IMSI change detected (step 2) — the SIM was reassigned to another device.',
+  },
+  fr: {
+    title: 'Console opérateur',
+    subtitle: 'IdentiShield-CM — démonstration AC-02 : détournement après échange de SIM',
+    live: 'en direct',
+    offline: 'réseau injoignable',
+    timelineTitle: 'Chronologie de l’attaque (AC-02)',
+    noAttack: 'Aucune attaque en cours.',
+    step: 'Étape',
+    hlrTitle: 'État du HLR',
+    waiting: 'En attente de données d’attaque…',
+    targetNumber: 'Numéro visé',
+    currentImsi: 'IMSI courant',
+    originalImsi: 'IMSI d’origine',
+    updated: 'Mis à jour',
+    imsiAlert:
+      '⚠ Changement d’IMSI détecté (étape 2) — la SIM a été réattribuée à un autre appareil.',
+  },
+};
+
 const fcfa = new Intl.NumberFormat('fr-FR');
 
 function heure(iso?: string): string {
@@ -41,11 +87,31 @@ function heure(iso?: string): string {
 }
 
 export default function Console() {
+  const [lang, setLang] = useState<Lang>('en'); // anglais par défaut
   const [steps, setSteps] = useState<Step[]>([]);
   const [hlr, setHlr] = useState<Hlr | null>(null);
   const [flux, setFlux] = useState<FluxEntry[]>([]);
   const [enLigne, setEnLigne] = useState(false);
   const victimRef = useRef<string>('');
+
+  // Préférence de langue par visiteur (confort local ; défaut anglais si absente/illisible).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('isc-lang');
+      if (saved === 'fr' || saved === 'en') setLang(saved);
+    } catch {
+      /* localStorage indisponible : on garde l'anglais */
+    }
+  }, []);
+
+  function choisirLangue(l: Lang) {
+    setLang(l);
+    try {
+      localStorage.setItem('isc-lang', l);
+    } catch {
+      /* sans persistance, le choix vaut pour la session */
+    }
+  }
 
   useEffect(() => {
     let actif = true;
@@ -95,39 +161,61 @@ export default function Console() {
     };
   }, []);
 
+  const t = STR[lang];
   const step2 = steps.find((s) => s.step === 2);
   const originalImsi = step2?.oldImsi;
   const swappedImsi = step2?.newImsi;
   const changed = !!hlr && !!swappedImsi && hlr.currentImsi === swappedImsi;
+  const texteEtape = (s: Step) => (lang === 'en' ? (s.messageEn ?? s.message) : s.message);
 
   return (
     <main>
       <header className="barre">
         <div>
-          <h1>Console opérateur</h1>
-          <p className="sous-titre">
-            IdentiShield-CM — démonstration AC-02 : détournement après échange de SIM
-          </p>
+          <h1>{t.title}</h1>
+          <p className="sous-titre">{t.subtitle}</p>
         </div>
-        <span className={enLigne ? 'etat en-ligne' : 'etat hors-ligne'}>
-          <span className="point" />
-          {enLigne ? 'en direct' : 'réseau injoignable'}
-        </span>
+        <div className="barre-droite">
+          <div className="langue" role="group" aria-label="Language / Langue">
+            <button
+              type="button"
+              className={lang === 'en' ? 'actif' : ''}
+              aria-pressed={lang === 'en'}
+              onClick={() => choisirLangue('en')}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              className={lang === 'fr' ? 'actif' : ''}
+              aria-pressed={lang === 'fr'}
+              onClick={() => choisirLangue('fr')}
+            >
+              FR
+            </button>
+          </div>
+          <span className={enLigne ? 'etat en-ligne' : 'etat hors-ligne'}>
+            <span className="point" />
+            {enLigne ? t.live : t.offline}
+          </span>
+        </div>
       </header>
 
       <div className="grille">
         {/* Chronologie de l'attaque (EF-41) : les huit étapes publiées sur isc-sim, dans l'ordre. */}
         <section className="panneau">
-          <h2>Chronologie de l’attaque (AC-02)</h2>
+          <h2>{t.timelineTitle}</h2>
           {steps.length === 0 ? (
-            <p className="vide">Aucune attaque en cours.</p>
+            <p className="vide">{t.noAttack}</p>
           ) : (
             <ol className="chronologie">
               {steps.map((s) => (
                 <li key={s.step} className={s.sensitive ? 'etape sensible' : 'etape'}>
                   <span className="mono heure">{heure(s.ts)}</span>
-                  <span className="numero">Étape {s.step}</span>
-                  <span className="texte">{s.message}</span>
+                  <span className="numero">
+                    {t.step} {s.step}
+                  </span>
+                  <span className="texte">{texteEtape(s)}</span>
                 </li>
               ))}
             </ol>
@@ -136,34 +224,34 @@ export default function Console() {
 
         {/* État du HLR (EF-31/EF-32) : IMSI actif du numéro visé ; changement signalé à l'étape 2. */}
         <section className="panneau">
-          <h2>État du HLR</h2>
+          <h2>{t.hlrTitle}</h2>
           {!hlr ? (
-            <p className="vide">En attente de données d’attaque…</p>
+            <p className="vide">{t.waiting}</p>
           ) : (
             <dl className="hlr">
-              <dt>Numéro visé</dt>
+              <dt>{t.targetNumber}</dt>
               <dd className="mono">{hlr.msisdn}</dd>
-              <dt>IMSI courant</dt>
+              <dt>{t.currentImsi}</dt>
               <dd className={changed ? 'mono imsi-change' : 'mono'}>{hlr.currentImsi}</dd>
               {originalImsi ? (
                 <>
-                  <dt>IMSI d’origine</dt>
+                  <dt>{t.originalImsi}</dt>
                   <dd className="mono sourdine">{originalImsi}</dd>
                 </>
               ) : null}
-              <dt>Mis à jour</dt>
+              <dt>{t.updated}</dt>
               <dd className="mono">{heure(hlr.updatedAt)}</dd>
             </dl>
           )}
           {changed ? (
             <p className="alerte-change" role="alert">
-              ⚠ Changement d’IMSI détecté (étape 2) — la SIM a été réattribuée à un autre appareil.
+              {t.imsiAlert}
             </p>
           ) : null}
         </section>
       </div>
 
-      {/* Flux des transactions (EF-30) : le vidage de la victime apparaît ici en temps réel. */}
+      {/* Flux des transactions (EF-30, T2-09) : en français pour l'instant (traduction ultérieure). */}
       <section className="bloc-flux">
         <h2>Transactions en temps réel</h2>
         <table>

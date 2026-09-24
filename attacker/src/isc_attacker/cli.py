@@ -31,11 +31,16 @@ _step = 0
 _SIM_BASE: str | None = None
 
 
-def _publish_timeline(step: int, message: str, meta: dict | None) -> None:
+def _publish_timeline(step: int, message: str, message_en: str, meta: dict | None) -> None:
     """POST best-effort de l'étape vers isc-sim. Observationnel : un échec n'interrompt pas l'attaque."""
     if not _SIM_BASE:
         return
-    payload: dict = {"step": step, "message": message, "ts": datetime.now(UTC).isoformat()}
+    payload: dict = {
+        "step": step,
+        "message": message,
+        "messageEn": message_en,
+        "ts": datetime.now(UTC).isoformat(),
+    }
     if meta:
         payload.update(meta)
     try:
@@ -45,13 +50,14 @@ def _publish_timeline(step: int, message: str, meta: dict | None) -> None:
         print(f"[timeline] publication ignoree : {exc}", file=sys.stderr)
 
 
-def _publish(message: str, meta: dict | None = None) -> None:
-    """Publie une étape de la chronologie : sur la sortie (brute, inchangée) ET vers isc-sim (T2-17,
-    EF-41), que la console lira. `meta` porte des champs de publication (ex. victim, sensitive)."""
+def _publish(message: str, message_en: str, meta: dict | None = None) -> None:
+    """Publie une étape de la chronologie : sur la sortie (brute FR, inchangée) ET vers isc-sim (T2-17,
+    EF-41), en FR ET EN, que la console affichera selon la langue choisie (anglais par défaut).
+    `meta` porte des champs de publication (ex. victim, sensitive)."""
     global _step
     _step += 1
     print(f"[ETAPE {_step}] {message}", flush=True)
-    _publish_timeline(_step, message, meta)
+    _publish_timeline(_step, message, message_en, meta)
 
 
 def _request(method: str, url: str, body: dict | None = None) -> tuple[int, dict]:
@@ -116,7 +122,11 @@ def run_ac02(core: str, sim: str, args: argparse.Namespace) -> int:
     # 1) Constat initial du solde.
     balance0 = _need(*_get(core, "/account", msisdn=victim), what="lecture du solde initial")
     balance0 = balance0["balanceXaf"]
-    _publish(f"constat initial : victime {victim}, solde {balance0} FCFA", meta={"victim": victim})
+    _publish(
+        f"constat initial : victime {victim}, solde {balance0} FCFA",
+        f"initial state: victim {victim}, balance {balance0} XAF",
+        meta={"victim": victim},
+    )
 
     # 2) Réattribution de la SIM vers l'IMSI de l'attaquant (chemin de l'agent HLR complice).
     reassign = _need(
@@ -134,13 +144,17 @@ def run_ac02(core: str, sim: str, args: argparse.Namespace) -> int:
     )
     _publish(
         f"SIM reattribuee : {reassign['oldImsi']} -> {reassign['newImsi']} (agent {args.agent_id})",
+        f"SIM reassigned: {reassign['oldImsi']} -> {reassign['newImsi']} (agent {args.agent_id})",
         meta={"oldImsi": reassign["oldImsi"], "newImsi": reassign["newImsi"]},
     )
 
     # 3) OTP émis vers l'IMSI COURANT (désormais celui de l'attaquant).
     emission = _need(*_post(core, "/otp/issue", {"msisdn": victim}), what="emission OTP")
     target_imsi = emission["targetImsi"]
-    _publish(f"OTP emis vers l'IMSI courant {target_imsi} (l'appareil attaquant)")
+    _publish(
+        f"OTP emis vers l'IMSI courant {target_imsi} (l'appareil attaquant)",
+        f"OTP issued to the current IMSI {target_imsi} (the attacker device)",
+    )
 
     # 4) Interception : l'attaquant lit le code sur la SIM qu'il contrôle — sur le RÉSEAU (isc-sim),
     #    jamais sur le cœur. Le cœur de production n'expose aucun moyen de relire un OTP livré.
@@ -149,14 +163,19 @@ def run_ac02(core: str, sim: str, args: argparse.Namespace) -> int:
     # `sensitive` : la console masquera ce code (elle est exposée au réseau local ; elle ne doit pas
     # devenir une surface de lecture de codes). La sortie brute, elle, le montre en clair (oracle).
     _publish(
-        f"OTP intercepte sur l'appareil attaquant (via isc-sim) : {code}", meta={"sensitive": True}
+        f"OTP intercepte sur l'appareil attaquant (via isc-sim) : {code}",
+        f"OTP intercepted on the attacker device (via isc-sim): {code}",
+        meta={"sensitive": True},
     )
 
     # 5) Authentification par l'OTP intercepté (consommation, usage unique).
     verify = _need(
         *_post(core, "/otp/verify", {"msisdn": victim, "code": code}), what="verification OTP"
     )
-    _publish(f"authentification par OTP intercepte : {verify['outcome']}")
+    _publish(
+        f"authentification par OTP intercepte : {verify['outcome']}",
+        f"authentication with intercepted OTP: {verify['outcome']}",
+    )
 
     # 6) Vidage par le VRAI canal USSD (l'« authentification USSD » d'AC-02) : composer, saisir le
     #    montant, le bénéficiaire, confirmer. La machine à états mène au même transferP2P/operate. Une
@@ -176,19 +195,26 @@ def run_ac02(core: str, sim: str, args: argparse.Namespace) -> int:
     )
     state, decision = _parse_ussd_result(final["message"])
     _publish(
-        f"sortie USSD : {balance0} FCFA -> {args.beneficiary} (etat {state}, decision {decision})"
+        f"sortie USSD : {balance0} FCFA -> {args.beneficiary} (etat {state}, decision {decision})",
+        f"USSD cash-out: {balance0} XAF -> {args.beneficiary} (state {state}, decision {decision})",
     )
 
     # 7) Constat final du solde.
     balance1 = _need(*_get(core, "/account", msisdn=victim), what="lecture du solde final")
     balance1 = balance1["balanceXaf"]
-    _publish(f"constat final : victime {victim}, solde {balance1} FCFA")
+    _publish(
+        f"constat final : victime {victim}, solde {balance1} FCFA",
+        f"final state: victim {victim}, balance {balance1} XAF",
+    )
 
     # 8) Notifications parvenues à l'ANCIEN appareil de la victime (son ancien IMSI).
     _, notifs = _get(core, "/notifications", msisdn=victim)
     rows = notifs if isinstance(notifs, list) else []
     old_device = sum(1 for n in rows if n.get("recipientRef") == args.victim_imsi)
-    _publish(f"notifications sur l'ancien appareil ({args.victim_imsi}) : {old_device}")
+    _publish(
+        f"notifications sur l'ancien appareil ({args.victim_imsi}) : {old_device}",
+        f"notifications to the old device ({args.victim_imsi}): {old_device}",
+    )
 
     # --- État constaté : des faits, pas un jugement. En mode sans couche il constatera le compte
     #     vidé ; en mode protégé (mois 4) il constatera l'échec. Le rapport est le même : les faits.
