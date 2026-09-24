@@ -26,6 +26,7 @@ class FakeStack:
         self.inbox: dict[str, str] = {}  # tenu par isc-sim, pas par le cœur
         self.notifs: list[dict] = []
         self.session: dict = {}
+        self.timeline: list[dict] = []  # chronologie publiée sur isc-sim (T2-17), pas sur le cœur
 
     def request(self, method: str, url: str, body: dict | None = None) -> tuple[int, dict]:
         path = urlparse(url).path
@@ -53,6 +54,9 @@ class FakeStack:
             return self._ussd_input(body["text"])
         if method == "GET" and path == "/notifications":
             return 200, self.notifs
+        if method == "POST" and path == "/timeline":  # publication de la chronologie sur isc-sim
+            self.timeline.append(body)
+            return 200, {"stored": True, "count": len(self.timeline)}
         raise AssertionError(f"appel inattendu : {method} {path}")
 
     def _ussd_input(self, text: str) -> tuple[int, dict]:
@@ -116,6 +120,22 @@ def test_otp_targets_the_attacker_imsi_after_the_swap(monkeypatch) -> None:
     assert fake.current_imsi == ATTACKER_IMSI
     assert ATTACKER_IMSI in fake.inbox  # le code a été livré à l'appareil attaquant, pas à l'ancien
     assert VICTIM_IMSI not in fake.inbox
+
+
+def test_publishes_the_eight_steps_to_isc_sim_in_order(monkeypatch) -> None:
+    """La chronologie (T2-17, EF-41) est publiée VERS isc-sim, dans l'ordre, jamais vers le cœur.
+    L'étape d'interception OTP est marquée `sensitive` pour que la CONSOLE masque le code."""
+    fake = FakeStack()
+    monkeypatch.setattr(cli, "_request", fake.request)
+
+    cli.run_ac02("http://core:8080", "http://sim:8080", _args())
+
+    steps = fake.timeline
+    assert [s["step"] for s in steps] == [1, 2, 3, 4, 5, 6, 7, 8]  # 8 étapes, dans l'ordre
+    assert all("ts" in s and "message" in s for s in steps)
+    assert steps[0]["victim"] == "699000007"  # l'étape 1 porte la victime (la console lit son HLR)
+    otp = next(s for s in steps if s.get("sensitive"))  # l'étape OTP est marquée sensible
+    assert otp["step"] == 4
 
 
 def test_tool_has_no_knowledge_of_the_mode() -> None:

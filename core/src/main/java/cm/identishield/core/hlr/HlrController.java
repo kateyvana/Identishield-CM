@@ -5,8 +5,10 @@ import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -51,6 +53,30 @@ public class HlrController {
     body.put("newImsi", ev.newImsi());
     body.put("changedAt", ev.changedAt().toString());
     body.put("eventEmitted", true);
+    return ResponseEntity.ok(body);
+  }
+
+  /**
+   * Lecture de l'état d'abonné du HLR : l'IMSI ACTIF d'un numéro et l'horodatage de son dernier
+   * changement. C'est une donnée LÉGITIME (état du sujet), pas une infrastructure d'attaque : la
+   * console opérateur (T2-17) l'affiche pour montrer la bascule d'IMSI d'AC-02 à mesure qu'elle
+   * survient. Aucune écriture, aucun motif, aucune chronologie — la chronologie de l'attaque, elle,
+   * ne transite jamais par le cœur (ADR-034) et vit sur isc-sim.
+   */
+  // @implements EF-08
+  @GetMapping("/hlr")
+  public ResponseEntity<Map<String, Object>> subscriber(@RequestParam String msisdn) {
+    if (blank(msisdn)) {
+      return error(HttpStatus.BAD_REQUEST, "msisdn est obligatoire");
+    }
+    Optional<String> current = hlr.currentImsi(msisdn);
+    if (current.isEmpty()) {
+      return error(HttpStatus.NOT_FOUND, "numero inconnu du HLR : " + msisdn);
+    }
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("msisdn", msisdn);
+    body.put("currentImsi", current.get());
+    hlr.lastChangeAt(msisdn).ifPresent(at -> body.put("updatedAt", at.toString()));
     return ResponseEntity.ok(body);
   }
 

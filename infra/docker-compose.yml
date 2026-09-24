@@ -106,8 +106,12 @@ services:
     container_name: isc-console
     environment:
       CORE_URL: http://core:8080
+      # Chronologie d'attaque (T2-17, EF-41) : la console la LIT sur isc-sim (donnee de simulation),
+      # jamais sur le coeur (ADR-034). isc-sim est sur isc-net interne, joignable par la console.
+      SIM_URL: http://sim:8080
     depends_on:
       - core
+      - sim
     networks:
       - isc-net
       - isc-web

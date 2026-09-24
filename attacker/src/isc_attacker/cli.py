@@ -23,15 +23,35 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import UTC, datetime
 
 _step = 0
+# Base de isc-sim où PUBLIER la chronologie (T2-17, EF-41). Fixée au lancement d'un scénario. La
+# chronologie va au RÉSEAU simulé, jamais au cœur (ADR-034) : le cœur ne connaît pas l'attaque.
+_SIM_BASE: str | None = None
 
 
-def _publish(message: str) -> None:
-    """Publie une étape de la chronologie (ce que la console affichera en T2-17, EF-41)."""
+def _publish_timeline(step: int, message: str, meta: dict | None) -> None:
+    """POST best-effort de l'étape vers isc-sim. Observationnel : un échec n'interrompt pas l'attaque."""
+    if not _SIM_BASE:
+        return
+    payload: dict = {"step": step, "message": message, "ts": datetime.now(UTC).isoformat()}
+    if meta:
+        payload.update(meta)
+    try:
+        _post(_SIM_BASE, "/timeline", payload)
+    except (OSError, ValueError) as exc:
+        # Publier est observationnel : un échec (isc-sim injoignable…) n'interrompt pas l'attaque.
+        print(f"[timeline] publication ignoree : {exc}", file=sys.stderr)
+
+
+def _publish(message: str, meta: dict | None = None) -> None:
+    """Publie une étape de la chronologie : sur la sortie (brute, inchangée) ET vers isc-sim (T2-17,
+    EF-41), que la console lira. `meta` porte des champs de publication (ex. victim, sensitive)."""
     global _step
     _step += 1
     print(f"[ETAPE {_step}] {message}", flush=True)
+    _publish_timeline(_step, message, meta)
 
 
 def _request(method: str, url: str, body: dict | None = None) -> tuple[int, dict]:
@@ -88,12 +108,15 @@ def run_ac02(core: str, sim: str, args: argparse.Namespace) -> int:
     Deux interlocuteurs : le CŒUR (réattribution, émission/consommation OTP, canal USSD, lectures) et
     le RÉSEAU SMS simulé isc-sim (interception : lire la boîte de l'IMSI qu'on contrôle).
     """
+    global _step, _SIM_BASE
+    _step = 0  # numérotation 1..8 propre à CETTE exécution (aligne le reset de chronologie isc-sim)
+    _SIM_BASE = sim  # publier la chronologie vers isc-sim ; le cœur n'en sait rien (ADR-034)
     victim = args.victim
 
     # 1) Constat initial du solde.
     balance0 = _need(*_get(core, "/account", msisdn=victim), what="lecture du solde initial")
     balance0 = balance0["balanceXaf"]
-    _publish(f"constat initial : victime {victim}, solde {balance0} FCFA")
+    _publish(f"constat initial : victime {victim}, solde {balance0} FCFA", meta={"victim": victim})
 
     # 2) Réattribution de la SIM vers l'IMSI de l'attaquant (chemin de l'agent HLR complice).
     reassign = _need(
@@ -110,7 +133,8 @@ def run_ac02(core: str, sim: str, args: argparse.Namespace) -> int:
         what="reattribution SIM",
     )
     _publish(
-        f"SIM reattribuee : {reassign['oldImsi']} -> {reassign['newImsi']} (agent {args.agent_id})"
+        f"SIM reattribuee : {reassign['oldImsi']} -> {reassign['newImsi']} (agent {args.agent_id})",
+        meta={"oldImsi": reassign["oldImsi"], "newImsi": reassign["newImsi"]},
     )
 
     # 3) OTP émis vers l'IMSI COURANT (désormais celui de l'attaquant).
@@ -122,7 +146,11 @@ def run_ac02(core: str, sim: str, args: argparse.Namespace) -> int:
     #    jamais sur le cœur. Le cœur de production n'expose aucun moyen de relire un OTP livré.
     code = _need(*_get(sim, "/inbox", imsi=args.attacker_imsi), what="interception OTP (isc-sim)")
     code = code["code"]
-    _publish(f"OTP intercepte sur l'appareil attaquant (via isc-sim) : {code}")
+    # `sensitive` : la console masquera ce code (elle est exposée au réseau local ; elle ne doit pas
+    # devenir une surface de lecture de codes). La sortie brute, elle, le montre en clair (oracle).
+    _publish(
+        f"OTP intercepte sur l'appareil attaquant (via isc-sim) : {code}", meta={"sensitive": True}
+    )
 
     # 5) Authentification par l'OTP intercepté (consommation, usage unique).
     verify = _need(
