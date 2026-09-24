@@ -35,6 +35,7 @@ check: build format unit arch contract check-docs secrets fictitious-msisdn name
 	@echo "make check : VERT"
 
 build:
+	@echo ">>> build : assemble core+pdp, deps py, console"
 	@for p in $(GRADLE_PROJECTS); do \
 	  (cd $$p && ./gradlew --quiet assemble) || exit 1; \
 	done
@@ -45,6 +46,7 @@ build:
 	@if [ -n "$$MSYSTEM" ]; then 	  echo "console : next build complet indisponible sous Windows (bug amont vercel/next.js#87719) — mode compile seul ; le build complet tourne en CI et dans la VM"; 	  (cd console && npm run --silent build:compile); 	else 	  (cd console && npm run --silent build); 	fi
 
 format:
+	@echo ">>> format : spotless, ruff, prettier"
 	@for p in $(GRADLE_PROJECTS); do \
 	  (cd $$p && ./gradlew --quiet spotlessCheck) || exit 1; \
 	done
@@ -55,6 +57,7 @@ format:
 	@(cd simulator && uv run --quiet ruff format --check ../tools && uv run --quiet ruff check ../tools) 	  || { echo "format : ÉCHEC — les scripts des portes (tools/) ne passent pas ruff"; exit 1; }
 
 unit:
+	@echo ">>> unit : tests core+pdp+py"
 	@for p in $(GRADLE_PROJECTS); do \
 	  (cd $$p && ./gradlew --quiet test) || exit 1; \
 	done
@@ -64,14 +67,17 @@ unit:
 	@echo "unit : console — aucun test n'existe encore (TACHE-00) ; rien n'a été vérifié pour ce projet"
 
 arch:
+	@echo ">>> arch : ArchUnit core+pdp"
 	@for p in $(GRADLE_PROJECTS); do \
 	  (cd $$p && ./gradlew --quiet test --tests '*ArchitectureTest') || exit 1; \
 	done
 
 contract:
+	@echo ">>> contract : redocly evaluate.yaml"
 	@npx --yes @redocly/cli@2.14.5 lint contracts/evaluate.yaml
 
 check-docs:
+	@echo ">>> check-docs"
 	@$(PY) tools/check_docs.py
 
 # Régénère docs/traceability.csv depuis les marqueurs @implements/@covers du code
@@ -84,12 +90,15 @@ traceability:
 	@$(PY) tools/gen_traceability.py
 
 secrets:
+	@echo ">>> secrets"
 	@$(PY) tools/check_secrets.py
 
 fictitious-msisdn:
+	@echo ">>> fictitious-msisdn"
 	@$(PY) tools/check_msisdn.py
 
 named-params:
+	@echo ">>> named-params"
 	@$(PY) tools/check_named_params.py
 
 ## ---- autres cibles ----------------------------------------------------------
