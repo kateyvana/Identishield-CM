@@ -30,3 +30,6 @@ datasets/*.parquet
 .DS_Store
 # typescript incremental
 *.tsbuildinfo
+
+# Donnees reelles confidentielles (Mois 3) : JAMAIS versionnees
+data/real/
