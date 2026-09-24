@@ -603,9 +603,97 @@ td.vide {
     background: var(--panel);
 }
 
+/* Navigation entre les vues (T2-19 : Attaque / Audit). */
+.nav {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.nav a {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--sourdine);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: var(--rayon-s);
+    border: 1px solid transparent;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+
+.nav a:hover {
+    color: var(--texte);
+    background: var(--panel-2);
+}
+
+.nav a.actif {
+    color: var(--accent);
+    background: var(--accent-faible);
+    border-color: rgba(90, 176, 255, 0.25);
+}
+
+/* Verdict d'intégrité du journal (EF-34). */
+.verdict {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: var(--rayon);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin-bottom: 16px;
+}
+
+.verdict-icone {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.verdict-ok {
+    color: #74e08a;
+    background: var(--ok-bg);
+    border: 1px solid var(--ok-ligne);
+}
+
+.verdict-rompu {
+    color: #ff9089;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-ligne);
+    animation: souligne 1.6s ease-in-out infinite;
+}
+
+.verdict-pos {
+    font-family: var(--monospace);
+    font-size: 16px;
+}
+
+.integrite-details {
+    max-width: 460px;
+}
+
+.note-verif {
+    margin: 16px 0 0;
+    color: var(--faible);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.canal {
+    font-family: var(--monospace);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-faible);
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .en-ligne .point,
     .imsi-change,
+    .verdict-rompu,
     .etape {
         animation: none;
     }

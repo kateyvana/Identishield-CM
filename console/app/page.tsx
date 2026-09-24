@@ -13,6 +13,8 @@
 // @implements EF-26
 // @implements EF-38
 
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 type Lang = 'en' | 'fr';
@@ -43,6 +45,8 @@ type FluxEntry = {
 const STR: Record<Lang, Record<string, string>> = {
   en: {
     brandTag: 'Policy Decision Point · Mobile Money',
+    navAttack: 'Attack',
+    navAudit: 'Audit',
     live: 'live',
     offline: 'network unreachable',
     timelineTitle: 'Attack timeline',
@@ -62,6 +66,8 @@ const STR: Record<Lang, Record<string, string>> = {
   },
   fr: {
     brandTag: 'Point de décision · Mobile Money',
+    navAttack: 'Attaque',
+    navAudit: 'Audit',
     live: 'en direct',
     offline: 'réseau injoignable',
     timelineTitle: 'Chronologie de l’attaque',
@@ -193,6 +199,7 @@ export default function Console() {
   }, []);
 
   const t = STR[lang];
+  const path = usePathname();
   const step2 = steps.find((s) => s.step === 2);
   const originalImsi = step2?.oldImsi;
   const swappedImsi = step2?.newImsi;
@@ -212,6 +219,14 @@ export default function Console() {
           </div>
         </div>
         <div className="barre-droite">
+          <nav className="nav">
+            <Link href="/" className={path === '/' ? 'actif' : ''}>
+              {t.navAttack}
+            </Link>
+            <Link href="/audit" className={path === '/audit' ? 'actif' : ''}>
+              {t.navAudit}
+            </Link>
+          </nav>
           <span className="scenario-chip">AC-02</span>
           <div className="langue" role="group" aria-label="Language / Langue">
             <button
