@@ -255,3 +255,20 @@ $$;
 -- OB-3 : verification non exposee au role applicatif (admin seul l'execute).
 REVOKE EXECUTE ON FUNCTION pdp.audit_verify(bigint) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION pdp.audit_anchor_check() FROM PUBLIC;
+
+-- ===== T2-19 (EF-34) : affichage de l'integrite du journal par la console =====
+-- La console (via le coeur) AFFICHE la verification d'integrite REELLE de T2-06 ; elle ne la
+-- reecrit pas. Le coeur est un verificateur INDEPENDANT : il n'ECRIT PAS le journal (isc_pdp_app
+-- en est le SEUL redacteur). Son role isc_core_app recoit un acces STRICTEMENT EN LECTURE pour
+-- executer les fonctions existantes -- SELECT + EXECUTE seulement, AUCUN droit d'ecriture :
+-- l'inalterabilite du journal est preservee. OB-3 (aucune fonction pdp executable par le REDACTEUR
+-- isc_pdp_app) reste intacte -- la porte check-stack ne vise QUE isc_pdp_app.
+GRANT USAGE ON SCHEMA pdp TO isc_core_app;
+GRANT SELECT ON pdp.audit_entry TO isc_core_app;
+GRANT SELECT ON pdp.chain_head TO isc_core_app;
+GRANT EXECUTE ON FUNCTION pdp.audit_verify(bigint) TO isc_core_app;
+GRANT EXECUTE ON FUNCTION pdp.audit_anchor_check() TO isc_core_app;
+-- audit_verify (fonction SQL, pas SECURITY DEFINER) s'execute avec les privileges de l'APPELANT ;
+-- elle appelle audit_canonical (recalcul de l'empreinte), aussi revoquee de PUBLIC. Le lecteur doit
+-- donc l'executer aussi. Lecture seule (pur calcul de hachage), aucune ecriture.
+GRANT EXECUTE ON FUNCTION pdp.audit_canonical(bigint, bigint, jsonb, text, timestamptz) TO isc_core_app;

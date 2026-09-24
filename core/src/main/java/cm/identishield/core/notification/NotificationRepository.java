@@ -60,4 +60,21 @@ public class NotificationRepository {
                 rs.getObject("sent_at", OffsetDateTime.class).toInstant()),
         msisdn);
   }
+
+  /** Notifications émises les plus récentes, tous comptes (EF-37) : vue console, contenu inclus. */
+  public List<Notification> listRecent(int limit) {
+    return jdbc.query(
+        "SELECT id, msisdn, recipient_ref, channel, type, body, sent_at"
+            + " FROM core.notification ORDER BY sent_at DESC, id LIMIT ?",
+        (rs, i) ->
+            new Notification(
+                (UUID) rs.getObject("id"),
+                rs.getString("msisdn"),
+                NotificationChannel.valueOf(rs.getString("channel")),
+                rs.getString("recipient_ref"),
+                rs.getString("type"),
+                rs.getString("body"),
+                rs.getObject("sent_at", OffsetDateTime.class).toInstant()),
+        limit);
+  }
 }
