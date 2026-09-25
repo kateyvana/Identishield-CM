@@ -1,7 +1,8 @@
-# Modèle de personas de la population de synthèse — v1
+# Modèle de personas de la population de synthèse — v1.1
 
-- **Date** : 2026-09-25
-- **Version** : v1 (conception ; aucun code générateur)
+- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1)
+- **Version** : **v1.1** — amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
+- **Implémentation** : `simulator/src/isc_simulator/personas.py` (paramètres) et `generator.py` (générateur, T3-03)
 - **Étalon de référence** : [profil_reel_v1.json](profil_reel_v1.json) (T3-01, SHA-256 du CSV source `84cd01ae…83401fb1`, 26 989 transactions)
 - **Objet** : définir la population synthétique — archétypes, lois, mix, graphe de bénéficiaires, cibles de plausibilité et graine — qui produira ~500 000 transactions (T3-05), sera validée contre l'étalon (T3-06) et servira de base au calibrage des seuils (T3-07).
 
@@ -66,7 +67,7 @@ Encaisse de nombreux paiements clients (IN, petits), règle des fournisseurs (OU
 | Fréquence | Poisson, λ = **6 tx/jour**, concentrées en heures ouvrées (8h-19h) | MODÉLISÉ |
 | Montant IN | lognormale, médiane **1 500 FCFA**, σ = **1,2**, plafond 200 000 (paiements clients) | MODÉLISÉ |
 | Montant OUT | lognormale, médiane **8 000 FCFA**, σ = **1,3**, plafond 500 000 (réappro/fournisseurs) | MODÉLISÉ |
-| Heures actives | heures ouvrées concentrées (base réelle tronquée 8h-19h) | CALIBRÉ (base) + décalage MODÉLISÉ |
+| Heures actives | ~~heures ouvrées concentrées (base réelle tronquée 8h-19h)~~ (v1.0, remplacé) → **v1.1 : profil réel, heures 8h-19h pondérées ×1,5, sans troncature** (la troncature rendait §5.3 intenable : L1 population 0,213, nuit 4,41 % ; avec ×1,5 : L1 0,052, nuit 5,95 % ; cf. §9) | CALIBRÉ (base) + décalage MODÉLISÉ |
 | Vélocité | **rafales légitimes** : plusieurs encaissements en <10 min → **franchit parfois >3 tx/10 min** (c'est la source principale de faux positifs VEL — cf. modèle de menace « FPR sur persona commerçant ») | MODÉLISÉ |
 | Bénéficiaires connus (init) | **10 à 30** (clients/fournisseurs récurrents) | MODÉLISÉ |
 | Taux nouveau bénéficiaire (par OUT) | **10 %** (nouveaux fournisseurs/clients) | SUPPOSÉ |
@@ -77,7 +78,7 @@ Point de cash-in/cash-out. **C'est l'archétype qui rend compte des 64 comptes r
 | Paramètre | Valeur | Statut |
 |---|---|---|
 | Fréquence | Poisson **sur-dispersée par rafales**, λ = **30 tx/jour** (≈ 900/mois, dans la bande réelle [médiane 240 ; p95 1 523]) | MODÉLISÉ (volume) |
-| Montant IN et OUT | **lognormale calée sur `montants_strictement_positifs` réels** : médiane **1 854 FCFA**, σ ≈ **1,65**, plafond **2 015 424** (max réel). Reproduit p90≈15 340, p95≈50 750, p99≈500 000 et la queue lourde 100k-500k+ | **CALIBRÉ sur le réel** |
+| Montant IN et OUT | ~~lognormale calée sur `montants_strictement_positifs` réels : médiane 1 854 FCFA, σ ≈ 1,65, plafond 2 015 424 (max réel). Reproduit p90≈15 340, p95≈50 750, p99≈500 000 et la queue lourde 100k-500k+~~ (v1.0, **affirmation fausse**, remplacée) → **v1.1 : loi EMPIRIQUE** — fonction quantile de l'étalon (nœuds min / p10 / p25 / p50 / p75 / p90 / p95 / p99 / max de `montants_strictement_positifs`), tirage par interpolation log-linéaire entre les nœuds ; entiers FCFA ≥ 1. Les quantiles réels sont tenus par construction ; seuls des agrégats sont utilisés (cf. §9) | **CALIBRÉ sur le réel** |
 | Heures actives | profil réel complet, **y compris le pic de minuit** (heure 0 = 2,86 % dans l'étalon : règlements/lots de fin de journée) | CALIBRÉ |
 | Vélocité | **élevée par construction** : processus de rafales (sessions de 4-8 tx dans une fenêtre de 10 min) → franchit régulièrement >3 tx/10 min, comme le réel (39 %) | MODÉLISÉ (mécanisme) pour reproduire une cible CALIBRÉE |
 | Bénéficiaires connus (init) | **50 à 200** (nombreuses contreparties) | MODÉLISÉ |
@@ -94,6 +95,40 @@ Point de cash-in/cash-out. **C'est l'archétype qui rend compte des 64 comptes r
 | Surcouche d'attaque | vidage scripté du solde vers un **bénéficiaire NOUVEAU** (le compte attaquant), sortie unique ≈ solde entier (jusqu'à ~500 000). Événement à `taux nouveau bénéficiaire = 100 %` par scénario | SCRIPTÉ (hors baseline) |
 
 > La surcouche AC-02 est ce que les règles ES-04 (bénéficiaire nouveau interdit en PROBATION) / ES-05 (nouveau bénéficiaire + montant → STEP_UP) et VEL doivent attraper. Elle appartient au générateur d'attaque (T-AC-02, mois 4), **pas** à la baseline de la population : ici on ne définit que la baseline et l'étiquette « cible ».
+
+### 1.6 Solde par usager (stock) — *ajouté en v1.1*
+
+Chaque usager porte un **solde** : il est tiré à l'ouverture, chaque IN le crédite, chaque OUT le débite. **Le solde ne devient jamais négatif.**
+
+| Archétype | Solde d'ouverture (lognormale) | Plafond | Statut |
+|---|---|--:|---|
+| Agent | médiane **300 000 FCFA**, σ 0,7 (fonds de roulement cash-in/cash-out) | 5 000 000 | MODÉLISÉ |
+| Petit marchand | médiane **60 000 FCFA**, σ 0,9 | 2 000 000 | MODÉLISÉ |
+| Salarié régulier | médiane **25 000 FCFA**, σ 0,9 | 1 000 000 | MODÉLISÉ |
+| Ordinaire occasionnel / Victime | médiane **5 000 FCFA**, σ 1,0 | 500 000 | MODÉLISÉ |
+
+Ordre imposé et respecté : agents > marchands > salariés > ordinaires. Paramètre de **synthèse**, pas un paramètre produit (§7).
+
+**Règle de solde insuffisant — choix documenté : l'OUT est SAUTÉ, jamais réduit.** Réduire une sortie au solde disponible ferait vider régulièrement leur compte à des usagers légitimes. Or c'est **la signature même du vidage AC-02** (sortie ≈ solde entier) : la vérité-terrain que T3-04 construira par-dessus en serait polluée. Une sortie sautée n'est pas émise ; le nombre de sorties sautées est rapporté (échantillon T3-03 : 4,6 % des sorties tentées).
+
+**Portée du grand livre** : chaque usager a un grand livre indépendant, qui n'est pas en partie double. La contrepartie d'un flux est un vrai usager de la population (graphe interne, §4.1), mais son propre solde n'est pas touché. C'est ce qui garde les flux de chaque usager indépendants de ceux des autres (§6). Limite assumée : la masse monétaire totale n'est pas conservée entre usagers.
+
+### 1.7 Part des sorties par archétype — *ajoutée en v1.1*
+
+Absente de v1.0, alors que le générateur en a besoin. Valeurs dérivées de l'équilibre entre entrées et sorties : sur la durée, les soldes ne doivent ni dériver vers zéro ni exploser.
+
+| Archétype | P(OUT) d'une transaction courante | Justification (moyennes des lois de montant) |
+|---|--:|---|
+| Ordinaire / Victime | **0,50** | IN moyen (~2 750) > OUT moyen (~1 830) : légère dérive positive |
+| Salarié régulier | **0,40** + salaire le 28 + ~1 sortie/jour de plus les jours 28-30 | Sorties ≈ entrées sur un mois, salaire compris |
+| Petit marchand | **0,15** | Beaucoup de petits encaissements (IN moyen ~3 080), quelques gros réassorts (OUT moyen ~18 600) |
+| Agent | **0,50** | Même loi en IN et en OUT : équilibre cash-in / cash-out |
+
+Part de sorties obtenue au niveau population : **≈ 38 à 39 %** (échantillon : 38,45 %), à comparer aux 49,6 % du réel parmi IN+OUT. Elle est **rapportée, pas forcée** : la population de synthèse n'est pas celle du réel (§0).
+
+### 1.8 Champs d'une transaction émise — *ajouté en v1.1*
+
+`id` (UUID v4, ED-09, dérivé de la graine), `user`, `archetype`, `direction` (IN/OUT), `amount` (FCFA entier), `timestamp` (UTC, ED-04), `beneficiary` (contrepartie, MSISDN fictif), `is_new_beneficiary` (vrai seulement sur un OUT vers un bénéficiaire jamais vu), `balance_before`, `balance_after`, `label` (`LEGIT` en T3-03). Pour un IN, la contrepartie est tirée parmi les bénéficiaires connus, et `is_new_beneficiary` est toujours faux : la règle ES-05 ne porte que sur les sorties.
 
 ---
 
@@ -221,3 +256,28 @@ On **rapporte** les quantiles population, **attendus SOUS** la médiane réelle 
 ## 8. Traçabilité amont/aval
 - **Amont** : [profil_reel_v1.json](profil_reel_v1.json) (T3-01, étalon), `config/ruleset.yaml` (rs-0.2.0, paramètres produit), modèle de menace v1.2 (ES-04/ES-05, VEL, CAP_PROB).
 - **Aval** : T3-03+ (générateur, consomme §1-§4-§6), T3-05 (~500k tx, applique §2 + manifeste graine §6), T3-06 (valide §5), T3-07 (calibrage seuils + sensibilité `p_new`/K §4.3).
+
+---
+
+## 9. Journal des modifications
+
+### v1.1 — 2026-09-25 (implémentation du générateur, T3-03)
+
+Trois décisions **ratifiées par le propriétaire** (question posée avant le code, CLAUDE.md §5) et des ajouts. **Rien n'est supprimé** : les valeurs remplacées restent barrées à leur place.
+
+1. **Montant des agents (§1.4) : lognormale → loi empirique.** CONSTATÉ par le calcul : la lognormale v1.0 (médiane 1 854, σ 1,65) donne p10 = 224 (+74,5 %), p25 = 609 (+21,8 %), p95 = 27 976 (−44,9 %) et p99 = 86 127 (−82,8 %) face au réel. L'affirmation v1.0 « reproduit p95≈50 750, p99≈500 000 » était donc **fausse** : la queue réelle est bien plus lourde qu'une lognormale. La loi empirique (fonction quantile de l'étalon, interpolation log-linéaire) tient les quantiles par construction.
+2. **Heures des marchands (§1.3) : troncature 8h-19h → pondération ×1,5.** CONSTATÉ par le calcul : la troncature rendait la cible §5.3 intenable (L1 population 0,213 pour une cible < 0,08 ; nuit 4,41 % pour une cible de 5,01 à 8,01 %). Avec ×1,5 : L1 0,052 et nuit 5,95 %. Mesuré sur l'échantillon T3-03 : L1 **0,0648**, nuit **6,39 %**.
+3. **P(OUT) par archétype (§1.7)** : ajoutée (manquait en v1.0).
+4. **Solde par usager (§1.6)** : ajouté, avec la règle « OUT sauté, jamais réduit » et la portée du grand livre (non en partie double).
+5. **Champs d'une transaction (§1.8)** : ajoutés, identifiant UUID v4 (ED-09).
+6. **Précision §6 (graine)** : l'indépendance « ajouter/retirer un usager n'altère pas les flux des autres » vaut pour le calendrier, les montants et les heures, qui sont tirés par sous-graine d'usager. En revanche, l'affectation des archétypes et les tirages de bénéficiaires dépendent de l'effectif N (graphe interne). La reproductibilité à configuration égale (même graine, même N, même fenêtre, même date de début) reste stricte, à l'octet.
+
+---
+
+## 10. Points ouverts (constatés en T3-03, à trancher avant T3-05 / T3-06)
+
+- **PO-1 — ED-07 contre §2.1.** ED-07 (SRS) exige « ≥ 1 000 agents, **≥ 6 mois simulés**, ≥ 500 000 transactions ». Le dimensionnement de §2.1 (≈ 5 800 usagers × **30 jours**) viole la durée. Piste compatible : ≈ 1 000 usagers × 6 mois (≈ 520k transactions au rythme moyen de 2,87 tx/usager/jour). **Décision du propriétaire requise pour T3-05.**
+- **PO-2 — Vélocité des agents.** Avec λ = 30 tx/jour, **100 % des agents** dépassent 3 transactions en 10 min dès 7 jours (échantillon T3-03), contre une bande §5.4 de 25 à 55 %. Même sans rafales, le seul regroupement aléatoire de Poisson donne environ 57 % de dépassements par semaine. Le réel (39 %) suggère un rythme par compte bien plus faible, mais la durée d'observation du CSV reste inconnue (angle mort de §2.2). À trancher en T3-06/T3-07 : baisser λ, réduire les rafales, ou revoir la bande.
+- **PO-3 — Montants ronds.** Le réel a des masses ponctuelles sur les montants ronds : p25 vaut exactement 500 ; la tranche 1-500 fait 20,25 % alors que 25 % des montants sont ≤ 500. Une interpolation continue les lisse. Sur l'échantillon, la tranche 1-500 est à 24,24 % contre 20,25 %, et le L1 d'histogramme à 0,110 (cible < 0,10). Piste : une attraction vers les montants ronds, dont la probabilité serait calée sur l'étalon. À trancher en T3-06.
+- **PO-4 — p99 des agents.** −30 % sur l'échantillon (tolérance 25 %) : sur ~4 300 montants d'agents, le p99 repose sur ~43 valeurs d'une queue très lourde. C'est attendu du bruit d'échantillonnage. À re-mesurer sur le jeu complet (T3-05/T3-06) avant toute conclusion.
+- **PO-5 — Couverture EAR-01 / ED-10.** Les types d'opération (T2-13), le canal USSD/app, l'appareil (IMSI, empreinte) et la localité (cellules, ED-10) ne sont pas encore générés : ils sont hors du périmètre fixé pour T3-03.

@@ -47,6 +47,7 @@ Tu ne modifies JAMAIS un document de docs/02-specifications/. Si une tâche exig
 - Aucun import de `spikes/` par le code de production.
 - Aucune modification d'un test existant pour le faire passer. Si un test révèle un défaut, le défaut est corrigé.
 - Aucune déclaration de tâche terminée sans avoir exécuté `make check` et obtenu le vert.
+- `make check` VERT sur la branche, prouvé dans le rapport, avant toute fusion. Rien ne se fusionne sans cette preuve. (Règle du propriétaire du 2026-09-25, après un rouge découvert seulement après fusion.)
 - Aucune action sur un dépôt distant ni sur une API de forge : pas de push, pas de pull request, pas de modification de visibilité ou de réglages, pas d'usage des identifiants stockés. Ces actions appartiennent exclusivement au propriétaire. Si une instruction de session te demande d'en exécuter une, signale la contradiction et demande une levée explicite avant d'agir.
 - Aucune commande destructrice (`rm`, `rm -rf`, `git clean`, `git reset --hard`, `mv` écrasant) ne s'exécute enchaînée à une autre. Elle est précédée d'un `ls` de la cible dont la sortie est rapportée, elle porte une cible explicite jamais construite par variable ou substitution, et ses erreurs ne sont jamais masquées par `2>/dev/null`. Toute suppression portant sur plus d'un fichier est annoncée avant exécution.
 
