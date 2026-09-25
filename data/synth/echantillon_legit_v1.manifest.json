@@ -1,0 +1,30 @@
+{
+  "archetype_users": {
+    "agent": 20,
+    "marchand": 60,
+    "ordinaire": 200,
+    "salarie": 100,
+    "victime": 20
+  },
+  "days": 7,
+  "fields": [
+    "id",
+    "user",
+    "archetype",
+    "direction",
+    "amount",
+    "timestamp",
+    "beneficiary",
+    "is_new_beneficiary",
+    "balance_before",
+    "balance_after",
+    "label"
+  ],
+  "isc_seed": 20260925,
+  "personas_version": "v1.1",
+  "sha256": "b75111922bd2c3084f6a85c3cca63948a349ae538dff20ae248cefa8fe796b3f",
+  "skipped_out": 157,
+  "start": "2026-10-25",
+  "transactions": 8460,
+  "users": 400
+}
