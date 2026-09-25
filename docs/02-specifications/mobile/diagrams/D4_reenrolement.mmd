@@ -31,7 +31,7 @@ sequenceDiagram
         Note over A,K: Liaison SEULEMENT après validation de la clé de récupération
         A->>K: générer NOUVELLE paire de clés avec le défi
         K-->>A: clé publique + attestation
-        U->>A: empreinte
+        U->>A: déverrouillage local du téléphone (biométrie ou code)
         A->>S: POST /enrolment/complete {clé publique, attestation, signature(défi)}
         S->>P: remplacer la clé : ancienne RÉVOQUÉE, nouvelle enregistrée (une seule active)
         P->>P: NOUVELLE clé de récupération (l'ancienne ne vaut plus rien)

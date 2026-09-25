@@ -9,9 +9,10 @@ sequenceDiagram
     U->>A: ouvre l'app (numéro mémorisé)
     A->>S: GET /session/challenge {device_id}
     S-->>A: {challenge}
-    U->>A: PIN (ou empreinte)
+    U->>A: PIN + déverrouillage local du téléphone
     A->>K: signer le défi avec la clé privée
     K-->>A: signature
+    Note over A,K: Le déverrouillage n'est jamais transmis au serveur #59; seule la signature l'est.
     A->>S: POST /session {msisdn, pin, device_id, signature}
     S->>S: PIN vérifié
     S->>P: signature valide pour la clé enregistrée ?

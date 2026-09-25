@@ -14,11 +14,11 @@ sequenceDiagram
     S-->>A: [{type: SIM_CHANGED, quand}]
     A->>U: « La carte SIM de votre numéro a été changée à 14 h 02. C'est vous ? »
     alt « Oui, c'est moi »
-        U->>A: Oui + empreinte
+        U->>A: Oui + déverrouillage local
         A->>S: POST /alerts/{id}/ack (signé)
         S->>J: SIM_CHANGE_ACKNOWLEDGED
     else « Non, ce n'est pas moi »
-        U->>A: Non + empreinte
+        U->>A: Non + déverrouillage local
         A->>S: POST /alerts/{id}/not-me (signé)
         S->>P: compte → FROZEN (état existant) — réenrôlement gelé (REENROL_FREEZE)
         S->>J: NOT_ME, ACCOUNT_FROZEN

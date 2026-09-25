@@ -11,11 +11,12 @@ sequenceDiagram
     A->>S: GET /beneficiaries/{msisdn}/holder
     S-->>A: {nom du titulaire, nouveau_bénéficiaire: oui/non}
     A->>U: écran de confirmation (nom, montant, badge « nouveau »)
-    U->>A: PIN + empreinte
+    U->>A: PIN + déverrouillage local du téléphone
     A->>S: POST /nonce
     S-->>A: {nonce à usage unique}
     A->>K: signer la chaîne ADR-018 : accountId|type|amountXaf|beneficiaryId|nonce
     K-->>A: signature
+    Note over A,K: Le déverrouillage n'est jamais transmis au serveur #59; seule la signature l'est.
     A->>S: POST /transfers {chaîne, signature, pin}
     S->>S: PIN vérifié, solde vérifié
     S->>P: /evaluate (contrat INCHANGÉ) + signature + nonce

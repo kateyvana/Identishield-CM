@@ -19,12 +19,12 @@ sequenceDiagram
     S-->>A: {enrolment_id, next: OTP}
     U->>A: OTP
     A->>S: POST /enrolment/otp {enrolment_id, otp}
-    S->>S: OTP vérifié (empreinte, durée limitée)
+    S->>S: OTP vérifié (haché, durée limitée)
     S-->>A: {next: BIND, challenge}
     Note over A,K: Liaison SEULEMENT après validation de l'OTP
     A->>K: générer paire de clés EC P-256 (privée non exportable) avec le défi
     K-->>A: clé publique + chaîne d'attestation
-    U->>A: empreinte (biométrie)
+    U->>A: déverrouillage local du téléphone (biométrie ou code)
     A->>S: POST /enrolment/complete {clé publique, attestation, signature(défi)}
     S->>P: enregistrer la clé (attestation vérifiée, une seule active)
     P->>P: clé de récupération générée, HACHÉ SALÉ stocké seulement
