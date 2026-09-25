@@ -10,7 +10,7 @@
 | Documents aval | SRS (§6ter, §7bis), SAD, protocole d'évaluation, suite de tests de sécurité |
 | Documents liés (v1.3) | ISC-SRS-FR v1.4, ISC-SAD v1.3, ISC-MOB-CDC v1.2, ISC-MOB-SPEC v1.2, ISC-AMD-02 v1.1 |
 
-**Journal v1.3 (25/09/2026, ISC-AMD-02 v1.1 §2.3).** Menaces propres à l'application mobile ajoutées en scénarios S-14 à S-21 (ex-MT-01 à MT-08 d'ISC-MOB-SPEC §16). AC-13 étendu à la fenêtre d'amorçage (AC-13 couvre déjà le premier enrôlement post-SIM swap : pas d'AC-17). Variante « canal application » ajoutée à AC-02. L'OTP n'est un contrôle qu'au premier enrôlement et sur USSD (D-3) ; la seule mention ambiguë (AC-01) est précisée. Ordre du ré-enrôlement aligné sur ES-19 v1.4 (PIN puis code de récupération, D-1). §11 : ES-25 à ES-28. AC-08, AC-14, AC-15, AC-16 et T-02 inchangés. Rien n'est supprimé : l'ancien texte est barré.
+**Journal v1.3 (25/09/2026, ISC-AMD-02 v1.1 §2.3).** Menaces propres à l'application mobile ajoutées en scénarios S-14 à S-21 (ex-MT-01 à MT-08 d'ISC-MOB-SPEC §16). AC-13 étendu à la fenêtre d'amorçage (AC-13 couvre déjà le premier enrôlement post-SIM swap : pas d'AC-17). Variante « canal application » ajoutée à AC-02. L'OTP n'est un contrôle qu'au premier enrôlement et sur USSD (D-3) ; la seule mention ambiguë (AC-01) est précisée. Ordre du ré-enrôlement aligné sur ES-19 v1.4 (PIN puis code de récupération, D-1). §11 : ES-25 à ES-28. S-08 et S-13 réécrits selon la logique en vigueur (ADR-010, ADR-013, ES-03c), dont le texte d'avant restait dans la v1.2.1 ; ES-18 : « haché seul » ; S-17 : pas d'horodatage dans la chaîne ADR-018. AC-08, AC-14, AC-15, AC-16 et T-02 inchangés. Rien n'est supprimé : l'ancien texte est barré.
 
 ---
 
@@ -105,16 +105,16 @@ Chaque scénario est exécuté par l'outil attaquant CLI, injecté par le géné
 | S-05 | SIM swap + vidage fractionné : n petits transferts vers m bénéficiaires | T-02 | USSD | PROBATION → FREEZE dès le premier bénéficiaire nouveau (ES-04) ; sans signal IMSI, détection par VEL (ES-05c) |
 | S-06 | SIM swap + attaque de nuit (02h–05h) | T-02 | USSD | PROBATION → FREEZE (ES-04) ; règle horaire comme signal secondaire (ES-05d) |
 | S-07 | Attaque mimétique : mêmes horaires, montants et bénéficiaires habituels de la victime, après swap | T-03 | USSD | PROBATION : perte plafonnée à CAP_PROB (bénéficiaire connu, montant habituel) ; sans signal IMSI, rappel attendu faible — **scénario de référence pour montrer les limites** |
-| S-08 | Faux sinistre : « j'ai perdu mon téléphone », ré-enrôlement d'un dispositif attaquant | T-01/T-02 | app | PROBATION : sorties plafonnées 48–72 h ; confirmation par ancien dispositif ou contact de confiance requise pour lever |
+| S-08 | Faux sinistre : « j'ai perdu mon téléphone », ré-enrôlement d'un dispositif attaquant | T-01/T-02 | app | ~~PROBATION : sorties plafonnées 48–72 h ; confirmation par ancien dispositif ou contact de confiance requise pour lever~~ Ré-enrôlement : PIN puis code de récupération, jamais d'OTP (ES-19) ; sans le code, refus et délai croissant sur l'appareil et l'origine, jamais sur le compte (ES-21), alerte signée au téléphone lié (ES-27). Avec le code (fuite) : nouvelle clé, ancienne révoquée immédiatement (ES-14b, ADR-031), ancien appareil informé sans action (EF-47, ADR-010) ; aucune carence propre au ré-enrôlement (ES-03c) |
 | S-09 | Levée de gel par analyste malveillant | T-04 | console | Refus si montant > seuil sans second analyste ; action journalisée et chaînée |
 | S-10 | Altération du journal d'audit | T-04 | base | Rupture de chaîne détectée par la console |
 | S-11 | Rejeu d'une transaction signée | T-01 | app | Refus : nonce consommé |
 | S-12 | Saturation du PDP pendant une attaque | T-02 | F3 | Fail-closed sur les sorties sensibles ; mesure du coût |
-| S-13 | Premier enrôlement d'app après SIM swap sur un compte USSD-only | T-02 | app | Enrôlement refusé pendant CAR_IMSI ; PROBATION ensuite |
+| S-13 | Premier enrôlement d'app après SIM swap sur un compte USSD-only | T-02 | app | ~~Enrôlement refusé pendant CAR_IMSI ; PROBATION ensuite~~ Enrôlement accepté (ADR-013 renversé, ES-17b) ; si le swap date de moins de CAR_IMSI, le compte est en PROBATION (ES-01b, ES-04) : perte plafonnée à CAP_PROB, aucun nouveau bénéficiaire. Au-delà de CAR_IMSI : fenêtre d'amorçage, résiduel déclaré (S-21, AC-13) |
 | S-14 | (ex-MT-01, v1.3) Téléphone lié volé et déverrouillé | voleur du téléphone lié (profil non décrit en §3.2) | app | Parade : déverrouillage local du téléphone exigé avant chaque signature ; PIN ; plafonds et PDP ; exécution différée (DEFER) sur STEP_UP. Résiduel : déclaré |
 | S-15 | (ex-MT-02, v1.3) Capture ou enregistrement de la clé de récupération | T-01 | app | Parade : FLAG_SECURE ; pas de copie ; consigne papier. Résiduel : photo de l'écran par un autre appareil, déclaré |
 | S-16 | (ex-MT-03, v1.3) Superposition d'écran pour faire valider une opération | application malveillante sur le téléphone (profil non décrit en §3.2) | app | Parade : anti-tapjacking. Résiduel : faible |
-| S-17 | (ex-MT-04, v1.3) Rejeu d'une opération signée | T-01 | app | Parade : nonce unique ; horodatage borné. Résiduel : nul (voir aussi S-11) |
+| S-17 | (ex-MT-04, v1.3) Rejeu d'une opération signée | T-01 | app | Parade : nonce unique ; ~~horodatage borné~~ nonce à usage unique (la chaîne ADR-018 ne contient pas d'horodatage). Résiduel : nul (voir aussi S-11) |
 | S-18 | (ex-MT-05, v1.3) Téléphone rooté ou démarrage non vérifié qui tente d'extraire la clé | détenteur du téléphone (profil non décrit en §3.2) | app | Parade : clé non exportable ; attestation refusée si démarrage non vérifié. Résiduel : faible |
 | S-19 | (ex-MT-06, v1.3) Énumération des noms de titulaires via ED-11 | T-01 | app | Parade : recherche freinée, jeton exigé, dans le parcours d'envoi seulement. Résiduel : faible |
 | S-20 | (ex-MT-07, v1.3) Faux serveur (interception TLS) | attaquant réseau (profil non décrit en §3.2) | app | Parade : autorité épinglée ; aucune autorité utilisateur. Résiduel : nul |
@@ -373,7 +373,7 @@ Gabarit : Scénario | Acteur | Préconditions | Déroulé | Résultat sans contr
 | ES-14b | Révocation immédiate de l'ancienne clé ; une seule clé ACTIVE | AC-08 | Test |
 | ES-17 | RETIRÉE (v1.2) — remplacée par ES-17b | — | — |
 | ES-17b | Aiguillage enrôlement / ré-enrôlement sur la seule présence d'une clé | AC-13 | Test |
-| ES-18 | Code de récupération : affichage unique, empreinte seule, consommé et régénéré | AC-08 | Test |
+| ES-18 | Code de récupération : affichage unique, ~~empreinte seule~~ haché seul, consommé et régénéré | AC-08 | Test |
 | ES-19 | Ré-enrôlement : ~~code de récupération puis PIN~~ PIN puis code de récupération (SRS v1.4), jamais d'OTP | AC-08, 13 | Test |
 | ES-20 | Unicité de la clé ACTIVE ; signature par clé révoquée refusée | AC-08 | Test |
 | ES-21 | Délai croissant sur l'appareil demandeur, jamais sur le compte | AC-14, 15 | Test |

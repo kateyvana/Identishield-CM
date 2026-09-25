@@ -57,7 +57,9 @@ Tout est sur le chemin critique : chaque carte produit l'entrée de la suivante.
 - Correction de l'énoncé OB-3 dans le SAD (E-01).
 - Cold-start de `/evaluate` (EI-01), à résoudre avant le Mois 5.
 - Points ouverts de la refonte d'authentification : clé de récupération perdue, contacts de confiance sur USSD (QO-19), portée de l'anti-brute-force du PIN.
-- ED-11 (nom du titulaire affiché à la confirmation) ; traduction anglaise du SRS v1.3.
+- ~~ED-11 (nom du titulaire affiché à la confirmation) ; traduction anglaise du SRS v1.3.~~ ED-11 : ajoutée au SRS v1.4 (25/09/2026). La traduction anglaise est reprise dans la carte « SRS v1.5 » ci-dessous.
+- **Carte « SRS v1.5 »** (ajout v1.2, propriétaire) : QF-01 cite « AC-17 (proposé) », à remplacer par « AC-13 étendu » (TM v1.3) ; EF-47 et ES-27 à préciser (avant / après un ré-enrôlement réussi, comme l'amendement d'ADR-030) ; en-tête « Documents amont » vers TM v1.3 ; traduction anglaise (SRS-EN), qui débloque la parité FR/EN de la porte check-docs, restée sur le couple v1.2.
+- **Carte « TM v1.4 »** (ajout v1.2) : décrire en §3.2 les profils d'attaquants T-xx manquants pour S-14 (voleur du téléphone lié), S-16 (application malveillante), S-18 (détenteur d'un téléphone rooté) et S-20 (attaquant réseau).
 
 ## 6. Où on va : la fin du Mois 3
 À la fin du Mois 3, on dispose de :
