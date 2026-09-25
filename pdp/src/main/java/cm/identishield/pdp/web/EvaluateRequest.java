@@ -16,7 +16,7 @@ public record EvaluateRequest(
             message = "decisionId must be a v4 UUID")
         String decisionId,
     @NotBlank String accountId,
-    @NotBlank @Pattern(regexp = "^69900[0-9]{4}$", message = "msisdn out of fictitious range")
+    @NotBlank @Pattern(regexp = "^67700[0-9]{4}$", message = "msisdn out of fictitious range")
         String msisdn,
     @NotBlank String currentImsi,
     @NotBlank @Pattern(regexp = "APP|USSD") String channel,

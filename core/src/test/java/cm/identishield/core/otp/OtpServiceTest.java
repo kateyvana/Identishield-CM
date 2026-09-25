@@ -29,7 +29,7 @@ import org.mockito.ArgumentCaptor;
  */
 class OtpServiceTest {
 
-  private static final String MSISDN = "699000001";
+  private static final String MSISDN = "677000001";
   private static final String IMSI = "624010000000001";
   private static final Instant NOW = Instant.parse("2026-09-14T10:00:00Z");
 

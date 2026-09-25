@@ -1,4 +1,12 @@
-"""Porte fictitious-msisdn (CT-02, ED-09) : aucun MSISDN hors 699000000-699009999.
+"""Porte fictitious-msisdn (CT-02, ED-09, ADR-035) : identifiants de l'operateur simule.
+
+Deux regles, un seul operateur simule (MTN Cameroun, ADR-035) :
+  1. aucun MSISDN hors 677000000-677009999 (prefixe MTN 67x) ;
+  2. tout IMSI camerounais (624 + 12 chiffres) est MTN : 624-01.
+Avant ADR-035 la plage etait 699000000-699009999, un prefixe ORANGE (69x) associe
+a un IMSI MTN : incoherence. Elle n'est toleree que dans spikes/, preuves figees
+et datees, jamais importees par la production (CLAUDE.md §4) ; partout ailleurs
+un 699xxxxxx fait passer la porte au ROUGE.
 
 Fail-closed (TACHE-01 correction 4) : scanne TOUS les fichiers suivis par git,
 quelle que soit leur extension, sauf les binaires (liste noire d'extensions +
@@ -14,7 +22,12 @@ from pathlib import Path
 # Frontieres alphanumeriques strictes : une sous-chaine de hash hexadecimal
 # (ex. "e693786595c" dans un uv.lock) n'est pas un MSISDN.
 MSISDN = re.compile(r"(?<![0-9A-Za-z])(6\d{8})(?![0-9A-Za-z])")
-LOW, HIGH = 699000000, 699009999
+LOW, HIGH = 677000000, 677009999
+LEGACY_LOW, LEGACY_HIGH = 699000000, 699009999  # avant ADR-035 ; toleree dans spikes/ seulement
+LEGACY_PREFIX = "spikes/"
+# IMSI = MCC 624 (Cameroun) + MNC 2 chiffres + MSIN 10 chiffres ; operateur simule = MNC 01.
+IMSI = re.compile(r"(?<![0-9A-Za-z])(624\d{12})(?![0-9A-Za-z])")
+IMSI_OPERATOR = "62401"
 BINARY_EXT = {
     ".jar",
     ".png",
@@ -68,9 +81,14 @@ def main() -> int:
         text = p.read_text(encoding="utf-8", errors="ignore")
         for m in MSISDN.finditer(text):
             n = int(m.group(1))
-            if not (LOW <= n <= HIGH):
+            legacy = f.startswith(LEGACY_PREFIX) and LEGACY_LOW <= n <= LEGACY_HIGH
+            if not (LOW <= n <= HIGH) and not legacy:
                 line = text.count("\n", 0, m.start()) + 1
                 errors.append(f"{f}:{line}: MSISDN hors plage fictive : {m.group(1)}")
+        for m in IMSI.finditer(text):
+            if not m.group(1).startswith(IMSI_OPERATOR):
+                line = text.count("\n", 0, m.start()) + 1
+                errors.append(f"{f}:{line}: IMSI hors operateur simule (624-01) : {m.group(1)}")
     if errors:
         print("porte fictitious-msisdn : ROUGE")
         for e in errors:

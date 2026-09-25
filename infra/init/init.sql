@@ -18,8 +18,8 @@ CREATE ROLE isc_pdp_app  LOGIN PASSWORD :'pdp_pw';
 CREATE SCHEMA core;
 CREATE SCHEMA pdp;
 
--- ---- Domaine MSISDN fictif (ED-09, sandbox) : plage 699000000-699009999 ----
-CREATE DOMAIN core.msisdn_fictif AS text CHECK (VALUE ~ '^69900[0-9]{4}$');
+-- ---- Domaine MSISDN fictif (ED-09, sandbox) : plage 677000000-677009999 ----
+CREATE DOMAIN core.msisdn_fictif AS text CHECK (VALUE ~ '^67700[0-9]{4}$');
 
 -- ======================= SCHEMA core (ISC-SAD §9.1) =======================
 CREATE TABLE core.account (

@@ -381,7 +381,7 @@ def render_md(s: dict) -> str:
         "## e. Contrôles",
         "",
         (
-            "- MSISDN hors de 699000000–699009999 (usagers et bénéficiaires) : "
+            "- MSISDN hors de 677000000–677009999 (usagers et bénéficiaires) : "
             f"**{c['msisdn_hors_plage']}**."
         ),
         (

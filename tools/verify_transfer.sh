@@ -7,7 +7,7 @@
 # Necessite la pile debout (postgres, pdp).
 set -uo pipefail
 export MSYS_NO_PATHCONV=1
-FROM=699000001
+FROM=677000001
 AMOUNT=25000
 fail=0
 adm() { docker exec isc-postgres psql -U isc_admin -d identishield -tAc "$1" 2>/dev/null | tr -d '[:space:]'; }

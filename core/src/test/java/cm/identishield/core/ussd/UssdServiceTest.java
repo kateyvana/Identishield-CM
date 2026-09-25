@@ -32,8 +32,8 @@ class UssdServiceTest {
       new UssdService(
           sessions, transfers, Clock.fixed(Instant.parse("2026-08-26T09:15:00Z"), ZoneOffset.UTC));
 
-  private static final String FROM = "699000001";
-  private static final String BENEF = "699000002";
+  private static final String FROM = "677000001";
+  private static final String BENEF = "677000002";
   private final UUID sid = UUID.randomUUID();
 
   @Test

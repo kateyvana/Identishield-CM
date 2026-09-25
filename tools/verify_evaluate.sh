@@ -11,7 +11,7 @@ CERTS=isc-certs
 fail=0
 
 DID=$(docker run --rm isc-tools cat /proc/sys/kernel/random/uuid)
-REQ='{"decisionId":"'"$DID"'","accountId":"acc-000123","msisdn":"699000123","currentImsi":"624019900001230","channel":"APP","type":"CASH_OUT","amountXaf":25000,"beneficiaryId":"ben-000045","serverTimestamp":"2026-08-26T09:15:00Z","proofType":"NONE"}'
+REQ='{"decisionId":"'"$DID"'","accountId":"acc-000123","msisdn":"677000123","currentImsi":"624019900001230","channel":"APP","type":"CASH_OUT","amountXaf":25000,"beneficiaryId":"ben-000045","serverTimestamp":"2026-08-26T09:15:00Z","proofType":"NONE"}'
 
 resp() {
   docker run --rm -i --network "$NET" -v "$CERTS":/certs:ro isc-tools \

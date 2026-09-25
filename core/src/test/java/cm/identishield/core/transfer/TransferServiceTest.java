@@ -37,8 +37,8 @@ import org.mockito.Mockito;
  */
 class TransferServiceTest {
 
-  private static final String FROM = "699000001";
-  private static final String BENEF = "699000002";
+  private static final String FROM = "677000001";
+  private static final String BENEF = "677000002";
   private static final long CAP_PROB = 25_000;
 
   private final AccountRepository accounts = Mockito.mock(AccountRepository.class);

@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class AccountBootstrap {
 
-  static final String SENDER_MSISDN = "699000001";
-  static final String BENEFICIARY_MSISDN = "699000002";
+  static final String SENDER_MSISDN = "677000001";
+  static final String BENEFICIARY_MSISDN = "677000002";
   private static final long SENDER_INITIAL_XAF = 1_000_000;
 
   private final AccountRepository accounts;

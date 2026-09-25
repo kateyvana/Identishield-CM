@@ -40,8 +40,8 @@ class NotificationContentPolicyTest {
 
   @Test
   void refusesCallbackPhoneNumbers() {
-    assertEquals(Reason.PHONE_NUMBER, reasonOf("ALERTE", "Rappelez le 699 12 34 56"));
-    assertEquals(Reason.PHONE_NUMBER, reasonOf("ALERTE", "Contactez +237699123456"));
+    assertEquals(Reason.PHONE_NUMBER, reasonOf("ALERTE", "Rappelez le 677 12 34 56"));
+    assertEquals(Reason.PHONE_NUMBER, reasonOf("ALERTE", "Contactez +237677123456"));
   }
 
   @Test

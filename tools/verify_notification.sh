@@ -9,8 +9,8 @@ set -uo pipefail
 export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")/.." || exit 2
 
-MSISDN=699000004
-FROM=699000001
+MSISDN=677000004
+FROM=677000001
 IMSI0=624010000000001
 IMSI1=624010000000002
 fail=0
@@ -55,7 +55,7 @@ if [ "${cnt:-0}" -ge 3 ]; then echo "[OK] notifications persistees et consultabl
 adm "UPDATE core.account SET balance_xaf = 1000000 WHERE msisdn='$FROM' AND balance_xaf < 100000;" >/dev/null
 adm "DELETE FROM core.notification WHERE msisdn='$FROM';" >/dev/null
 tout=$(docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=transfer -e FROM_MSISDN=$FROM \
-       -e BENEFICIARY_MSISDN=699000002 -e AMOUNT_XAF=15000 \
+       -e BENEFICIARY_MSISDN=677000002 -e AMOUNT_XAF=15000 \
        -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
        java -Dspring.main.web-application-type=none -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>/dev/null)
 tstate=$(echo "$tout" | sed -n 's/^TRANSFER_STATE=//p' | tr -d '[:space:]')
@@ -73,7 +73,7 @@ check_refus() {  # $1 libelle ; $2 texte ; $3 motif attendu
   else echo "[ECHEC] $1 non refuse comme prevu ($3): $o"; fail=1; fi
 }
 check_refus "adresse web"         "Recuperez votre compte sur https://recuperer-compte.cm" WEB_LINK
-check_refus "numero de telephone" "Rappelez le service au 699 88 77 66"                    PHONE_NUMBER
+check_refus "numero de telephone" "Rappelez le service au 677 88 77 66"                    PHONE_NUMBER
 check_refus "demande de code"     "Communiquez votre code recu par SMS pour valider"       SECRET_REQUEST
 
 [ $fail -eq 0 ] && echo "verify-notification: VERT" || echo "verify-notification: ROUGE"

@@ -10,7 +10,7 @@ set -uo pipefail
 export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")/.." || exit 2
 CONSOLE=${CONSOLE_URL:-http://localhost:3000}
-V=699000007; B=699000008; VIMSI=624010000000010; AIMSI=624010000000666
+V=677000007; B=677000008; VIMSI=624010000000010; AIMSI=624010000000666
 fail=0
 adm(){ docker exec -i isc-postgres psql -U isc_admin -d identishield -tAc "$1" 2>/dev/null | tr -d '[:space:]'; }
 jq_field(){ python3 -c "import sys,json;d=json.load(sys.stdin);print($1)"; }

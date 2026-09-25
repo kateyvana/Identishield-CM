@@ -6,9 +6,9 @@ from isc_hlr_agent.cli import _parser, build_body
 
 
 def test_build_body_has_exactly_the_four_fields() -> None:
-    body = build_body("699000001", "624010000000002", "agent-42", "motif declare")
+    body = build_body("677000001", "624010000000002", "agent-42", "motif declare")
     assert body == {
-        "msisdn": "699000001",
+        "msisdn": "677000001",
         "newImsi": "624010000000002",
         "agentId": "agent-42",
         "reason": "motif declare",

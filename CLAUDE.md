@@ -6,7 +6,7 @@ Ce fichier est lu automatiquement à chaque session. Il fait autorité sur toute
 
 - Projet académique de fin d'études (B.Sc., ICT University, Yaoundé), 7 mois.
 - Objet : un Point de Décision de Politique (PDP) pour Mobile Money, neutralisant les attaques par échange de carte SIM par liaison cryptographique au dispositif, détection de changement d'IMSI et score comportemental. Décisions : ALLOW / STEP_UP / FREEZE.
-- Périmètre : sandbox strict. Aucune interaction avec un système réel, aucun numéro réel, aucun préfixe d'opérateur réel. Plage MSISDN fictive : 699000000–699009999.
+- Périmètre : sandbox strict. Aucune interaction avec un système réel. ~~Aucun numéro réel, aucun préfixe d'opérateur réel. Plage MSISDN fictive : 699 000 000–699 009 999.~~ (remplacé par ADR-035 : 69x est un préfixe Orange, incohérent avec l'IMSI MTN). Opérateur simulé : **MTN Cameroun**, identifiants à structure réelle : MSISDN **677000000–677009999**, IMSI **624-01** + MSIN (15 chiffres). Aucune plage réservée à la fiction n'existe dans le plan camerounais : la sûreté repose sur l'**isolement** (réseau isc-net sans aucune sortie), pas sur l'inexistence des numéros.
 - Propriétaire : Yaniv. Tu exécutes sous sa spécification et sa revue. Il assume tout ce qui est fusionné devant un jury.
 
 ## 2. Documents faisant autorité (docs/02-specifications/)

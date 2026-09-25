@@ -46,7 +46,7 @@ paths:
                 value:
                   decisionId: 5f1e7c1a-9d3b-4e6a-8c2f-0b7d9a4e6c1d
                   accountId: acc-000123
-                  msisdn: '699000123'
+                  msisdn: '677000123'
                   currentImsi: '624019900001230'
                   channel: APP
                   type: CASH_OUT
@@ -271,8 +271,8 @@ components:
           type: string
         msisdn:
           type: string
-          pattern: '^69900[0-9]{4}$'
-          description: Plage fictive 699000000–699009999 uniquement (ED-09).
+          pattern: '^67700[0-9]{4}$'
+          description: Plage fictive 677000000–677009999 uniquement (ED-09).
         currentImsi:
           type: string
           description: IMSI courant vu par le cœur (fictif).

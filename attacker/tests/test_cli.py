@@ -80,13 +80,13 @@ def _args():
         [
             "ac02",
             "--victim",
-            "699000007",
+            "677000007",
             "--victim-imsi",
             VICTIM_IMSI,
             "--attacker-imsi",
             ATTACKER_IMSI,
             "--beneficiary",
-            "699000008",
+            "677000008",
             "--agent-id",
             "agent-kyc-07",
             "--motif",
@@ -136,7 +136,7 @@ def test_publishes_the_eight_steps_to_isc_sim_in_order(monkeypatch) -> None:
     # Chaque étape est publiée en FR ET EN (console bilingue, anglais par défaut).
     assert all(s.get("messageEn") for s in steps)
     assert "victim" in steps[0]["messageEn"]  # l'anglais est bien rempli, pas un doublon du FR
-    assert steps[0]["victim"] == "699000007"  # l'étape 1 porte la victime (la console lit son HLR)
+    assert steps[0]["victim"] == "677000007"  # l'étape 1 porte la victime (la console lit son HLR)
     otp = next(s for s in steps if s.get("sensitive"))  # l'étape OTP est marquée sensible
     assert otp["step"] == 4
 
