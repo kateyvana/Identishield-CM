@@ -1,0 +1,277 @@
+{
+  "a_montant": {
+    "histogramme": [
+      {
+        "compte": 7086,
+        "part": 26.26,
+        "tranche": "0"
+      },
+      {
+        "compte": 4031,
+        "part": 14.94,
+        "tranche": "1–500"
+      },
+      {
+        "compte": 2863,
+        "part": 10.61,
+        "tranche": "500–1k"
+      },
+      {
+        "compte": 7932,
+        "part": 29.39,
+        "tranche": "1k–5k"
+      },
+      {
+        "compte": 1964,
+        "part": 7.28,
+        "tranche": "5k–10k"
+      },
+      {
+        "compte": 1638,
+        "part": 6.07,
+        "tranche": "10k–25k"
+      },
+      {
+        "compte": 378,
+        "part": 1.4,
+        "tranche": "25k–50k"
+      },
+      {
+        "compte": 389,
+        "part": 1.44,
+        "tranche": "50k–100k"
+      },
+      {
+        "compte": 492,
+        "part": 1.82,
+        "tranche": "100k–500k"
+      },
+      {
+        "compte": 215,
+        "part": 0.8,
+        "tranche": "500k+"
+      }
+    ],
+    "montants_strictement_positifs": {
+      "max": 2015424.0,
+      "mean": 16009.69,
+      "median": 1854.0,
+      "min": 0.5,
+      "n": 19903,
+      "quantiles": {
+        "p10": 128.2,
+        "p25": 500.0,
+        "p50": 1854.0,
+        "p75": 5000.0,
+        "p90": 15340.0,
+        "p95": 50750.0,
+        "p99": 500000.0
+      }
+    },
+    "tous_les_rangs": {
+      "max": 2015424.0,
+      "mean": 11806.32,
+      "median": 550.0,
+      "min": 0.0,
+      "n": 26989,
+      "quantiles": {
+        "p10": 0.0,
+        "p25": 0.0,
+        "p50": 550.0,
+        "p75": 2600.0,
+        "p90": 10000.0,
+        "p95": 27369.4,
+        "p99": 415240.0
+      }
+    },
+    "zero_amount": {
+      "n": 7086,
+      "part": 26.26
+    }
+  },
+  "b_heure_du_jour": {
+    "fenetre_nuit": {
+      "compte": 1757,
+      "definition": "23h–05h (heures 23,0,1,2,3,4)",
+      "part": 6.51
+    },
+    "par_heure": [
+      {
+        "compte": 773,
+        "heure": 0,
+        "part": 2.86
+      },
+      {
+        "compte": 221,
+        "heure": 1,
+        "part": 0.82
+      },
+      {
+        "compte": 143,
+        "heure": 2,
+        "part": 0.53
+      },
+      {
+        "compte": 131,
+        "heure": 3,
+        "part": 0.49
+      },
+      {
+        "compte": 129,
+        "heure": 4,
+        "part": 0.48
+      },
+      {
+        "compte": 223,
+        "heure": 5,
+        "part": 0.83
+      },
+      {
+        "compte": 705,
+        "heure": 6,
+        "part": 2.61
+      },
+      {
+        "compte": 1207,
+        "heure": 7,
+        "part": 4.47
+      },
+      {
+        "compte": 1515,
+        "heure": 8,
+        "part": 5.61
+      },
+      {
+        "compte": 1469,
+        "heure": 9,
+        "part": 5.44
+      },
+      {
+        "compte": 1624,
+        "heure": 10,
+        "part": 6.02
+      },
+      {
+        "compte": 1749,
+        "heure": 11,
+        "part": 6.48
+      },
+      {
+        "compte": 1665,
+        "heure": 12,
+        "part": 6.17
+      },
+      {
+        "compte": 1655,
+        "heure": 13,
+        "part": 6.13
+      },
+      {
+        "compte": 1587,
+        "heure": 14,
+        "part": 5.88
+      },
+      {
+        "compte": 1593,
+        "heure": 15,
+        "part": 5.9
+      },
+      {
+        "compte": 1544,
+        "heure": 16,
+        "part": 5.72
+      },
+      {
+        "compte": 1659,
+        "heure": 17,
+        "part": 6.15
+      },
+      {
+        "compte": 1728,
+        "heure": 18,
+        "part": 6.4
+      },
+      {
+        "compte": 1605,
+        "heure": 19,
+        "part": 5.95
+      },
+      {
+        "compte": 1540,
+        "heure": 20,
+        "part": 5.71
+      },
+      {
+        "compte": 1229,
+        "heure": 21,
+        "part": 4.55
+      },
+      {
+        "compte": 935,
+        "heure": 22,
+        "part": 3.46
+      },
+      {
+        "compte": 360,
+        "heure": 23,
+        "part": 1.33
+      }
+    ]
+  },
+  "c_par_usager": {
+    "nb_usagers": 64,
+    "transactions_par_usager": {
+      "max": 2486,
+      "median": 240.5,
+      "min": 2,
+      "p90": 876.1,
+      "p95": 1522.55
+    },
+    "velocite": {
+      "part": 39.06,
+      "regle": ">3 transactions en 10 min (fenêtre glissante)",
+      "usagers_depassant": 25
+    }
+  },
+  "d_sorties": {
+    "cap_prob_fcfa": 25000,
+    "champ_sens": "Direction (valeurs : OUT = sortie/débit, IN = entrée, unknown = non renseigné)",
+    "distribution_direction": {
+      "IN": 12556,
+      "INFO": 32,
+      "OUT": 12345,
+      "UNKNOWN": 2056
+    },
+    "part_sorties_ge_cap_prob": 1.8,
+    "sorties_ge_cap_prob_n": 222,
+    "sorties_n": 12345,
+    "taux_de_sorties": 45.74
+  },
+  "date": "2026-09-25",
+  "e_champs_absents": {
+    "autres_champs_manquants": [
+      "IMSI / identité SIM (pas de CAR_IMSI observable ici)",
+      "identifiant d'appareil / liaison d'appareil (device binding)",
+      "décision / veto / score du PDP (données AVANT toute couche)",
+      "canal précis USSD vs application (seul Operator + Txn_type sont donnés)",
+      "signature / nonce (anti-rejeu)"
+    ],
+    "beneficiaire": {
+      "detail": "Aucune colonne bénéficiaire/destinataire/contrepartie. Le CSV décrit des opérations d'un usager (UserId), sans le tiers crédité. Impact modèle : la règle « nouveau bénéficiaire » (ES-05b) n'est pas calibrable sur ce jeu ; il faudra la SYNTHÉTISER en T3-02+.",
+      "present": false,
+      "reponse": "NON"
+    },
+    "champs_presents_utiles": [
+      "Amount (montant)",
+      "Time / Datetime (heure, vélocité)",
+      "UserId (par usager)",
+      "Direction (sorties/entrées)",
+      "Operator, Txn_type/Txn_type_std (type d'opération)"
+    ]
+  },
+  "effectif_lignes_donnees": 26989,
+  "note_effectif": "26989 lignes de données ; 26990 lignes totales avec l'en-tête (= le « 26 990 » annoncé).",
+  "source_name": "cleaned_transactions__1_.csv",
+  "source_sha256": "84cd01ae42d0fde10292b2df7e16302cf8dee3cd1359107328529a2e83401fb1",
+  "version": "v1"
+}
