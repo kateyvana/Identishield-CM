@@ -195,7 +195,7 @@
     "fichier": "echantillon_legit_v1.csv",
     "isc_seed": 20260925,
     "jours": 7,
-    "personas_version": "v1.2",
+    "personas_version": "v1.3",
     "sha256": "264c08dea222e848dd64775a5e941efae945f953a05dc2ca8f355deefcf0b5d1",
     "sha256_manifeste_identique": true,
     "transactions": 8460,

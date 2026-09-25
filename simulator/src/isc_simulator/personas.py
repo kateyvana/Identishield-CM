@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-PERSONAS_VERSION = "v1.2"
+PERSONAS_VERSION = "v1.3"
 
 # Fictitious MSISDN range (ED-09): users AND beneficiaries are drawn here, nowhere else.
 MSISDN_LOW = 677000000
@@ -26,6 +26,16 @@ MSISDN_HIGH = 677009999
 # starts with MSIN = user index + 1 (block 0000000001-0000009999), stable until a SIM event (M3).
 IMSI_PREFIX = "62401"
 MSIN_DIGITS = 10
+
+# v1.3 — legitimate SIM events (customer service), per user and per month. DECLARED ASSUMPTIONS, not
+# measurements (no public Cameroonian figure found; the survey is the intended anchor). Cases:
+#   a: SIM replaced, same bound device   -> new IMSI, device stays bound (bound users only)
+#   b: new SIM, no bound device          -> new IMSI, device_bound becomes false
+#   c: new device, same SIM              -> same IMSI, device_bound becomes true
+SIM_EVENT_RATES_PER_MONTH = {"a": 0.008, "b": 0.005, "c": 0.015}
+DAYS_PER_MONTH = 30
+# Replacement IMSIs come from a separate MSIN block: base + user index x 10 + ordinal (1..9).
+REPLACEMENT_MSIN_BASE = 1_000_000_000
 
 # CALIBRATED — quantile function of real amounts > 0 (FCFA), as (probability, amount) knots:
 # min, p10, p25, p50, p75, p90, p95, p99, max of profil_reel_v1.json. The agent amount law samples

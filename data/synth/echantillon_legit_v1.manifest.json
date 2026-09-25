@@ -24,8 +24,16 @@
     "device_bound"
   ],
   "isc_seed": 20260925,
-  "personas_version": "v1.2",
+  "personas_version": "v1.3",
   "sha256": "264c08dea222e848dd64775a5e941efae945f953a05dc2ca8f355deefcf0b5d1",
+  "sim_events": {
+    "per_case": {
+      "a": 0,
+      "b": 0,
+      "c": 1
+    },
+    "total": 1
+  },
   "skipped_out": 157,
   "start": "2026-10-25",
   "transactions": 8460,

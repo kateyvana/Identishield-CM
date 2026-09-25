@@ -1,7 +1,7 @@
-# Modèle de personas de la population de synthèse — v1.2
+# Modèle de personas de la population de synthèse — v1.3
 
-- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2)
-- **Version** : **v1.2** — champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
+- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2) ; 2026-09-25 (v1.3)
+- **Version** : **v1.3** — changements de SIM légitimes (T3-04a) ; ~~**v1.2**~~ champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
 - **Implémentation** : `simulator/src/isc_simulator/personas.py` (paramètres) et `generator.py` (générateur, T3-03)
 - **Étalon de référence** : [profil_reel_v1.json](profil_reel_v1.json) (T3-01, SHA-256 du CSV source `84cd01ae…83401fb1`, 26 989 transactions)
 - **Objet** : définir la population synthétique — archétypes, lois, mix, graphe de bénéficiaires, cibles de plausibilité et graine — qui produira ~500 000 transactions (T3-05), sera validée contre l'étalon (T3-06) et servira de base au calibrage des seuils (T3-07).
@@ -153,6 +153,24 @@ Trois colonnes sont ajoutées à la fin de chaque enregistrement. Les onze colon
 **Plage de sensibilité** à explorer en T3-07 : `p_device_bound` de 0,2 à 0,9, et `p_app_if_bound` de 0,2 à 0,9. La liaison d'appareil conditionne ce que la couche pourra prouver après un changement d'IMSI : c'est une variable de premier ordre pour la mesure de friction.
 
 Mesuré sur l'échantillon de contrôle (400 usagers, 7 jours) : part APP 6,8 % (agent), 25,3 % (marchand, ordinaire), 63,8 % (salarié) ; 0 transaction APP sans téléphone lié. Sur des effectifs aussi petits (20 agents), la part de téléphones liés s'écarte de la probabilité déclarée (35 % mesurés pour 50 % déclarés) : c'est du bruit d'échantillonnage, à re-mesurer sur le jeu complet.
+
+### 1.10 Changements de SIM légitimes (service client) — *ajouté en v1.3 (T3-04a)*
+
+Une partie des usagers connaît, au cours de l'horizon, un événement de service client. **Toutes leurs transactions restent `LEGIT`**. L'événement change `current_imsi` et/ou `device_bound` à partir de son instant ; entre deux événements, l'état est stable. Chaque événement est tracé dans un fichier séparé (`user`, `timestamp`, `case`, `old_imsi`, `new_imsi`, `device_bound_before`, `device_bound_after`) ; celui de l'horizon est versionné dans `data/synth/sim_events_v1.csv`.
+
+| Cas | Situation | Effet | Taux déclaré (par usager et par mois) |
+|---|---|---|--:|
+| **a** | carte remplacée (abîmée, passage 4G), même téléphone lié | nouvel IMSI ; `device_bound` reste vrai. Ne concerne que les usagers liés à cet instant | 0,8 % |
+| **b** | téléphone perdu, volé ou cassé, nouvelle carte | nouvel IMSI ; `device_bound` devient faux | 0,5 % |
+| **c** | nouveau téléphone, même carte | IMSI inchangé ; `device_bound` devient vrai | 1,5 % |
+
+**Statut : HYPOTHÈSES DÉCLARÉES** (SUPPOSÉ). Aucun chiffre public fiable n'a été trouvé pour le Cameroun ; aucun de ces taux n'est présenté comme réel. L'ancrage prévu est la question du sondage du propriétaire (« Avez-vous changé de carte SIM ces 12 derniers mois ? Pourquoi : perte / vol / casse / carte abîmée / passage 4G / autre »). **Plage de sensibilité** à explorer en T3-07 : chaque taux de ×0,25 à ×4 (soit 0,2 % à 3,2 % par mois pour a, 0,125 % à 2 % pour b, 0,375 % à 6 % pour c).
+
+**Pourquoi le cas b compte :** vu du réseau, il ressemble exactement à un changement de SIM malveillant (nouvel IMSI, aucun téléphone lié pour prouver l'identité). C'est **voulu** : c'est sur ces usagers honnêtes que retombe la friction de la protection, et c'est elle qu'on mesurera.
+
+**Mécanique** (sous-graine `sim_event` propre à chaque usager) : chaque cas survient au plus une fois dans la fenêtre, avec la probabilité 1 − exp(−taux × mois), à un instant uniforme ; les événements s'appliquent dans l'ordre du temps. Les IMSI de remplacement viennent d'un bloc MSIN distinct (`1000000000` + rang × 10 + ordinal), donc uniques et sans collision avec les IMSI initiaux. Les onze colonnes de base ne dépendent pas des événements (test dédié) ; le canal suit l'état : un usager devenu non lié ne passe plus que par USSD.
+
+**Mesuré sur l'horizon ratifié** (graine 20260925, 1 000 usagers, 182 jours à partir du 2026-10-01, 523 879 transactions) : **137 événements**, dont **24 cas a, 21 cas b, 92 cas c** ; fichier d'événements identique à l'octet sur deux exécutions. Sur l'échantillon de contrôle (400 usagers, 7 jours), un seul événement (cas c, sans effet visible) : attendu, la fenêtre est trop courte.
 ---
 
 ## 2. Mix de population (justifié) — cap ~500 000 transactions
@@ -283,6 +301,12 @@ On **rapporte** les quantiles population, **attendus SOUS** la médiane réelle 
 ---
 
 ## 9. Journal des modifications
+
+### v1.3 — 2026-09-25 (T3-04a, morceau M3)
+
+- Ajout de §1.10 : changements de SIM légitimes en trois cas, taux déclarés avec plage de sensibilité, fichier d'événements séparé ; les onze colonnes de base sont inchangées (vérifié : même SHA-256 de projection que v1.1).
+- §1.9 précisé par la présente section : `current_imsi` et `device_bound` ne sont plus constants par usager, mais stables entre deux événements.
+- Rien n'est supprimé.
 
 ### v1.2 — 2026-09-25 (T3-04a, morceau M2)
 
