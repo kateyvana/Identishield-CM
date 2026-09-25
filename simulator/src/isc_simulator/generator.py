@@ -57,6 +57,9 @@ from isc_simulator.personas import (
 )
 
 LABEL = "LEGIT"
+SOURCE = "generator"
+# Full internal record (PERSONAS v1.4 §1.11). It is NEVER written as such: each output file is a
+# projection of it, so that the ground truth cannot reach the detector by construction.
 FIELDS = (
     "id",
     "user",
@@ -72,7 +75,30 @@ FIELDS = (
     "current_imsi",
     "channel",
     "device_bound",
+    "source",
+    "sim_event_case",
 )
+# Detector view: what an operator observes, the only file the core / PDP consume.
+DETECTOR_FIELDS = (
+    "id",
+    "user",
+    "direction",
+    "amount",
+    "timestamp",
+    "beneficiary",
+    "balance_before",
+    "balance_after",
+    "current_imsi",
+    "channel",
+    "device_bound",
+)
+# Sidecar: ground truth and generator annotations, joined on id only. `archetype` (whose value
+# "victime" tags a target) and `is_new_beneficiary` (computed from generator-only knowledge) are
+# annotations the PDP could never observe, so they live here with the label.
+LABEL_FIELDS = ("id", "label", "source", "archetype", "is_new_beneficiary", "sim_event_case")
+# HLR view of SIM events: what the HLR really emits (IMSI changes only), without the case.
+HLR_EVENT_FIELDS = ("msisdn", "old_imsi", "new_imsi", "timestamp", "agent_id")
+HLR_AGENTS = 20  # customer-service agent pool, drawn independently of the case
 
 
 def sub_seed(master: int, *parts: object) -> int:
@@ -271,6 +297,7 @@ def generate(
     rows: list[tuple] = []
     skipped = 0
     sim_events: list[tuple] = []
+    hlr_events: list[tuple] = []
     for i in range(users):
         arch = by_name[names[i]]
         rk = stream(seed, "known", i)
@@ -288,6 +315,13 @@ def generate(
         rates = SIM_EVENT_RATES_PER_MONTH if sim_event_rates is None else sim_event_rates
         user_events = plan_sim_events(seed, i, start, days, bound, rates)
         sim_events.extend((ev[0], i, *ev[1:]) for ev in user_events)
+        # v1.4: the HLR sees IMSI changes only (cases a, b); the agent is drawn independently of
+        # the case, from its own sub-seed, so that it cannot reveal it.
+        ragent = stream(seed, "hlr_agent", i)
+        for ts_ev, case, old, new, _, _ in user_events:
+            if old != new:
+                agent = f"agent-kyc-{ragent.randrange(1, HLR_AGENTS + 1):02d}"
+                hlr_events.append((ts_ev, i, old, new, agent))
         current, pending = imsi(i), list(user_events)
         for seq, (ts, _, direction, kind) in enumerate(plan_events(seed, i, arch, start, days)):
             if kind == "salary":
@@ -314,8 +348,10 @@ def generate(
             else:
                 j = known_list[rb.randrange(len(known_list))]
                 before, balance = balance, balance + amount
+            applied = []
             while pending and pending[0][0] <= ts:
-                _, _, _, current, _, bound = pending.pop(0)
+                _, case, _, current, _, bound = pending.pop(0)
+                applied.append(case)
             channel = "APP" if bound and rc.random() < arch.p_app_if_bound else "USSD"
             rows.append(
                 (
@@ -332,13 +368,29 @@ def generate(
                     channel,
                     bound,
                     current,
+                    "+".join(applied),
                 )
             )
 
     rows.sort()
     out = []
     for row in rows:
-        ts, i, seq, name, direction, amount, j, is_new, before, after, channel, bound, cur = row
+        (
+            ts,
+            i,
+            seq,
+            name,
+            direction,
+            amount,
+            j,
+            is_new,
+            before,
+            after,
+            channel,
+            bound,
+            cur,
+            cases,
+        ) = row
         out.append(
             {
                 "id": transaction_id(seed, i, seq),
@@ -355,6 +407,9 @@ def generate(
                 "current_imsi": cur,
                 "channel": channel,
                 "device_bound": "true" if bound else "false",
+                "source": SOURCE,
+                # SIM event case(s) attached to the user's first transaction after the event.
+                "sim_event_case": cases,
             }
         )
     facts = {
@@ -374,15 +429,32 @@ def generate(
             }
             for ts, i, case, old, new, b0, b1 in sorted(sim_events)
         ],
+        "hlr_events": [
+            {
+                "msisdn": msisdn(i),
+                "old_imsi": old,
+                "new_imsi": new,
+                "timestamp": datetime.fromtimestamp(ts, UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "agent_id": agent,
+            }
+            for ts, i, old, new, agent in sorted(hlr_events)
+        ],
     }
     return out, facts
 
 
-def write_csv(rows: list[dict], path: Path, fields: tuple[str, ...] = FIELDS) -> str:
-    """Write the sample with fixed '\\n' line endings (byte-stable across OSes); return SHA-256."""
+def sidecar_paths(view: Path) -> tuple[Path, Path]:
+    """<stem>.labels.csv and <stem>.hlr_events.csv beside the detector view."""
+    return view.with_name(view.stem + ".labels.csv"), view.with_name(view.stem + ".hlr_events.csv")
+
+
+def write_csv(rows: list[dict], path: Path, fields: tuple[str, ...] = DETECTOR_FIELDS) -> str:
+    """Write a PROJECTION of the records on `fields` (other keys are dropped on purpose), with
+    fixed '\\n' line endings (byte-stable across OSes); return SHA-256. Defaults to the detector
+    view, so that nothing but observable columns is written unless explicitly asked."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
+        writer = csv.DictWriter(f, fieldnames=fields, lineterminator="\n", extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -394,12 +466,31 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--users", type=int, required=True)
     parser.add_argument("--days", type=int, required=True)
     parser.add_argument("--start", type=date.fromisoformat, required=True, help="YYYY-MM-DD (UTC)")
-    parser.add_argument("--out", type=Path, required=True, help="output CSV")
-    parser.add_argument("--sim-events-out", type=Path, help="optional CSV of legitimate SIM events")
+    parser.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="detector view CSV; <stem>.labels.csv and <stem>.hlr_events.csv are written beside it",
+    )
     args = parser.parse_args(argv)
 
     rows, facts = generate(args.seed, args.users, args.days, args.start)
+    labels_path, hlr_path = sidecar_paths(args.out)
     digest = write_csv(rows, args.out)
+    files = {
+        "vue_detecteur": {"file": args.out.name, "sha256": digest, "fields": list(DETECTOR_FIELDS)},
+        "sidecar_labels": {
+            "file": labels_path.name,
+            "sha256": write_csv(rows, labels_path, LABEL_FIELDS),
+            "fields": list(LABEL_FIELDS),
+        },
+        "hlr_events": {
+            "file": hlr_path.name,
+            "sha256": write_csv(facts["hlr_events"], hlr_path, HLR_EVENT_FIELDS),
+            "fields": list(HLR_EVENT_FIELDS),
+            "events": len(facts["hlr_events"]),
+        },
+    }
     manifest = {
         "personas_version": PERSONAS_VERSION,
         "isc_seed": args.seed,
@@ -409,16 +500,14 @@ def main(argv: list[str] | None = None) -> int:
         "transactions": len(rows),
         "skipped_out": facts["skipped_out"],
         "archetype_users": facts["archetype_users"],
-        "fields": list(FIELDS),
+        "files": files,
         "sha256": digest,
+        # Ground-truth summary (the detector consumes the view file only, never this manifest).
+        "verite_terrain_sim_events": {
+            "total": len(facts["sim_events"]),
+            "per_case": {c: sum(e["case"] == c for e in facts["sim_events"]) for c in "abc"},
+        },
     }
-    counts = {c: sum(e["case"] == c for e in facts["sim_events"]) for c in ("a", "b", "c")}
-    manifest["sim_events"] = {"total": len(facts["sim_events"]), "per_case": counts}
-    if args.sim_events_out is not None:
-        manifest["sim_events"]["file"] = args.sim_events_out.name
-        manifest["sim_events"]["sha256"] = write_csv(
-            facts["sim_events"], args.sim_events_out, SIM_EVENT_FIELDS
-        )
     manifest_path = args.out.with_suffix(".manifest.json")
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -426,7 +515,9 @@ def main(argv: list[str] | None = None) -> int:
         newline="\n",
     )
     print(f"{len(rows)} transactions -> {args.out} (sha256 {digest})")
-    print(f"SIM events: {manifest['sim_events']}")
+    for name, f in files.items():
+        print(f"  {name}: {f['file']} sha256 {f['sha256']}")
+    print(f"  verite-terrain SIM events: {manifest['verite_terrain_sim_events']}")
     return 0
 
 

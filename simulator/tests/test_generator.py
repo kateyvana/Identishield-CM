@@ -1,5 +1,6 @@
 """Legitimate-traffic generator (T3-03): determinism, balances, fictitious MSISDNs, calibration."""
 
+import csv
 import json
 import re
 import uuid
@@ -8,7 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from isc_simulator.generator import FIELDS, generate, write_csv
+from isc_simulator.generator import (
+    DETECTOR_FIELDS,
+    FIELDS,
+    HLR_EVENT_FIELDS,
+    LABEL_FIELDS,
+    generate,
+    write_csv,
+)
 from isc_simulator.personas import (
     AGENT_AMOUNT_KNOTS,
     BASE_HOUR_WEIGHTS,
@@ -231,13 +239,110 @@ def test_sim_events_leave_the_base_columns_untouched(dense):
     assert [[r[k] for k in base] for r in quiet] == [[r[k] for k in base] for r in dense[0]]
 
 
-def test_cli_writes_the_sim_events_file(tmp_path):
-    from isc_simulator.generator import SIM_EVENT_FIELDS, main
+# --- PERSONAS v1.4: detector view, label sidecar, HLR events (anti-leak) ------------------------
 
-    out, events = tmp_path / "flow.csv", tmp_path / "sim_events.csv"
-    assert main(["--seed", "7", "--users", "300", "--days", "60", "--start", "2026-10-01",
-                 "--out", str(out), "--sim-events-out", str(events)]) == 0  # fmt: skip
-    header = events.read_text(encoding="utf-8").splitlines()[0]
-    assert header == ",".join(SIM_EVENT_FIELDS)
-    manifest = json.loads(out.with_suffix(".manifest.json").read_text(encoding="utf-8"))
-    assert manifest["sim_events"]["file"] == "sim_events.csv"
+ORACLE_NAMES = {
+    "label",
+    "labels",
+    "case",
+    "sim_event_case",
+    "legit",
+    "fraud",
+    "ground_truth",
+    "intent",
+    "archetype",
+    "is_new_beneficiary",
+    "source",
+}
+ORACLE_PATTERN = re.compile(
+    r"label|case|legit|fraud|ground.?truth|intent|archetype|victim", re.IGNORECASE
+)
+
+
+def run_cli(tmp_path, name="flow", users="300", days="60"):
+    from isc_simulator.generator import main
+
+    out = tmp_path / f"{name}.csv"
+    argv = ["--seed", str(SEED), "--users", users, "--days", days, "--start", "2026-10-01"]
+    assert main([*argv, "--out", str(out)]) == 0
+    labels = tmp_path / f"{name}.labels.csv"
+    hlr = tmp_path / f"{name}.hlr_events.csv"
+    return out, labels, hlr
+
+
+def header(path):
+    return path.read_text(encoding="utf-8").splitlines()[0].split(",")
+
+
+def read_rows(path):
+    with open(path, encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+@pytest.fixture(scope="module")
+def cli_files(tmp_path_factory):
+    return run_cli(tmp_path_factory.mktemp("cli"))
+
+
+# @covers EAR-03
+def test_detector_view_and_sidecar_share_only_the_join_key(cli_files):
+    view, labels, _ = cli_files
+    assert set(DETECTOR_FIELDS) & set(LABEL_FIELDS) == {"id"}
+    assert set(header(view)) & set(header(labels)) == {"id"}
+    assert header(view) == list(DETECTOR_FIELDS)
+    assert header(labels) == list(LABEL_FIELDS)
+
+
+# @covers EAR-03
+def test_no_oracle_column_in_the_detector_or_hlr_views(cli_files):
+    view, _, hlr = cli_files
+    for columns in (header(view), header(hlr), DETECTOR_FIELDS, HLR_EVENT_FIELDS):
+        assert not set(columns) & ORACLE_NAMES, columns  # by list
+        assert not [c for c in columns if ORACLE_PATTERN.search(c)], columns  # by regex
+
+
+def test_no_ground_truth_value_leaks_into_the_detector_view(cli_files):
+    text = cli_files[0].read_text(encoding="utf-8")
+    for value in ("LEGIT", "FRAUD", "generator", "ordinaire", "salarie", "victime", "marchand"):
+        assert value not in text, value
+
+
+def test_every_view_row_has_exactly_one_sidecar_row(cli_files):
+    view, labels, _ = cli_files
+    view_ids = [r["id"] for r in read_rows(view)]
+    label_ids = [r["id"] for r in read_rows(labels)]
+    assert len(set(view_ids)) == len(view_ids) and len(set(label_ids)) == len(label_ids)
+    assert set(view_ids) == set(label_ids)
+    assert {r["label"] for r in read_rows(labels)} == {"LEGIT"}
+    assert {r["source"] for r in read_rows(labels)} == {"generator"}
+
+
+def test_hlr_events_carry_imsi_changes_only_and_no_case(dense):
+    facts = dense[1]
+    changes = [e for e in facts["sim_events"] if e["case"] in ("a", "b")]
+    assert len(facts["hlr_events"]) == len(changes), "case c is not an HLR event"
+    for e in facts["hlr_events"]:
+        assert set(e) == set(HLR_EVENT_FIELDS)
+        assert e["old_imsi"] != e["new_imsi"]
+        assert re.fullmatch(r"agent-kyc-\d{2}", e["agent_id"])
+
+
+def test_sim_event_case_is_attached_to_the_first_transaction_after_the_event(dense):
+    rows, facts = dense
+    for e in facts["sim_events"]:
+        after = [
+            r
+            for r in rows
+            if r["user"] == e["user"] and epoch_of(r["timestamp"]) >= epoch_of(e["timestamp"])
+        ]
+        if after:  # an event after the user's last transaction has no row to attach to
+            assert e["case"] in after[0]["sim_event_case"].split("+")
+
+
+def test_the_three_files_are_byte_identical_for_the_same_seed(tmp_path):
+    first = run_cli(tmp_path / "one")
+    second = run_cli(tmp_path / "two")
+    for a, b in zip(first, second, strict=True):
+        assert a.read_bytes() == b.read_bytes(), a.name
+    manifest = json.loads(first[0].with_suffix(".manifest.json").read_text(encoding="utf-8"))
+    assert {f["file"] for f in manifest["files"].values()} == {p.name for p in first}

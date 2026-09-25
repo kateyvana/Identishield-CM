@@ -102,6 +102,13 @@ def velocity_share(times_by_user: dict[str, list[int]], count: int, window: int)
 def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
     with open(sample, encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
+    # v1.4: annotations (archetype, is_new_beneficiary, label) live in the sidecar, joined on id.
+    with open(sample.with_name(sample.stem + ".labels.csv"), encoding="utf-8", newline="") as f:
+        labels = {r["id"]: r for r in csv.DictReader(f)}
+    if set(labels) != {r["id"] for r in rows}:
+        raise ValueError("detector view and label sidecar do not join one-to-one on id")
+    for r in rows:
+        r.update({k: v for k, v in labels[r["id"]].items() if k != "id"})
     facts = json.loads(manifest.read_text(encoding="utf-8"))
     ref = json.loads(etalon.read_text(encoding="utf-8"))
     night_hours, vel_count, vel_window = ruleset_windows(ruleset)

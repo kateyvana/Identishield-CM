@@ -1,7 +1,7 @@
 # Échantillon de contrôle — trafic légitime v1
 
-- **Fichier** : `data/synth/echantillon_legit_v1.csv` (SHA-256 `264c08dea222e848dd64775a5e941efae945f953a05dc2ca8f355deefcf0b5d1`)
-- **Graine** : ISC_SEED = 20260925 ; personas v1.3
+- **Fichier** : `data/synth/echantillon_legit_v1.csv` (SHA-256 `bee8e47ef0c5b1ca432dec5e1a65e3e0b2f742ac9ef2f84cc436aea5881e672b`)
+- **Graine** : ISC_SEED = 20260925 ; personas v1.4
 - **Population** : 400 usagers, 7 jours à partir du 2026-10-25 → **8460 transactions**, toutes étiquetées `LEGIT`
 - **Étalon** : `profil_reel_v1.json` (source `84cd01ae…`)
 

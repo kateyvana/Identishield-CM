@@ -1,7 +1,7 @@
-# Modèle de personas de la population de synthèse — v1.3
+# Modèle de personas de la population de synthèse — v1.4
 
-- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2) ; 2026-09-25 (v1.3)
-- **Version** : **v1.3** — changements de SIM légitimes (T3-04a) ; ~~**v1.2**~~ champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
+- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2) ; 2026-09-25 (v1.3) ; 2026-09-26 (v1.4)
+- **Version** : **v1.4** — vues détecteur / sidecar / HLR, anti-fuite (T3-04a) ; ~~**v1.3**~~ changements de SIM légitimes (T3-04a) ; ~~**v1.2**~~ champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
 - **Implémentation** : `simulator/src/isc_simulator/personas.py` (paramètres) et `generator.py` (générateur, T3-03)
 - **Étalon de référence** : [profil_reel_v1.json](profil_reel_v1.json) (T3-01, SHA-256 du CSV source `84cd01ae…83401fb1`, 26 989 transactions)
 - **Objet** : définir la population synthétique — archétypes, lois, mix, graphe de bénéficiaires, cibles de plausibilité et graine — qui produira ~500 000 transactions (T3-05), sera validée contre l'étalon (T3-06) et servira de base au calibrage des seuils (T3-07).
@@ -171,6 +171,24 @@ Une partie des usagers connaît, au cours de l'horizon, un événement de servic
 **Mécanique** (sous-graine `sim_event` propre à chaque usager) : chaque cas survient au plus une fois dans la fenêtre, avec la probabilité 1 − exp(−taux × mois), à un instant uniforme ; les événements s'appliquent dans l'ordre du temps. Les IMSI de remplacement viennent d'un bloc MSIN distinct (`1000000000` + rang × 10 + ordinal), donc uniques et sans collision avec les IMSI initiaux. Les onze colonnes de base ne dépendent pas des événements (test dédié) ; le canal suit l'état : un usager devenu non lié ne passe plus que par USSD.
 
 **Mesuré sur l'horizon ratifié** (graine 20260925, 1 000 usagers, 182 jours à partir du 2026-10-01, 523 879 transactions) : **137 événements**, dont **24 cas a, 21 cas b, 92 cas c** ; fichier d'événements identique à l'octet sur deux exécutions. Sur l'échantillon de contrôle (400 usagers, 7 jours), un seul événement (cas c, sans effet visible) : attendu, la fenêtre est trop courte.
+
+### 1.11 Vues et sidecar : la vérité-terrain hors du flux détecteur — *ajouté en v1.4 (T3-04a)*
+
+**Règle cardinale** : le flux que consommeront le cœur et le PDP ne contient **aucune** colonne de vérité-terrain ni d'annotation du générateur. Le générateur garde un enregistrement interne complet, mais n'écrit que des **projections** de celui-ci, dans trois fichiers :
+
+| Fichier | Contenu | Qui le lit |
+|---|---|---|
+| `<jeu>.csv` — **vue détecteur** | `id, user, direction, amount, timestamp, beneficiary, balance_before, balance_after, current_imsi, channel, device_bound` | le cœur / le PDP (seule vue autorisée) |
+| `<jeu>.labels.csv` — **sidecar** | `id` (clé de jointure), `label` (`LEGIT`), `source` (`generator`), `archetype`, `is_new_beneficiary`, `sim_event_case` (a, b ou c, rattaché à la première transaction qui suit l'événement) | l'évaluation seulement |
+| `<jeu>.hlr_events.csv` — **vue HLR** | `msisdn, old_imsi, new_imsi, timestamp, agent_id` : format d'un événement HLR réel, **sans le cas** | le cœur / le PDP |
+
+**Ce qui a quitté le flux et pourquoi.** `label` : vérité-terrain. `archetype` : annotation du générateur, dont la valeur `victime` désigne une cible. `is_new_beneficiary` : calculé à partir des bénéficiaires « connus » initiaux, qui n'apparaissent jamais dans le flux ; le PDP devra établir lui-même la nouveauté à partir de l'historique qu'il observe.
+
+**Vue HLR.** Le PDP a le droit de savoir qu'un IMSI a changé, pas qu'il s'agissait d'un changement légitime. La vue HLR ne contient donc que les changements d'IMSI (cas a et b ; le cas c, nouvel appareil sur la même carte, n'est pas un événement HLR). Elle ne donne ni le cas ni de motif, qui trahiraient la raison. L'`agent_id` (vivier de 20 agents fictifs) est tiré par une sous-graine propre, **indépendamment du cas**. Le fichier d'événements de v1.3 (`sim_events_v1.csv`, qui portait le cas) est remplacé par cette vue plus le sidecar ; il reste dans l'historique git.
+
+**Garanties testées.** (1) colonnes(vue détecteur) ∩ colonnes(sidecar) = {`id`} ; (2) aucune colonne de la vue détecteur ni de la vue HLR ne porte un nom oracle (liste : label, case, legit, fraud, ground_truth, intent, archetype, is_new_beneficiary, source ; plus une expression régulière) ; (3) aucune valeur de vérité-terrain dans la vue détecteur (LEGIT, noms d'archétypes…) ; (4) jointure un pour un sur `id` ; (5) vue HLR = changements d'IMSI seulement ; (6) les trois fichiers sont identiques à l'octet pour une même graine ; le manifeste liste leurs trois empreintes.
+
+**Échantillon de contrôle régénéré dans ce format** : ses hashes changent, c'est attendu, puisque les colonnes ont quitté la vue. Vue détecteur `bee8e47e…672b`, sidecar `f3f951ba…65c1`, vue HLR `343fd48f…5a02` (en-tête seul : son unique événement est un cas c). Les statistiques de contrôle, recalculées par jointure avec le sidecar, sont inchangées.
 ---
 
 ## 2. Mix de population (justifié) — cap ~500 000 transactions
@@ -301,6 +319,11 @@ On **rapporte** les quantiles population, **attendus SOUS** la médiane réelle 
 ---
 
 ## 9. Journal des modifications
+
+### v1.4 — 2026-09-26 (T3-04a, morceau M4)
+
+- Ajout de §1.11 : séparation en trois vues (détecteur, sidecar, HLR) ; `label`, `archetype` et `is_new_beneficiary` quittent le flux ; le cas des événements SIM passe dans le sidecar ; la vue HLR remplace `sim_events_v1.csv` de v1.3 (conservé dans l'historique git).
+- Rien n'est supprimé de ce document.
 
 ### v1.3 — 2026-09-25 (T3-04a, morceau M3)
 
