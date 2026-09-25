@@ -1,6 +1,6 @@
 # Échantillon de contrôle — trafic légitime v1
 
-- **Fichier** : `data/synth/echantillon_legit_v1.csv` (SHA-256 `b75111922bd2c3084f6a85c3cca63948a349ae538dff20ae248cefa8fe796b3f`)
+- **Fichier** : `data/synth/echantillon_legit_v1.csv` (SHA-256 `47ca409c776530ce76c0677d93434f4940b679041f63bee40aa2feb118d93b99`)
 - **Graine** : ISC_SEED = 20260925 ; personas v1.1
 - **Population** : 400 usagers, 7 jours à partir du 2026-10-25 → **8460 transactions**, toutes étiquetées `LEGIT`
 - **Étalon** : `profil_reel_v1.json` (source `84cd01ae…`)
@@ -62,7 +62,7 @@ Population entière (informatif, non forcé) : p10 = 230.0, p25 = 678.75, p50 = 
 
 ## e. Contrôles
 
-- MSISDN hors de 699000000–699009999 (usagers et bénéficiaires) : **0**.
+- MSISDN hors de 677000000–677009999 (usagers et bénéficiaires) : **0**.
 - Auto-transferts : 0. Étiquettes présentes : LEGIT.
 
 ## f. Vélocité — rapportée, NON alignée sur le réel (PERSONAS §5.4)

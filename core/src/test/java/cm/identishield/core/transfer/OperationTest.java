@@ -47,7 +47,7 @@ import org.mockito.InOrder;
  */
 class OperationTest {
 
-  private static final String MSISDN = "699000001";
+  private static final String MSISDN = "677000001";
   private static final String COUNTERPARTY = "agent-000001";
   private static final long CAP_PROB = 25_000;
 

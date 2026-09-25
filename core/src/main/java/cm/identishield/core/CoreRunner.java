@@ -97,8 +97,8 @@ public class CoreRunner implements ApplicationRunner {
   private void ussd() {
     accountBootstrap.ensureSeedAccounts();
     pdp.warmup(); // l'etape finale appelle /evaluate
-    String from = env("FROM_MSISDN", "699000001");
-    String beneficiary = env("BENEFICIARY_MSISDN", "699000002");
+    String from = env("FROM_MSISDN", "677000001");
+    String beneficiary = env("BENEFICIARY_MSISDN", "677000002");
     String amount = env("AMOUNT_XAF", "15000");
 
     UssdService.Interaction dial = ussd.dial(from);
@@ -126,8 +126,8 @@ public class CoreRunner implements ApplicationRunner {
   private void transfer() {
     accountBootstrap.ensureSeedAccounts();
     pdp.warmup(); // etablit la connexion persistante avant l'appel /evaluate (JVM froide)
-    String from = env("FROM_MSISDN", "699000001");
-    String beneficiary = env("BENEFICIARY_MSISDN", "699000002");
+    String from = env("FROM_MSISDN", "677000001");
+    String beneficiary = env("BENEFICIARY_MSISDN", "677000002");
     long amount = Long.parseLong(env("AMOUNT_XAF", "15000")); // montant de demo (non-parametre)
     TransferResult r = transfers.transferP2P(from, beneficiary, amount, "USSD");
     System.out.println("TRANSFER_STATE=" + r.state());
@@ -148,7 +148,7 @@ public class CoreRunner implements ApplicationRunner {
    */
   private void hlr() {
     accountBootstrap.ensureSeedAccounts();
-    String msisdn = env("HLR_MSISDN", "699000001");
+    String msisdn = env("HLR_MSISDN", "677000001");
     hlr.ensureSubscriber(msisdn, env("HLR_INITIAL_IMSI", "624010000000001"));
     String newImsi = env("HLR_NEW_IMSI", "");
     if (!newImsi.isBlank()) {
@@ -178,7 +178,7 @@ public class CoreRunner implements ApplicationRunner {
     System.out.println(
         "HLR_EVALUATE_REQUEST="
             + transfers.evaluateRequestPreview(
-                msisdn, env("BENEFICIARY_MSISDN", "699000002"), 15000, "USSD"));
+                msisdn, env("BENEFICIARY_MSISDN", "677000002"), 15000, "USSD"));
     System.exit(0);
   }
 
@@ -191,7 +191,7 @@ public class CoreRunner implements ApplicationRunner {
    */
   private void otp() {
     accountBootstrap.ensureSeedAccounts();
-    String msisdn = env("OTP_MSISDN", "699000001");
+    String msisdn = env("OTP_MSISDN", "677000001");
     hlr.ensureSubscriber(msisdn, env("OTP_INITIAL_IMSI", "624010000000001"));
     switch (env("OTP_ACTION", "scenario")) {
       case "issue" -> {
@@ -222,7 +222,7 @@ public class CoreRunner implements ApplicationRunner {
    */
   private void notification() {
     accountBootstrap.ensureSeedAccounts();
-    String msisdn = env("NOTIF_MSISDN", "699000001");
+    String msisdn = env("NOTIF_MSISDN", "677000001");
     hlr.ensureSubscriber(msisdn, env("NOTIF_INITIAL_IMSI", "624010000000001"));
     switch (env("NOTIF_ACTION", "emit")) {
       case "list" -> {

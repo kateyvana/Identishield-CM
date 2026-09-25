@@ -33,8 +33,8 @@ CONSOLE = os.environ.get("ISC_CONSOLE_URL", "http://localhost:3000")
 PG = "isc-postgres"
 NET = "isc-net"
 
-VICTIM = "699000007"
-BENEFICIARY = "699000008"
+VICTIM = "677000007"
+BENEFICIARY = "677000008"
 VICTIM_IMSI = "624010000000010"  # ancien appareil de la victime
 ATTACKER_IMSI = "624010000000666"  # SIM de l'attaquant
 INITIAL_BALANCE = 500000

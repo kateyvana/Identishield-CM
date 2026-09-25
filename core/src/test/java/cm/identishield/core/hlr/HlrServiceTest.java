@@ -24,7 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
  */
 class HlrServiceTest {
 
-  private static final String MSISDN = "699000001";
+  private static final String MSISDN = "677000001";
   private static final Instant NOW = Instant.parse("2026-09-13T10:00:00Z");
 
   private final HlrRepository repo = mock(HlrRepository.class);

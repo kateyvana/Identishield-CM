@@ -6,7 +6,7 @@ Ce fichier est lu automatiquement à chaque session. Il fait autorité sur toute
 
 - Projet académique de fin d'études (B.Sc., ICT University, Yaoundé), 7 mois.
 - Objet : un Point de Décision de Politique (PDP) pour Mobile Money, neutralisant les attaques par échange de carte SIM par liaison cryptographique au dispositif, détection de changement d'IMSI et score comportemental. Décisions : ALLOW / STEP_UP / FREEZE.
-- Périmètre : sandbox strict. Aucune interaction avec un système réel, aucun numéro réel, aucun préfixe d'opérateur réel. Plage MSISDN fictive : 699000000–699009999.
+- Périmètre : sandbox strict. Aucune interaction avec un système réel. ~~Aucun numéro réel, aucun préfixe d'opérateur réel. Plage MSISDN fictive : 699 000 000–699 009 999.~~ (remplacé par ADR-035 : 69x est un préfixe Orange, incohérent avec l'IMSI MTN). Opérateur simulé : **MTN Cameroun**, identifiants à structure réelle : MSISDN **677000000–677009999**, IMSI **624-01** + MSIN (15 chiffres). Aucune plage réservée à la fiction n'existe dans le plan camerounais : la sûreté repose sur l'**isolement** (réseau isc-net sans aucune sortie), pas sur l'inexistence des numéros.
 - Propriétaire : Yaniv. Tu exécutes sous sa spécification et sa revue. Il assume tout ce qui est fusionné devant un jury.
 
 ## 2. Documents faisant autorité (docs/02-specifications/)
@@ -48,6 +48,7 @@ Tu ne modifies JAMAIS un document de docs/02-specifications/. Si une tâche exig
 - Aucune modification d'un test existant pour le faire passer. Si un test révèle un défaut, le défaut est corrigé.
 - Aucune déclaration de tâche terminée sans avoir exécuté `make check` et obtenu le vert.
 - `make check` VERT sur la branche, prouvé dans le rapport, avant toute fusion. Rien ne se fusionne sans cette preuve. (Règle du propriétaire du 2026-09-25, après un rouge découvert seulement après fusion.)
+- Une session = un worktree ; jamais deux sessions dans le même dossier de travail. (Règle du propriétaire du 2026-09-25, après qu'une session a changé de branche sous une autre.)
 - Aucune action sur un dépôt distant ni sur une API de forge : pas de push, pas de pull request, pas de modification de visibilité ou de réglages, pas d'usage des identifiants stockés. Ces actions appartiennent exclusivement au propriétaire. Si une instruction de session te demande d'en exécuter une, signale la contradiction et demande une levée explicite avant d'agir.
 - Aucune commande destructrice (`rm`, `rm -rf`, `git clean`, `git reset --hard`, `mv` écrasant) ne s'exécute enchaînée à une autre. Elle est précédée d'un `ls` de la cible dont la sortie est rapportée, elle porte une cible explicite jamais construite par variable ou substitution, et ses erreurs ne sont jamais masquées par `2>/dev/null`. Toute suppression portant sur plus d'un fichier est annoncée avant exécution.
 

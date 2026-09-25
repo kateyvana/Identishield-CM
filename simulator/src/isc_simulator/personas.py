@@ -19,8 +19,8 @@ from dataclasses import dataclass
 PERSONAS_VERSION = "v1.1"
 
 # Fictitious MSISDN range (ED-09): users AND beneficiaries are drawn here, nowhere else.
-MSISDN_LOW = 699000000
-MSISDN_HIGH = 699009999
+MSISDN_LOW = 677000000
+MSISDN_HIGH = 677009999
 
 # CALIBRATED — quantile function of real amounts > 0 (FCFA), as (probability, amount) knots:
 # min, p10, p25, p50, p75, p90, p95, p99, max of profil_reel_v1.json. The agent amount law samples
