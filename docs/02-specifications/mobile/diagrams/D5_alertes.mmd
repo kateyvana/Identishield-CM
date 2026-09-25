@@ -1,0 +1,26 @@
+%%{init: {'theme':'neutral','sequence':{'wrap':true,'width':230,'messageFontSize':17,'actorFontSize':17,'noteFontSize':16,'actorMargin':40,'messageMargin':30}}}%%
+sequenceDiagram
+    autonumber
+    participant H as HLR (opérateur)
+    participant S as Cœur (API mobile)
+    participant P as PDP
+    participant A as App (téléphone lié)
+    actor U as Titulaire
+    participant J as Journal d'audit
+    H->>S: événement : IMSI changé sur le numéro
+    S->>J: SIM_CHANGED
+    S->>S: alerte créée pour le compte
+    A->>S: GET /alerts (interrogation périodique)
+    S-->>A: [{type: SIM_CHANGED, quand}]
+    A->>U: « La carte SIM de votre numéro a été changée à 14 h 02. C'est vous ? »
+    alt « Oui, c'est moi »
+        U->>A: Oui + empreinte
+        A->>S: POST /alerts/{id}/ack (signé)
+        S->>J: SIM_CHANGE_ACKNOWLEDGED
+    else « Non, ce n'est pas moi »
+        U->>A: Non + empreinte
+        A->>S: POST /alerts/{id}/not-me (signé)
+        S->>P: compte → FROZEN (état existant) — réenrôlement gelé (REENROL_FREEZE)
+        S->>J: NOT_ME, ACCOUNT_FROZEN
+        S-->>A: « Votre compte est protégé. »
+    end

@@ -1,0 +1,43 @@
+%%{init: {'theme':'neutral','sequence':{'wrap':true,'width':230,'messageFontSize':17,'actorFontSize':17,'noteFontSize':16,'actorMargin':40,'messageMargin':30}}}%%
+sequenceDiagram
+    autonumber
+    actor U as Personne (titulaire ou attaquant)
+    participant A as App (nouveau téléphone)
+    participant K as Puce (nouveau téléphone)
+    participant S as Cœur (API mobile)
+    participant P as PDP (RecoveryCodeStore, EnrolmentThrottle)
+    participant D0 as Téléphone actuellement lié
+    participant J as Journal d'audit
+    U->>A: numéro + PIN
+    A->>S: POST /enrolment/start {msisdn, pin} (aucune signature : ce téléphone n'a pas de clé)
+    S->>S: compte trouvé, PIN vérifié
+    S->>P: clé enregistrée ? signature valide ?
+    P-->>S: clé enregistrée, pas de signature valide → autre téléphone
+    S->>J: ENROL_START (compte DÉJÀ LIÉ)
+    S-->>A: {enrolment_id, next: RECOVERY}
+    A->>U: écran non capturable : « Entrez votre clé de récupération »
+    U->>A: clé de récupération
+    A->>S: POST /enrolment/recover {enrolment_id, code}
+    S->>P: vérifier le code (haché salé) — compteur par appareil / origine
+    alt code faux
+        P-->>S: refus — au-delà de REENROL_ATTEMPTS : délai croissant (LOCK_BASE → LOCK_MAX)
+        S->>J: REENROL_FAILED
+        S-->>A: refus (réponse uniforme, Retry-After si freiné)
+        A->>U: « Clé incorrecte. Réessayez dans X. Votre compte n'est pas bloqué. »
+        S-->>D0: ALERTE (dès ALERT_REENROL échecs) : « Quelqu'un tente de lier un nouveau téléphone » + « Ce n'est pas moi »
+    else code juste
+        P-->>S: OK
+        S-->>A: {next: BIND, challenge}
+        Note over A,K: Liaison SEULEMENT après validation de la clé de récupération
+        A->>K: générer NOUVELLE paire de clés avec le défi
+        K-->>A: clé publique + attestation
+        U->>A: empreinte
+        A->>S: POST /enrolment/complete {clé publique, attestation, signature(défi)}
+        S->>P: remplacer la clé : ancienne RÉVOQUÉE, nouvelle enregistrée (une seule active)
+        P->>P: NOUVELLE clé de récupération (l'ancienne ne vaut plus rien)
+        P-->>S: {nouvelle clé de récupération (une fois), device_id}
+        S->>J: DEVICE_REBOUND, KEY_REVOKED, RECOVERY_ROTATED
+        S-->>D0: NOTIFICATION INFORMATIVE (EF-47) : « Un nouveau téléphone a été lié » — aucune action
+        S-->>A: {nouvelle clé de récupération (une fois), device_id}
+        A->>U: clé affichée → confirmation → Accueil
+    end

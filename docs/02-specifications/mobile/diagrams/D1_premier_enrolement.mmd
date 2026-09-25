@@ -1,0 +1,38 @@
+%%{init: {'theme':'neutral','sequence':{'wrap':true,'width':230,'messageFontSize':17,'actorFontSize':17,'noteFontSize':16,'actorMargin':40,'messageMargin':30}}}%%
+sequenceDiagram
+    autonumber
+    actor U as Usager
+    participant A as App
+    participant K as Puce du téléphone (Keystore)
+    participant S as Cœur (API mobile)
+    participant P as PDP (DeviceRegistry, RecoveryCodeStore)
+    participant N as Réseau SMS (isc-sim)
+    participant J as Journal d'audit
+    U->>A: numéro + PIN
+    A->>S: POST /enrolment/start {msisdn, pin}
+    S->>S: compte trouvé, PIN vérifié
+    S->>P: ce compte a-t-il une clé enregistrée ?
+    P-->>S: non (compte jamais lié)
+    S->>J: ENROL_START
+    S->>N: OTP vers l'IMSI courant du numéro
+    N-->>U: SMS contenant l'OTP
+    S-->>A: {enrolment_id, next: OTP}
+    U->>A: OTP
+    A->>S: POST /enrolment/otp {enrolment_id, otp}
+    S->>S: OTP vérifié (empreinte, durée limitée)
+    S-->>A: {next: BIND, challenge}
+    Note over A,K: Liaison SEULEMENT après validation de l'OTP
+    A->>K: générer paire de clés EC P-256 (privée non exportable) avec le défi
+    K-->>A: clé publique + chaîne d'attestation
+    U->>A: empreinte (biométrie)
+    A->>S: POST /enrolment/complete {clé publique, attestation, signature(défi)}
+    S->>P: enregistrer la clé (attestation vérifiée, une seule active)
+    P->>P: clé de récupération générée, HACHÉ SALÉ stocké seulement
+    P-->>S: {clé de récupération (une fois), device_id}
+    S->>J: DEVICE_BOUND, RECOVERY_ISSUED
+    S-->>A: {clé de récupération (une fois), device_id}
+    A->>U: écran non capturable : clé de récupération
+    U->>A: confirmation (4 caractères demandés)
+    A->>S: POST /recovery-code/confirm
+    S-->>A: OK
+    A->>U: Accueil — « Appareil protégé »

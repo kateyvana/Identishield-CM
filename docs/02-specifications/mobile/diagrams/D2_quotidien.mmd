@@ -1,0 +1,23 @@
+%%{init: {'theme':'neutral','sequence':{'wrap':true,'width':230,'messageFontSize':17,'actorFontSize':17,'noteFontSize':16,'actorMargin':40,'messageMargin':30}}}%%
+sequenceDiagram
+    autonumber
+    actor U as Usager
+    participant A as App
+    participant K as Puce (Keystore)
+    participant S as Cœur (API mobile)
+    participant P as PDP (SignatureVerifier)
+    U->>A: ouvre l'app (numéro mémorisé)
+    A->>S: GET /session/challenge {device_id}
+    S-->>A: {challenge}
+    U->>A: PIN (ou empreinte)
+    A->>K: signer le défi avec la clé privée
+    K-->>A: signature
+    A->>S: POST /session {msisdn, pin, device_id, signature}
+    S->>S: PIN vérifié
+    S->>P: signature valide pour la clé enregistrée ?
+    P-->>S: oui → c'est le téléphone lié
+    S-->>A: {jeton de session court}
+    A->>S: GET /account, GET /alerts (jeton)
+    S-->>A: solde, alertes
+    A->>U: Accueil
+    Note over U,P: Aucun OTP, aucune liaison : la clé existe déjà.

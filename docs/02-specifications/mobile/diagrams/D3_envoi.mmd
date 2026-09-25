@@ -1,0 +1,35 @@
+%%{init: {'theme':'neutral','sequence':{'wrap':true,'width':230,'messageFontSize':17,'actorFontSize':17,'noteFontSize':16,'actorMargin':40,'messageMargin':30}}}%%
+sequenceDiagram
+    autonumber
+    actor U as Usager
+    participant A as App
+    participant K as Puce (Keystore)
+    participant S as Cœur (API mobile)
+    participant P as PDP
+    participant J as Journal d'audit
+    U->>A: bénéficiaire, montant
+    A->>S: GET /beneficiaries/{msisdn}/holder
+    S-->>A: {nom du titulaire, nouveau_bénéficiaire: oui/non}
+    A->>U: écran de confirmation (nom, montant, badge « nouveau »)
+    U->>A: PIN + empreinte
+    A->>S: POST /nonce
+    S-->>A: {nonce à usage unique}
+    A->>K: signer la chaîne ADR-018 : accountId|type|amountXaf|beneficiaryId|nonce
+    K-->>A: signature
+    A->>S: POST /transfers {chaîne, signature, pin}
+    S->>S: PIN vérifié, solde vérifié
+    S->>P: /evaluate (contrat INCHANGÉ) + signature + nonce
+    P->>P: SignatureVerifier (veto) — nonce jamais vu — règles
+    P-->>S: REJECTED | ALLOW | STEP_UP | FREEZE
+    S->>J: DECISION (chaînée)
+    alt REJECTED (signature ou nonce invalide)
+        S-->>A: REJECTED (motif)
+    else ALLOW
+        S->>S: débit
+        S-->>A: EXECUTED
+    else STEP_UP (paramètre DEFER)
+        S-->>A: DEFERRED : exécution différée, annulable
+    else FREEZE
+        S-->>A: FROZEN
+    end
+    A->>U: résultat

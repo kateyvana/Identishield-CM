@@ -8,7 +8,8 @@ Convention (CLAUDE.md §5) :
 Source machine des identifiants valides : `docs/requirements-index.csv` (index
 versionné des 117 exigences du SRS ; le .docx reste la référence humaine, mais
 ses identifiants sont éclatés dans les cellules et ne s'extraient pas de façon
-fiable — d'où l'index). Les cas d'abus AC-01..13 (ISC-TM) sont valides d'office.
+fiable — d'où l'index). Les cas d'abus AC-01..17 (ISC-TM ; AC-14..16 depuis la
+v1.2, AC-17 proposé par ISC-AMD-02 v1.1) sont valides d'office.
 
 PORTE : la génération échoue (sortie non nulle) si un marqueur référence
   - une exigence inexistante dans l'index, ou
@@ -52,7 +53,7 @@ def load_index():
                     retired.add(idv)
                 else:
                     active.add(idv)
-    active |= {f"AC-{n:02d}" for n in range(1, 14)}  # cas d'abus (ISC-TM)
+    active |= {f"AC-{n:02d}" for n in range(1, 18)}  # cas d'abus (ISC-TM, AMD-02)
     return active, retired
 
 
