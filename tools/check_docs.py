@@ -19,6 +19,10 @@ from pathlib import Path
 
 DOCS = Path("docs")
 ADR_DIR = DOCS / "01-decisions"
+# Parite FR/EN volontairement sur le couple v1.2 : il n'existe pas de SRS-EN posterieur
+# (FR en v1.4 le 2026-09-25). Dette suivie par la carte « SRS-EN ». Ne pas passer SRS_FR
+# sur une version FR plus recente tant que l'EN correspondant n'existe pas (decision du
+# proprietaire du 2026-09-25, ISC-AMD-02).
 SRS_FR = DOCS / "02-specifications" / "ISC-SRS-FR_Cahier_des_charges_v1.2.docx"
 SRS_EN = DOCS / "02-specifications" / "ISC-SRS-EN_Software_Requirements_Specification_v1.2.docx"
 

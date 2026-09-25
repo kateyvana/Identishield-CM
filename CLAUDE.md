@@ -15,7 +15,7 @@ Lis-les avant toute tâche qui les concerne. Ordre de priorité en cas de doute 
 
 | Document | Contenu |
 |---|---|
-| ISC-TM ~~v1.1~~ v1.2.1 (`02-modele-de-menace-v1.2.md`) | Modèle de menace, ~~13 cas d'abus AC-01..AC-13~~ 16 cas d'abus AC-01..AC-16 (AC-17 proposé par ISC-AMD-02 v1.1), paramètres nommés (valeurs dans `config/ruleset.yaml`, SRS v1.4) |
+| ISC-TM ~~v1.1~~ ~~v1.2.1~~ v1.3 (`02-modele-de-menace-v1.3.md`) | Modèle de menace, ~~13 cas d'abus AC-01..AC-13~~ 16 cas d'abus AC-01..AC-16, scénarios S-01..S-21 (dont menaces mobiles S-14..S-21), paramètres nommés (valeurs dans `config/ruleset.yaml`, SRS v1.4) |
 | ISC-SRS-FR ~~v1.2~~ v1.4 | ~~117 exigences~~ 136 identifiants dont 128 actifs (index `docs/requirements-index.csv`) : EF, ES, ENF, EAR, EI, ED |
 | ISC-ADD v1.0 | 21 scénarios de qualité SQ-xx, 5 spikes |
 | ISC-SAD ~~v1.0~~ v1.3 | Conteneurs, composants, contrats, données, ~~25 ADR~~ index des ADR (jusqu'à ADR-037) |
@@ -56,7 +56,7 @@ Tu ne modifies JAMAIS un document de docs/02-specifications/. Si une tâche exig
 
 ## 5. Obligations
 
-- **Convention de traçabilité (une seule, lisible par `tools/gen_traceability.py`)** : le code de production qui implémente une exigence porte, dans un commentaire, le marqueur `@implements <ID>` ; un test qui vérifie une exigence ou un cas d'abus porte le marqueur `@covers <ID>`. Un marqueur par ligne ; plusieurs marqueurs autorisés sur des lignes distinctes. `<ID>` est un identifiant d'exigence du SRS (familles EF, ES, ENF, EAR, EI, ED, suffixe de variante optionnel, ex. `ES-05b`) ou un cas d'abus (~~`AC-01` à `AC-13`~~ `AC-01` à `AC-17` : AC-14..16 existent depuis ISC-TM v1.2, AC-17 est proposé par ISC-AMD-02 v1.1). Exemples : `// @implements ES-04` (Java/Kotlin/TS), `# @implements ED-06` (Python), `// @covers AC-09` (test). La matrice `docs/traceability.csv` est **générée** à partir de ces marqueurs (`make traceability`), jamais tenue à la main : une matrice manuelle diverge du code. Un marqueur référençant une exigence inexistante dans le SRS fait échouer la génération.
+- **Convention de traçabilité (une seule, lisible par `tools/gen_traceability.py`)** : le code de production qui implémente une exigence porte, dans un commentaire, le marqueur `@implements <ID>` ; un test qui vérifie une exigence ou un cas d'abus porte le marqueur `@covers <ID>`. Un marqueur par ligne ; plusieurs marqueurs autorisés sur des lignes distinctes. `<ID>` est un identifiant d'exigence du SRS (familles EF, ES, ENF, EAR, EI, ED, suffixe de variante optionnel, ex. `ES-05b`) ou un cas d'abus (~~`AC-01` à `AC-13`~~ `AC-01` à `AC-16` : AC-14..16 existent depuis ISC-TM v1.2 ; la fenêtre d'amorçage étend AC-13 en v1.3, pas d'AC-17). Exemples : `// @implements ES-04` (Java/Kotlin/TS), `# @implements ED-06` (Python), `// @covers AC-09` (test). La matrice `docs/traceability.csv` est **générée** à partir de ces marqueurs (`make traceability`), jamais tenue à la main : une matrice manuelle diverge du code. Un marqueur référençant une exigence inexistante dans le SRS fait échouer la génération.
 - Tout code touchant à la signature, aux nonces, au journal d'audit ou à la machine à états est signalé EXPLICITEMENT en fin de réponse : « Revue ligne à ligne requise : <fichiers> ».
 - Toute ambiguïté dans une spécification est signalée avant d'écrire du code. Tu ne choisis pas seul.
 - Toute décision structurante prise pendant une tâche est signalée comme nécessitant un ADR.
