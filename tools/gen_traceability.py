@@ -6,7 +6,7 @@ Convention (CLAUDE.md §5) :
   - `@covers <ID>` dans un test → le test qui vérifie l'exigence / le cas d'abus.
 
 Source machine des identifiants valides : `docs/requirements-index.csv` (index
-versionné des 117 exigences du SRS ; le .docx reste la référence humaine, mais
+versionné des exigences du SRS, v1.4 ; le .docx reste la référence humaine, mais
 ses identifiants sont éclatés dans les cellules et ne s'extraient pas de façon
 fiable — d'où l'index). Les cas d'abus AC-01..17 (ISC-TM ; AC-14..16 depuis la
 v1.2, AC-17 proposé par ISC-AMD-02 v1.1) sont valides d'office.

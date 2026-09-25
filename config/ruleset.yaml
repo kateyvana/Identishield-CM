@@ -33,7 +33,7 @@ ruleset:
     OTP: # OTP à usage unique (EF-03) : forme et durée sont des PARAMÈTRES, pas des constantes
       length: 6 # chiffres décimaux
       ttl: PT5M # durée de validité
-    # Ré-enrôlement (ADR-029, ADR-030 ; ES-21, ES-24) — valeurs d'ISC-AMD-01 §5 (tableau des paramètres)
+    # Ré-enrôlement (ADR-029, ADR-030 ; ES-21, ES-24 ; déclarés par SRS v1.4 §0) — valeurs d'ISC-AMD-01 §5
     REENROL_ATTEMPTS: 2 # tentatives libres avant le délai croissant
     LOCK_BASE: PT30S # délai initial, doublé à chaque échec (appareil demandeur + origine réseau)
     LOCK_MAX: PT24H # plafond du délai croissant ; réglable par le propriétaire
@@ -41,7 +41,7 @@ ruleset:
       count: 5
       window: PT1H
     # CODE_LENGTH (longueur du code de récupération) : NON FIXÉ — ISC-AMD-01 §5 « à fixer par l'opérateur » ; décision du propriétaire attendue
-    # Application mobile (ISC-MOB-SPEC v1.1 §14) — valeurs PROPOSÉES, à calibrer, à valider par le propriétaire
+    # Application mobile (SRS v1.4 §0, ISC-MOB-SPEC v1.1 §14) — valeurs PROPOSÉES, à calibrer, à valider par le propriétaire
     REENROL_FREEZE: PT24H # gel des ré-enrôlements après « ce n'est pas moi » (proposé : aligné sur TTL_FREEZE)
     ENROL_TTL: PT10M # expiration d'un enrôlement entamé (proposé : 2 × OTP.ttl)
     APP_SESSION_TTL: PT5M # jeton de session de l'application, lectures seulement (proposé)

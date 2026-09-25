@@ -15,10 +15,11 @@ Lis-les avant toute tâche qui les concerne. Ordre de priorité en cas de doute 
 
 | Document | Contenu |
 |---|---|
-| ISC-TM v1.1 | Modèle de menace, 13 cas d'abus AC-01..AC-13, paramètres nommés |
-| ISC-SRS-FR v1.2 | 117 exigences : EF, ES, ENF, EAR, EI, ED |
+| ISC-TM ~~v1.1~~ v1.2.1 (`02-modele-de-menace-v1.2.md`) | Modèle de menace, ~~13 cas d'abus AC-01..AC-13~~ 16 cas d'abus AC-01..AC-16 (AC-17 proposé par ISC-AMD-02 v1.1), paramètres nommés (valeurs dans `config/ruleset.yaml`, SRS v1.4) |
+| ISC-SRS-FR ~~v1.2~~ v1.4 | ~~117 exigences~~ 136 identifiants dont 128 actifs (index `docs/requirements-index.csv`) : EF, ES, ENF, EAR, EI, ED |
 | ISC-ADD v1.0 | 21 scénarios de qualité SQ-xx, 5 spikes |
-| ISC-SAD v1.0 | Conteneurs, composants, contrats, données, 25 ADR |
+| ISC-SAD ~~v1.0~~ v1.3 | Conteneurs, composants, contrats, données, ~~25 ADR~~ index des ADR (jusqu'à ADR-037) |
+| ISC-MOB-CDC v1.1, ISC-MOB-SPEC v1.1 (`mobile/`) | Application mobile : cahier des charges, spécification, 6 diagrammes de séquence |
 | ISC-TEST v1.0 | Niveaux de test, T-AC, TA, TC, données de test |
 | ISC-EVAL v1.0 | Protocole d'évaluation |
 | ISC-DEV v1.0 | Environnement, 13 portes CI, ce fichier |
@@ -43,7 +44,7 @@ Tu ne modifies JAMAIS un document de docs/02-specifications/. Si une tâche exig
 - Aucune bibliothèque hors de la stack (Java 21/Spring Boot, Python, Kotlin Android, Next.js, PostgreSQL) sans ADR préalable écrit par le propriétaire.
 - Aucune cryptographie maison : uniquement les API standard (java.security, Android Keystore). Pas de primitive réimplémentée.
 - Aucun secret, mot de passe, certificat ou jeton en clair dans le dépôt.
-- Aucun paramètre nommé (CAR_IMSI, CAR_ENROL, CAP_PROB, THR_HIGH, THR_4EYES, TTL_FREEZE, NIGHT, VEL, DEFER) en littéral dans le code : ils viennent de la configuration versionnée.
+- Aucun paramètre nommé (CAR_IMSI, ~~CAR_ENROL~~, CAP_PROB, THR_HIGH, THR_4EYES, TTL_FREEZE, NIGHT, VEL, DEFER) en littéral dans le code : ils viennent de la configuration versionnée.
 - Aucun import de `spikes/` par le code de production.
 - Aucune modification d'un test existant pour le faire passer. Si un test révèle un défaut, le défaut est corrigé.
 - Aucune déclaration de tâche terminée sans avoir exécuté `make check` et obtenu le vert.
