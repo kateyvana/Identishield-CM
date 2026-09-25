@@ -6,9 +6,10 @@ Convention (CLAUDE.md §5) :
   - `@covers <ID>` dans un test → le test qui vérifie l'exigence / le cas d'abus.
 
 Source machine des identifiants valides : `docs/requirements-index.csv` (index
-versionné des 117 exigences du SRS ; le .docx reste la référence humaine, mais
+versionné des exigences du SRS, v1.4 ; le .docx reste la référence humaine, mais
 ses identifiants sont éclatés dans les cellules et ne s'extraient pas de façon
-fiable — d'où l'index). Les cas d'abus AC-01..13 (ISC-TM) sont valides d'office.
+fiable — d'où l'index). Les cas d'abus AC-01..16 (ISC-TM v1.3 ; AC-14..16 depuis
+la v1.2 ; la fenêtre d'amorçage étend AC-13, pas d'AC-17) sont valides d'office.
 
 PORTE : la génération échoue (sortie non nulle) si un marqueur référence
   - une exigence inexistante dans l'index, ou
@@ -52,7 +53,7 @@ def load_index():
                     retired.add(idv)
                 else:
                     active.add(idv)
-    active |= {f"AC-{n:02d}" for n in range(1, 14)}  # cas d'abus (ISC-TM)
+    active |= {f"AC-{n:02d}" for n in range(1, 17)}  # cas d'abus (ISC-TM v1.3)
     return active, retired
 
 

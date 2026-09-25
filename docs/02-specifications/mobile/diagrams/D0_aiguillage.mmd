@@ -1,0 +1,12 @@
+%%{init: {'theme':'neutral','flowchart':{'htmlLabels':true,'curve':'basis'}}}%%
+flowchart TD
+    A["L'app envoie : numéro + PIN<br/>(numéro mémorisé au quotidien)<br/>+ signature du défi, si ce téléphone a une clé"] --> B{"Le compte existe-t-il<br/>ET le PIN est-il correct ?"}
+    B -- non --> B1["Refus UNIFORME : « Identifiants incorrects »<br/>(ES-22 : même réponse dans les deux cas)<br/>+ freinage par origine, jamais de blocage du compte"]
+    B -- oui --> D{"Une clé publique est-elle<br/>déjà enregistrée sur ce compte ?<br/>(PDP : DeviceRegistry)"}
+    D -- "non : compte jamais lié" --> E["PREMIER ENRÔLEMENT<br/>→ OTP par SMS<br/>→ puis liaison de ce téléphone"]
+    D -- "oui" --> F{"La signature reçue<br/>correspond-elle à cette clé ?<br/>(PDP : SignatureVerifier)"}
+    F -- "oui : c'est le téléphone lié" --> G["QUOTIDIEN<br/>→ l'usager entre directement"]
+    F -- "non ou absente : autre téléphone" --> H["RÉENRÔLEMENT<br/>→ clé de récupération<br/>→ puis liaison du nouveau téléphone"]
+    style E fill:#e8f1ff,stroke:#2b5aa0
+    style G fill:#e9f7ec,stroke:#2e7d32
+    style H fill:#fff4e5,stroke:#b26a00

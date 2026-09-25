@@ -1,0 +1,90 @@
+# IdentiShield-CM — Mois 3 : Kanban, dépendances et charge (v1.2)
+
+**Date :** 2026-09-25 — **Remplace :** ISC_PLAN_Mois3_Kanban v1.1 (conservé, non supprimé), qui remplaçait la v1.0
+**Rédigé par :** supervision technique ; v1.2 appliquée par la session Mobile (ISC-AMD-02 v1.1 §2.5)
+
+## Journal des changements v1.1 → v1.2
+- **Limite In Progress : 1 → 2**, une carte par couloir, dès maintenant (décision D-14 du propriétaire du 2026-09-25, ISC-AMD-02 v1.1).
+- Ajout du **couloir Mobile** (étiquette `mobile`) : cartes M-01 à M-10 d'ISC-MOB-CDC v1.1 §13 et carte « AMD-02 : appliquer » (§7 ci-dessous).
+- Le couloir Données (chemin critique du §3) est inchangé.
+
+## Journal des changements v1.0 → v1.1
+- Ajout de **T3-00 / ADR-035** : opérateur simulé = MTN, plage MSISDN 699 (préfixe Orange) → 677 (préfixe MTN), IMSI 624-01. Décision du propriétaire du 2026-09-25.
+- Horizon : **30 jours → 6 mois**, ~1 000 usagers, ~520k transactions (PO-1, exigence ED-07). Décision du propriétaire du 2026-09-25.
+- T3-04 élargie : **changements de SIM légitimes** (3 cas) + **300 rejeux AC-02 indépendants** (suréchantillonnage déclaré) au lieu d'une prévalence inventée.
+- Ajout de **T3-05a** : correction de plausibilité PO-2 (agents trop « rafaleurs ») et PO-3 (montants ronds) avant le gel.
+- Ajout d'une étape **F-0** : fusion de T3-01/02/03, préalable technique à ADR-035.
+- Correction de processus : le Mois 3 a démarré sans cartes Kanban. Les cartes sont créées maintenant, avec leur état réel.
+
+## 1. Le tableau (colonnes et règles inchangées depuis le Mois 2)
+Colonnes : Backlog · Ready · In Progress · In Review · Blocked · Done
+Limites WIP : Ready 8 · ~~**In Progress 1**~~ **In Progress 2** (une carte par couloir, D-14) · In Review 3
+Jalon GitHub : **« Mois 3 — Données de synthèse & calibration »**
+Étiquettes : `mois-3`, `donnees`, `calibration`, `adr`, `chemin-critique`, `dette`, `mobile`
+Une carte n'entre en **Done** que si : rapport rendu, relecture de la supervision faite, `make check` VERT, **fusion par le propriétaire**.
+
+## 2. Les cartes, leur état réel et leur charge
+
+Charge = effort de travail estimé d'après le rythme mesuré au Mois 2, en journées de travail. C'est une estimation, pas un calendrier imposé.
+
+| Carte | Contenu | Dépend de | État réel | Charge |
+|---|---|---|---|---|
+| T3-01 | Profil de référence des 26 989 transactions réelles | — | **In Review** (accepté, à fusionner) | fait |
+| T3-02 | Modèle de personas (conception) | T3-01 | **In Review** (accepté, à fusionner) | fait |
+| T3-03 | Générateur légitime + solde par usager | T3-02 | **In Review** (accepté, à fusionner) | fait |
+| **F-0** | Fusion T3-01 → T3-02 → T3-03 dans `main` (**propriétaire**) | T3-03 | Ready | < 0,5 j |
+| **T3-00** | ADR-035 : identifiants MTN (699 → 677, IMSI 624-01), porte, tests, oracle | F-0 | Ready (prompt déjà donné) | 0,5 – 1 j |
+| T3-04 | SIM légitimes (3 cas) + 300 rejeux AC-02 + test anti-fuite des labels | T3-00 | Backlog | 1,5 – 2 j |
+| **T3-05a** | Plausibilité avant gel : PO-2 (λ agents hétérogène) + PO-3 (montants ronds) | T3-04 | Backlog | 0,5 – 1 j |
+| T3-05 | Gel v1 : 6 mois, ~1 000 usagers, ~520k tx, manifeste + SHA-256 | T3-05a | Backlog | 0,5 j |
+| T3-06 | Rapport de plausibilité complet (inclut la re-mesure PO-4) | T3-05 | Backlog | 1 j |
+| T3-07 | Calibration CAP_PROB / VEL / NIGHT + sensibilité (marchand, taux de SIM légitime) | T3-06 | Backlog | 1,5 – 2 j |
+| T3-08 | ADR-016 : agrégation (combinaison swap + nouveau bénéficiaire + montant) | T3-07 | Backlog | 2 – 3 j |
+
+**Reste à faire : environ 7,5 à 11 journées de travail**, relectures comprises. Cela tient dans le Mois 3 avec de la marge.
+
+## 3. Chemin critique (une seule chaîne, sans parallélisme de développement)
+
+F-0 → T3-00 → T3-04 → T3-05a → T3-05 → T3-06 → T3-07 → T3-08
+
+Tout est sur le chemin critique : chaque carte produit l'entrée de la suivante. Un retard sur l'une décale toutes les suivantes. ~~C'est pour ça que la limite « In Progress 1 » est stricte.~~ Dans le couloir Données, une seule carte est en cours à la fois ; la seconde place « In Progress » appartient au couloir Mobile (D-14), qui ne dépend d'aucune carte de cette chaîne.
+
+## 4. Travaux hors développement (en parallèle, par le propriétaire)
+- **Sondage** : ajouter la question « Avez-vous changé de carte SIM ces 12 derniers mois ? Pourquoi : perte / vol / casse / carte abîmée / passage 4G / autre », dans les versions FR et EN. Atteindre 100 réponses et publier les données sur GitHub. Cette question fournit l'ancrage réel du taux de changement de SIM légitime utilisé en T3-07.
+- **Rédaction** : le Mois 3 alimente directement le chapitre 3 (méthodologie) : étalon, séparation calibré/modélisé, suréchantillonnage déclaré, reproductibilité.
+
+## 5. Dettes portées (cartes étiquetées `dette`, hors chemin critique du Mois 3)
+- Correction de l'énoncé OB-3 dans le SAD (E-01).
+- Cold-start de `/evaluate` (EI-01), à résoudre avant le Mois 5.
+- Points ouverts de la refonte d'authentification : clé de récupération perdue, contacts de confiance sur USSD (QO-19), portée de l'anti-brute-force du PIN.
+- ~~ED-11 (nom du titulaire affiché à la confirmation) ; traduction anglaise du SRS v1.3.~~ ED-11 : ajoutée au SRS v1.4 (25/09/2026). La traduction anglaise est reprise dans la carte « SRS v1.5 » ci-dessous.
+- **Carte « SRS v1.5 »** (ajout v1.2, propriétaire) : QF-01 cite « AC-17 (proposé) », à remplacer par « AC-13 étendu » (TM v1.3) ; EF-47 et ES-27 à préciser (avant / après un ré-enrôlement réussi, comme l'amendement d'ADR-030) ; en-tête « Documents amont » vers TM v1.3 ; traduction anglaise (SRS-EN), qui débloque la parité FR/EN de la porte check-docs, restée sur le couple v1.2.
+- **Carte « TM v1.4 »** (ajout v1.2) : décrire en §3.2 les profils d'attaquants T-xx manquants pour S-14 (voleur du téléphone lié), S-16 (application malveillante), S-18 (détenteur d'un téléphone rooté) et S-20 (attaquant réseau).
+
+## 6. Où on va : la fin du Mois 3
+À la fin du Mois 3, on dispose de :
+1. un monde de synthèse **figé, rejouable et prouvé plausible** face au réel ;
+2. 300 attaques AC-02 **étiquetées** et des changements de SIM **légitimes** ;
+3. des seuils **réglés avec justification chiffrée** ;
+4. une **décision d'agrégation** (ADR-016).
+
+C'est exactement l'entrée du **Mois 4** : construire la vraie défense (les 7 obligations OB-1…OB-7) et la mesurer sur ce terrain.
+
+## 7. Couloir Mobile (ajout v1.2)
+Tenu par une session Claude Code dédiée, sur ses propres branches, dans le dossier de travail principal (une session = un worktree). Il ne dépend d'aucune carte du couloir Données. Source des cartes : ISC-MOB-CDC v1.1 §13. L'état initial de chaque carte est fixé par le propriétaire à la création des cartes (la v1.1 d'ISC-AMD-02 ne le précise pas).
+
+| Carte | Contenu | Dépend de |
+|---|---|---|
+| AMD-02 | Appliquer ISC-AMD-02 v1.1 (documents mobiles, ADR-036/037, ruleset, traçabilité, CLAUDE.md, ce plan) — In Progress (couloir Mobile) | T3-00 |
+| M-01 | Validation du cahier des charges et de la spécification ; décisions QM-01 et QM-03 | — |
+| M-02 | Maquette écran par écran | M-01 |
+| M-03 | Contrat contracts/mobile-api.yaml + porte de validation + faux serveur | M-01 |
+| M-04 | ADR-036 : entrée réseau du téléphone dans le bac à sable | M-01 |
+| M-05 | Échafaudage du dossier mobile/ + ADR des versions de la pile (ADR-037) | M-03 |
+| M-06 | Parcours premier enrôlement (contre le faux serveur) | M-05 |
+| M-07 | Parcours quotidien et envoi d'argent signé | M-06 |
+| M-08 | Parcours réenrôlement et alertes | M-07 |
+| M-09 | Côté cœur : routes de l'API mobile, vérification d'attestation, signatures, nonces, alertes | M-03, Mois 4 |
+| M-10 | Intégration réelle et acceptation A-1 à A-10 | M-08, M-09 |
+
+Les charges sont estimées carte par carte au passage en « Ready » (ISC-MOB-CDC v1.1 §13).

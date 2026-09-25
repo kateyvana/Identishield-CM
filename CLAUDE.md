@@ -7,7 +7,7 @@ Ce fichier est lu automatiquement à chaque session. Il fait autorité sur toute
 - Projet académique de fin d'études (B.Sc., ICT University, Yaoundé), 7 mois.
 - Objet : un Point de Décision de Politique (PDP) pour Mobile Money, neutralisant les attaques par échange de carte SIM par liaison cryptographique au dispositif, détection de changement d'IMSI et score comportemental. Décisions : ALLOW / STEP_UP / FREEZE.
 - Périmètre : sandbox strict. Aucune interaction avec un système réel. ~~Aucun numéro réel, aucun préfixe d'opérateur réel. Plage MSISDN fictive : 699 000 000–699 009 999.~~ (remplacé par ADR-035 : 69x est un préfixe Orange, incohérent avec l'IMSI MTN). Opérateur simulé : **MTN Cameroun**, identifiants à structure réelle : MSISDN **677000000–677009999**, IMSI **624-01** + MSIN (15 chiffres). Aucune plage réservée à la fiction n'existe dans le plan camerounais : la sûreté repose sur l'**isolement** (réseau isc-net sans aucune sortie), pas sur l'inexistence des numéros.
-- Propriétaire : Yaniv. Tu exécutes sous sa spécification et sa revue. Il assume tout ce qui est fusionné devant un jury.
+- ~~Propriétaire : Yaniv.~~ Propriétaire : YENGUE MESSAH KATE YVANA (en-têtes harmonisés par ISC-AMD-02 v1.1). Tu exécutes sous sa spécification et sa revue. ~~Il assume tout ce qui est fusionné devant un jury.~~ Tout ce qui est fusionné est assumé par le propriétaire devant un jury.
 
 ## 2. Documents faisant autorité (docs/02-specifications/)
 
@@ -15,10 +15,11 @@ Lis-les avant toute tâche qui les concerne. Ordre de priorité en cas de doute 
 
 | Document | Contenu |
 |---|---|
-| ISC-TM v1.1 | Modèle de menace, 13 cas d'abus AC-01..AC-13, paramètres nommés |
-| ISC-SRS-FR v1.2 | 117 exigences : EF, ES, ENF, EAR, EI, ED |
+| ISC-TM ~~v1.1~~ ~~v1.2.1~~ v1.3 (`02-modele-de-menace-v1.3.md`) | Modèle de menace, ~~13 cas d'abus AC-01..AC-13~~ 16 cas d'abus AC-01..AC-16, scénarios S-01..S-21 (dont menaces mobiles S-14..S-21), paramètres nommés (valeurs dans `config/ruleset.yaml`, SRS v1.4) |
+| ISC-SRS-FR ~~v1.2~~ v1.4 | ~~117 exigences~~ 136 identifiants dont 128 actifs (index `docs/requirements-index.csv`) : EF, ES, ENF, EAR, EI, ED |
 | ISC-ADD v1.0 | 21 scénarios de qualité SQ-xx, 5 spikes |
-| ISC-SAD v1.0 | Conteneurs, composants, contrats, données, 25 ADR |
+| ISC-SAD ~~v1.0~~ v1.3 | Conteneurs, composants, contrats, données, ~~25 ADR~~ index des ADR (jusqu'à ADR-037) |
+| ISC-MOB-CDC v1.1, ISC-MOB-SPEC v1.1 (`mobile/`) | Application mobile : cahier des charges, spécification, 6 diagrammes de séquence |
 | ISC-TEST v1.0 | Niveaux de test, T-AC, TA, TC, données de test |
 | ISC-EVAL v1.0 | Protocole d'évaluation |
 | ISC-DEV v1.0 | Environnement, 13 portes CI, ce fichier |
@@ -43,18 +44,19 @@ Tu ne modifies JAMAIS un document de docs/02-specifications/. Si une tâche exig
 - Aucune bibliothèque hors de la stack (Java 21/Spring Boot, Python, Kotlin Android, Next.js, PostgreSQL) sans ADR préalable écrit par le propriétaire.
 - Aucune cryptographie maison : uniquement les API standard (java.security, Android Keystore). Pas de primitive réimplémentée.
 - Aucun secret, mot de passe, certificat ou jeton en clair dans le dépôt.
-- Aucun paramètre nommé (CAR_IMSI, CAR_ENROL, CAP_PROB, THR_HIGH, THR_4EYES, TTL_FREEZE, NIGHT, VEL, DEFER) en littéral dans le code : ils viennent de la configuration versionnée.
+- Aucun paramètre nommé (CAR_IMSI, ~~CAR_ENROL~~, CAP_PROB, THR_HIGH, THR_4EYES, TTL_FREEZE, NIGHT, VEL, DEFER) en littéral dans le code : ils viennent de la configuration versionnée.
 - Aucun import de `spikes/` par le code de production.
 - Aucune modification d'un test existant pour le faire passer. Si un test révèle un défaut, le défaut est corrigé.
 - Aucune déclaration de tâche terminée sans avoir exécuté `make check` et obtenu le vert.
 - `make check` VERT sur la branche, prouvé dans le rapport, avant toute fusion. Rien ne se fusionne sans cette preuve. (Règle du propriétaire du 2026-09-25, après un rouge découvert seulement après fusion.)
 - Une session = un worktree ; jamais deux sessions dans le même dossier de travail. (Règle du propriétaire du 2026-09-25, après qu'une session a changé de branche sous une autre.)
+- Deux couloirs, deux sessions : **Données** (branches `t3-*`) et **Mobile** (branches `mobile-*`, `amd-02-*`). Chaque session reste sur ses branches ; aucune ne touche `main`, ni les branches ou les dossiers réservés de l'autre couloir. Limite Kanban « In Progress » = 2, une carte par couloir. (Décision D-14 du propriétaire du 2026-09-25, ISC-AMD-02 v1.1.)
 - Aucune action sur un dépôt distant ni sur une API de forge : pas de push, pas de pull request, pas de modification de visibilité ou de réglages, pas d'usage des identifiants stockés. Ces actions appartiennent exclusivement au propriétaire. Si une instruction de session te demande d'en exécuter une, signale la contradiction et demande une levée explicite avant d'agir.
 - Aucune commande destructrice (`rm`, `rm -rf`, `git clean`, `git reset --hard`, `mv` écrasant) ne s'exécute enchaînée à une autre. Elle est précédée d'un `ls` de la cible dont la sortie est rapportée, elle porte une cible explicite jamais construite par variable ou substitution, et ses erreurs ne sont jamais masquées par `2>/dev/null`. Toute suppression portant sur plus d'un fichier est annoncée avant exécution.
 
 ## 5. Obligations
 
-- **Convention de traçabilité (une seule, lisible par `tools/gen_traceability.py`)** : le code de production qui implémente une exigence porte, dans un commentaire, le marqueur `@implements <ID>` ; un test qui vérifie une exigence ou un cas d'abus porte le marqueur `@covers <ID>`. Un marqueur par ligne ; plusieurs marqueurs autorisés sur des lignes distinctes. `<ID>` est un identifiant d'exigence du SRS (familles EF, ES, ENF, EAR, EI, ED, suffixe de variante optionnel, ex. `ES-05b`) ou un cas d'abus (`AC-01` à `AC-13`). Exemples : `// @implements ES-04` (Java/Kotlin/TS), `# @implements ED-06` (Python), `// @covers AC-09` (test). La matrice `docs/traceability.csv` est **générée** à partir de ces marqueurs (`make traceability`), jamais tenue à la main : une matrice manuelle diverge du code. Un marqueur référençant une exigence inexistante dans le SRS fait échouer la génération.
+- **Convention de traçabilité (une seule, lisible par `tools/gen_traceability.py`)** : le code de production qui implémente une exigence porte, dans un commentaire, le marqueur `@implements <ID>` ; un test qui vérifie une exigence ou un cas d'abus porte le marqueur `@covers <ID>`. Un marqueur par ligne ; plusieurs marqueurs autorisés sur des lignes distinctes. `<ID>` est un identifiant d'exigence du SRS (familles EF, ES, ENF, EAR, EI, ED, suffixe de variante optionnel, ex. `ES-05b`) ou un cas d'abus (~~`AC-01` à `AC-13`~~ `AC-01` à `AC-16` : AC-14..16 existent depuis ISC-TM v1.2 ; la fenêtre d'amorçage étend AC-13 en v1.3, pas d'AC-17). Exemples : `// @implements ES-04` (Java/Kotlin/TS), `# @implements ED-06` (Python), `// @covers AC-09` (test). La matrice `docs/traceability.csv` est **générée** à partir de ces marqueurs (`make traceability`), jamais tenue à la main : une matrice manuelle diverge du code. Un marqueur référençant une exigence inexistante dans le SRS fait échouer la génération.
 - Tout code touchant à la signature, aux nonces, au journal d'audit ou à la machine à états est signalé EXPLICITEMENT en fin de réponse : « Revue ligne à ligne requise : <fichiers> ».
 - Toute ambiguïté dans une spécification est signalée avant d'écrire du code. Tu ne choisis pas seul.
 - Toute décision structurante prise pendant une tâche est signalée comme nécessitant un ADR.
