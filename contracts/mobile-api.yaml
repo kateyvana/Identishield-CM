@@ -1,0 +1,1053 @@
+openapi: 3.1.0
+info:
+  title: IdentiShield-CM — API mobile
+  version: 0.1.0
+  summary: Contrat entre l'application mobile et les routes /mobile/v1 du cœur (M-03)
+  description: |
+    Contrat de l'API mobile (ISC-MOB-SPEC v1.2 §12 et §13 ; ISC-MOB-CDC v1.2). Les 18 routes
+    sont portées par isc-core : aucun service supplémentaire (ADR-036). L'application ne parle
+    jamais au PDP ; le cœur lui délègue les clés (DeviceRegistry), les clés de récupération
+    (RecoveryCodeStore), le freinage (EnrolmentThrottle) et la vérification des signatures
+    (SignatureVerifier). Le contrat /evaluate (contracts/evaluate.yaml) est INCHANGÉ.
+
+    **Charge signée (ADR-018, FERME).** Toute opération qui déplace de l'argent est signée sur
+    la chaîne à ordre fixe `accountId|type|amountXaf|beneficiaryId|nonce` : UTF-8 sans BOM,
+    séparateur U+007C sans espace, montant décimal sans signe, nonce hexadécimal de 32
+    caractères en minuscules. Jamais de JSON sérialisé, **aucun horodatage**. Signature
+    SHA256withECDSA, DER en base64, taille variable (70 à 72 octets). `accountId` vient de
+    GET /account, `beneficiaryId` de GET /beneficiaries/{msisdn}/holder.
+
+    **Aiguillage (ES-17b, ES-26).** POST /enrolment/start reçoit toujours le numéro et le PIN, et
+    une signature de défi si l'application possède une clé. Compte jamais lié → OTP ; compte lié
+    et signature de l'appareil lié → SESSION ; compte lié sans signature valide → RECOVERY.
+    L'OTP n'existe qu'au premier enrôlement (D-3).
+
+    **Codes de raison.** Liste fermée d'ISC-MOB-SPEC v1.2 §12.4. CREDENTIALS_INVALID est la
+    réponse UNIQUE à un compte inexistant, un PIN faux ou un jeton de session absent ou expiré
+    (ES-22). REQUEST_INVALID (requête hors contrat, ressource inconnue) est un code
+    technique HORS de la liste fermée, ajouté par M-03 et à reporter dans la SPEC v1.3.
+servers:
+  - url: https://isc-core:8443/mobile/v1
+    description: Routes mobiles du cœur, publiées sur le réseau local fermé (ADR-036)
+
+security:
+  - sessionToken: []
+
+paths:
+  /enrolment/start:
+    post:
+      operationId: startEnrolment
+      summary: Numéro + PIN (+ signature de défi) ; le serveur dit l'étape suivante
+      description: |
+        Flux A, B et D (SPEC §4). Réponse uniforme si le compte n'existe pas ou si le PIN est
+        faux (ES-22). La signature, si présente, porte sur un défi obtenu par
+        GET /session/challenge.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrolmentStartRequest'
+      responses:
+        '200':
+          description: Étape suivante décidée par le serveur.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrolmentStartResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /enrolment/otp:
+    post:
+      operationId: verifyEnrolmentOtp
+      summary: Vérifie l'OTP du premier enrôlement
+      description: Flux A. Compte jamais lié uniquement ; après OTP_ATTEMPTS échecs, un nouvel OTP est obligatoire.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpRequest'
+      responses:
+        '200':
+          description: OTP validé ; la liaison peut commencer (ES-25).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /enrolment/recover:
+    post:
+      operationId: verifyRecoveryCode
+      summary: Vérifie la clé de récupération (ré-enrôlement)
+      description: |
+        Flux D. Après REENROL_ATTEMPTS échecs, délai croissant sur l'origine (LOCK_BASE doublé,
+        plafonné par LOCK_MAX), jamais sur le compte (ES-21) : 429 THROTTLED avec Retry-After.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoverRequest'
+      responses:
+        '200':
+          description: Clé de récupération validée ; la liaison peut commencer (ES-25).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/Throttled'
+  /enrolment/complete:
+    post:
+      operationId: completeEnrolment
+      summary: Liaison de l'appareil ; renvoie la clé de récupération une seule fois
+      description: |
+        Flux A et D. Clé publique, chaîne d'attestation et signature du défi d'attestation. Une
+        seule clé active par compte : l'ancienne est révoquée (ES-14b, ADR-031).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteRequest'
+      responses:
+        '200':
+          description: Appareil lié ; clé de récupération affichée une fois (ES-18).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryCodeIssued'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /recovery-code/confirm:
+    post:
+      operationId: confirmRecoveryCode
+      summary: Confirmation de quatre caractères de la clé de récupération
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmRequest'
+      responses:
+        '200':
+          description: Clé confirmée ; jeton de session émis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /session/challenge:
+    get:
+      operationId: getSessionChallenge
+      summary: Défi de session à signer par la clé de l'appareil
+      security: []
+      parameters:
+        - name: deviceId
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceId'
+      responses:
+        '200':
+          description: Défi à usage unique.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChallengeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /session:
+    post:
+      operationId: openSession
+      summary: Numéro + PIN + défi signé → jeton de session (flux B)
+      description: La signature est vérifiée par le PDP. Le jeton sert aux lectures ; il ne déplace jamais d'argent.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+      responses:
+        '200':
+          description: Jeton de session émis (APP_SESSION_TTL).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /nonce:
+    post:
+      operationId: issueNonce
+      summary: Nonce à usage unique pour une opération signée (ES-10)
+      responses:
+        '200':
+          description: Nonce émis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NonceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /account:
+    get:
+      operationId: getAccount
+      summary: Solde, état du compte, opérations différées
+      responses:
+        '200':
+          description: Compte du titulaire de la session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /transactions:
+    get:
+      operationId: listTransactions
+      summary: Historique des opérations
+      responses:
+        '200':
+          description: Opérations du compte, les plus récentes d'abord.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /beneficiaries/{msisdn}/holder:
+    get:
+      operationId: getBeneficiaryHolder
+      summary: Nom du titulaire du bénéficiaire (ED-11) ; recherche freinée (MT-06)
+      parameters:
+        - name: msisdn
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Msisdn'
+      responses:
+        '200':
+          description: Titulaire du bénéficiaire.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Holder'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+  /transfers:
+    post:
+      operationId: createTransfer
+      summary: Envoi d'argent signé → décision du PDP
+      description: |
+        Le cœur vérifie le PIN et le solde, puis appelle /evaluate avec la signature et le nonce.
+        Le PDP répond REJECTED (veto de signature, ES-02), ALLOW, STEP_UP (exécution différée de
+        DEFER, annulable) ou FREEZE. Les quatre décisions sont des réponses 200.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '200':
+          description: Décision rendue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /transfers/{transferId}/cancel:
+    post:
+      operationId: cancelTransfer
+      summary: Annule une opération différée (STEP_UP / DEFER)
+      parameters:
+        - name: transferId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignedAction'
+      responses:
+        '200':
+          description: Opération annulée.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /alerts:
+    get:
+      operationId: listAlerts
+      summary: Alertes de sécurité (interrogation périodique, pas de FCM)
+      responses:
+        '200':
+          description: Alertes du compte.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /alerts/{alertId}/ack:
+    post:
+      operationId: acknowledgeAlert
+      summary: « C'est moi » (réponse signée, appareil actuellement lié)
+      parameters:
+        - $ref: '#/components/parameters/AlertId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignedAction'
+      responses:
+        '200':
+          description: Alerte reconnue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertActionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /alerts/{alertId}/not-me:
+    post:
+      operationId: denyAlert
+      summary: « Ce n'est pas moi » → compte FROZEN et ré-enrôlements gelés (ES-27)
+      parameters:
+        - $ref: '#/components/parameters/AlertId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignedAction'
+      responses:
+        '200':
+          description: Compte gelé ; ré-enrôlements gelés pendant REENROL_FREEZE.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertActionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /recovery-code/rotate:
+    post:
+      operationId: rotateRecoveryCode
+      summary: Nouvelle clé de récupération ; l'ancienne est invalidée
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignedAction'
+      responses:
+        '200':
+          description: Nouvelle clé, affichée une seule fois, à confirmer par /recovery-code/confirm.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryCodeIssued'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /device:
+    delete:
+      operationId: unbindDevice
+      summary: Délier ce téléphone ; le prochain enrôlement sera un premier enrôlement (OTP)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignedAction'
+      responses:
+        '200':
+          description: Clé révoquée ; téléphone délié.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnbindResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    sessionToken:
+      type: http
+      scheme: bearer
+      description: Jeton de session court (APP_SESSION_TTL), lié à l'appareil, lectures et demandes de nonce.
+
+  parameters:
+    AlertId:
+      name: alertId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Requête hors contrat (REQUEST_INVALID).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: CREDENTIALS_INVALID (réponse uniforme, ES-22), OTP_INVALID ou RECOVERY_INVALID.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: KEY_REVOKED, ACCOUNT_FROZEN ou DECISION_REJECTED (signature ou nonce refusé).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ressource inconnue (REQUEST_INVALID).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Solde insuffisant (INSUFFICIENT_FUNDS) ; aucun appel au PDP.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Gone:
+      description: OTP_EXPIRED ou ENROLMENT_EXPIRED.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unprocessable:
+      description: ATTESTATION_REJECTED ou DEVICE_UNSUPPORTED (puce logicielle, émulateur).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Throttled:
+      description: THROTTLED ; délai croissant sur l'origine, jamais sur le compte (ES-21).
+      headers:
+        Retry-After:
+          description: Secondes d'attente avant une nouvelle tentative.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    ReasonCode:
+      type: string
+      description: Liste fermée d'ISC-MOB-SPEC v1.2 §12.4, plus REQUEST_INVALID (M-03, à reporter en SPEC v1.3).
+      enum:
+        - CREDENTIALS_INVALID
+        - OTP_INVALID
+        - OTP_EXPIRED
+        - RECOVERY_INVALID
+        - THROTTLED
+        - ATTESTATION_REJECTED
+        - DEVICE_UNSUPPORTED
+        - KEY_REVOKED
+        - INSUFFICIENT_FUNDS
+        - DECISION_REJECTED
+        - DECISION_DEFERRED
+        - DECISION_FROZEN
+        - ACCOUNT_FROZEN
+        - ENROLMENT_EXPIRED
+        - REQUEST_INVALID
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - reason
+      properties:
+        reason:
+          $ref: '#/components/schemas/ReasonCode'
+    Msisdn:
+      type: string
+      description: Plage fictive active 677000000–677009999 (ADR-035).
+      pattern: '^67700[0-9]{4}$'
+    DeviceId:
+      type: string
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    Pin:
+      type: string
+      pattern: '^[0-9]+$'
+    Base64:
+      type: string
+      pattern: '^[A-Za-z0-9+/]+={0,2}$'
+    Nonce:
+      type: string
+      description: 128 bits, hexadécimal de 32 caractères en minuscules (ADR-018, ES-10).
+      pattern: '^[0-9a-f]{32}$'
+    AccountState:
+      type: string
+      enum:
+        - TRUSTED
+        - PROBATION
+        - FROZEN
+        - LOCKED
+    EnrolmentStartRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - msisdn
+        - pin
+      properties:
+        msisdn:
+          $ref: '#/components/schemas/Msisdn'
+        pin:
+          $ref: '#/components/schemas/Pin'
+        deviceId:
+          $ref: '#/components/schemas/DeviceId'
+        challenge:
+          type: string
+        signature:
+          $ref: '#/components/schemas/Base64'
+    EnrolmentStartResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - next
+      properties:
+        next:
+          type: string
+          enum:
+            - OTP
+            - RECOVERY
+            - SESSION
+        enrolmentId:
+          type: string
+          description: Présent pour OTP et RECOVERY.
+        sessionToken:
+          type: string
+          description: Présent pour SESSION.
+        expiresInSeconds:
+          type: integer
+          minimum: 1
+        demoOtp:
+          type: string
+          description: Faux serveur en mode --demo uniquement ; jamais servi par le cœur.
+    OtpRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - enrolmentId
+        - otp
+      properties:
+        enrolmentId:
+          type: string
+        otp:
+          type: string
+          pattern: '^[0-9]+$'
+    RecoverRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - enrolmentId
+        - recoveryCode
+      properties:
+        enrolmentId:
+          type: string
+        recoveryCode:
+          type: string
+    BindResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - next
+        - attestationChallenge
+      properties:
+        next:
+          type: string
+          enum:
+            - BIND
+        attestationChallenge:
+          type: string
+          description: Défi d'attestation aléatoire, au moins 16 octets (SPEC §12.1), en base64.
+    CompleteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - enrolmentId
+        - publicKey
+        - attestationChain
+        - challengeSignature
+      properties:
+        enrolmentId:
+          type: string
+        publicKey:
+          description: SubjectPublicKeyInfo DER en base64 (EC P-256).
+          $ref: '#/components/schemas/Base64'
+        attestationChain:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Base64'
+        challengeSignature:
+          $ref: '#/components/schemas/Base64'
+    RecoveryCodeIssued:
+      type: object
+      additionalProperties: false
+      required:
+        - enrolmentId
+        - recoveryCode
+        - confirmPositions
+      properties:
+        enrolmentId:
+          type: string
+          description: Contexte de confirmation pour /recovery-code/confirm.
+        deviceId:
+          $ref: '#/components/schemas/DeviceId'
+        recoveryCode:
+          type: string
+          description: Affichée une seule fois (CODE_LENGTH caractères) ; seul un haché salé est conservé.
+        confirmPositions:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: integer
+            minimum: 1
+    ConfirmRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - enrolmentId
+        - characters
+      properties:
+        enrolmentId:
+          type: string
+        characters:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - position
+              - character
+            properties:
+              position:
+                type: integer
+                minimum: 1
+              character:
+                type: string
+    ChallengeResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - challenge
+      properties:
+        challenge:
+          type: string
+    SessionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - msisdn
+        - pin
+        - deviceId
+        - challenge
+        - signature
+      properties:
+        msisdn:
+          $ref: '#/components/schemas/Msisdn'
+        pin:
+          $ref: '#/components/schemas/Pin'
+        deviceId:
+          $ref: '#/components/schemas/DeviceId'
+        challenge:
+          type: string
+        signature:
+          $ref: '#/components/schemas/Base64'
+    SessionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - sessionToken
+        - expiresInSeconds
+      properties:
+        sessionToken:
+          type: string
+        expiresInSeconds:
+          type: integer
+          minimum: 1
+    NonceResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - nonce
+      properties:
+        nonce:
+          $ref: '#/components/schemas/Nonce'
+    DeferredOperation:
+      type: object
+      additionalProperties: false
+      required:
+        - transferId
+        - amountXaf
+        - beneficiaryMsisdn
+        - executeAt
+      properties:
+        transferId:
+          type: string
+        amountXaf:
+          type: integer
+          minimum: 1
+        beneficiaryMsisdn:
+          $ref: '#/components/schemas/Msisdn'
+        executeAt:
+          type: string
+          format: date-time
+    Account:
+      type: object
+      additionalProperties: false
+      required:
+        - accountId
+        - msisdn
+        - holderName
+        - balanceXaf
+        - state
+        - deferredOperations
+      properties:
+        accountId:
+          type: string
+        msisdn:
+          $ref: '#/components/schemas/Msisdn'
+        holderName:
+          type: string
+        balanceXaf:
+          type: integer
+          minimum: 0
+        state:
+          $ref: '#/components/schemas/AccountState'
+        deferredOperations:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeferredOperation'
+    Transaction:
+      type: object
+      additionalProperties: false
+      required:
+        - transferId
+        - direction
+        - amountXaf
+        - counterpartyMsisdn
+        - status
+        - at
+      properties:
+        transferId:
+          type: string
+        direction:
+          type: string
+          enum:
+            - OUT
+            - IN
+        amountXaf:
+          type: integer
+          minimum: 1
+        counterpartyMsisdn:
+          $ref: '#/components/schemas/Msisdn'
+        counterpartyName:
+          type: string
+        status:
+          type: string
+          enum:
+            - EXECUTED
+            - DEFERRED
+            - CANCELLED
+            - FROZEN
+            - REJECTED
+        at:
+          type: string
+          format: date-time
+    TransactionList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+    Holder:
+      type: object
+      additionalProperties: false
+      required:
+        - msisdn
+        - beneficiaryId
+        - holderName
+        - newBeneficiary
+      properties:
+        msisdn:
+          $ref: '#/components/schemas/Msisdn'
+        beneficiaryId:
+          type: string
+          description: Identifiant opaque, repris tel quel dans la chaîne signée (ADR-018).
+        holderName:
+          type: string
+        newBeneficiary:
+          type: boolean
+          description: Vrai si ce numéro n'a jamais été payé par le compte (badge « nouveau bénéficiaire »).
+    TransferRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - amountXaf
+        - beneficiaryId
+        - nonce
+        - pin
+      properties:
+        type:
+          type: string
+          enum:
+            - P2P
+        amountXaf:
+          type: integer
+          minimum: 1
+        beneficiaryId:
+          type: string
+        nonce:
+          $ref: '#/components/schemas/Nonce'
+        signature:
+          description: |
+            Signature de accountId|type|amountXaf|beneficiaryId|nonce (ADR-018). Une signature
+            absente n'est pas une erreur de requête : c'est la décision REJECTED (veto ES-02).
+          $ref: '#/components/schemas/Base64'
+        pin:
+          $ref: '#/components/schemas/Pin'
+    TransferResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - transferId
+        - decision
+        - status
+        - balanceXaf
+      properties:
+        transferId:
+          type: string
+        decision:
+          type: string
+          enum:
+            - ALLOW
+            - STEP_UP
+            - FREEZE
+            - REJECTED
+        status:
+          type: string
+          enum:
+            - EXECUTED
+            - DEFERRED
+            - FROZEN
+            - REJECTED
+        reason:
+          type: string
+          enum:
+            - DECISION_DEFERRED
+            - DECISION_FROZEN
+            - DECISION_REJECTED
+        executeAt:
+          type: string
+          format: date-time
+          description: Échéance d'exécution d'une opération différée (DEFER).
+        balanceXaf:
+          type: integer
+          minimum: 0
+    SignedAction:
+      type: object
+      additionalProperties: false
+      required:
+        - nonce
+        - signature
+      properties:
+        nonce:
+          $ref: '#/components/schemas/Nonce'
+        signature:
+          $ref: '#/components/schemas/Base64'
+    CancelResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - transferId
+        - status
+      properties:
+        transferId:
+          type: string
+        status:
+          type: string
+          enum:
+            - CANCELLED
+    Alert:
+      type: object
+      additionalProperties: false
+      required:
+        - alertId
+        - type
+        - at
+        - summary
+        - actions
+        - status
+      properties:
+        alertId:
+          type: string
+        type:
+          type: string
+          enum:
+            - SIM_CHANGED
+            - REENROL_ATTEMPT
+            - DEVICE_REBOUND
+            - TRANSFER_DEFERRED
+            - TRANSFER_FROZEN
+        at:
+          type: string
+          format: date-time
+        summary:
+          type: string
+          description: Texte d'écran ; jamais de lien, de code ni de demande de saisie (ES-28).
+        actions:
+          type: array
+          description: ACK et NOT_ME sur le téléphone actuellement lié seulement ; vide si informative (EF-47).
+          items:
+            type: string
+            enum:
+              - ACK
+              - NOT_ME
+        status:
+          type: string
+          enum:
+            - OPEN
+            - ACKNOWLEDGED
+            - NOT_ME
+            - INFO
+    AlertList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+    AlertActionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - alertId
+        - status
+        - accountState
+      properties:
+        alertId:
+          type: string
+        status:
+          type: string
+          enum:
+            - ACKNOWLEDGED
+            - NOT_ME
+        accountState:
+          $ref: '#/components/schemas/AccountState'
+    UnbindResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - UNBOUND

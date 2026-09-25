@@ -1,0 +1,42 @@
+{
+  "_comment": "Données FICTIVES du faux serveur (M-03). Plage 677000000-677009999 (ADR-035). Aucun secret réel : le PIN et la clé de récupération ci-dessous sont des valeurs de test publiques, la clé n'est conservée par le mock que sous forme hachée et salée.",
+  "demoOtp": "246810",
+  "freezeBeneficiaryMsisdn": "677009999",
+  "accounts": [
+    {
+      "accountId": "acc-000200",
+      "msisdn": "677000200",
+      "holderName": "Compte de test NEUF",
+      "pin": "1234",
+      "balanceXaf": 0
+    },
+    {
+      "accountId": "acc-000123",
+      "msisdn": "677000123",
+      "holderName": "Amina NDONGO ÉLOMO",
+      "pin": "1234",
+      "balanceXaf": 152300,
+      "boundDeviceId": "3f6d2c1e-8a4b-4c7d-9e2f-1a2b3c4d5e6f",
+      "recoveryCode": "K7M2QX9RT4WZ8HNB3CFV",
+      "knownBeneficiaries": ["677000456", "677000789"]
+    },
+    {
+      "accountId": "acc-000456",
+      "msisdn": "677000456",
+      "holderName": "Jean-Paul NKOA",
+      "balanceXaf": 0
+    },
+    {
+      "accountId": "acc-000789",
+      "msisdn": "677000789",
+      "holderName": "Marie ABENA",
+      "balanceXaf": 0
+    },
+    {
+      "accountId": "acc-009999",
+      "msisdn": "677009999",
+      "holderName": "Compte de test GEL",
+      "balanceXaf": 0
+    }
+  ]
+}
