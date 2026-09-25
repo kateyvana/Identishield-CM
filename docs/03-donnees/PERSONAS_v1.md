@@ -1,7 +1,7 @@
-# Modèle de personas de la population de synthèse — v1.1
+# Modèle de personas de la population de synthèse — v1.2
 
-- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1)
-- **Version** : **v1.1** — amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
+- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2)
+- **Version** : **v1.2** — champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
 - **Implémentation** : `simulator/src/isc_simulator/personas.py` (paramètres) et `generator.py` (générateur, T3-03)
 - **Étalon de référence** : [profil_reel_v1.json](profil_reel_v1.json) (T3-01, SHA-256 du CSV source `84cd01ae…83401fb1`, 26 989 transactions)
 - **Objet** : définir la population synthétique — archétypes, lois, mix, graphe de bénéficiaires, cibles de plausibilité et graine — qui produira ~500 000 transactions (T3-05), sera validée contre l'étalon (T3-06) et servira de base au calibrage des seuils (T3-07).
@@ -130,6 +130,29 @@ Part de sorties obtenue au niveau population : **≈ 38 à 39 %** (échantillon 
 
 `id` (UUID v4, ED-09, dérivé de la graine), `user`, `archetype`, `direction` (IN/OUT), `amount` (FCFA entier), `timestamp` (UTC, ED-04), `beneficiary` (contrepartie, MSISDN fictif), `is_new_beneficiary` (vrai seulement sur un OUT vers un bénéficiaire jamais vu), `balance_before`, `balance_after`, `label` (`LEGIT` en T3-03). Pour un IN, la contrepartie est tirée parmi les bénéficiaires connus, et `is_new_beneficiary` est toujours faux : la règle ES-05 ne porte que sur les sorties.
 
+
+### 1.9 Champs ajoutés — *ajouté en v1.2 (T3-04a)*
+
+Trois colonnes sont ajoutées à la fin de chaque enregistrement. Les onze colonnes existantes sont inchangées, à l'octet près : les tirages nouveaux utilisent leurs propres sous-graines (`device`, `channel`), sans toucher aux autres. Les noms sont en anglais, comme toutes les colonnes (CLAUDE.md §6) ; correspondance avec la consigne du propriétaire entre parenthèses.
+
+| Colonne | Contenu | Loi |
+|---|---|---|
+| `current_imsi` (imsi_courant) | IMSI de l'usager au moment de la transaction : `624` + `01` + MSIN de 10 chiffres, 15 chiffres au total (ADR-035) | MSIN initial = rang de l'usager + 1 (bloc `0000000001`–`0000009999`), unique par usager ; stable tant qu'aucun événement de remplacement de carte ne survient (T3-04a, morceau M3) |
+| `channel` (canal) | `USSD` ou `APP` | tirage par transaction : `APP` avec la probabilité `p_app_if_bound` si l'usager a un téléphone lié, sinon toujours `USSD` |
+| `device_bound` (appareil_lie) | `true` / `false` : l'usager a-t-il un téléphone lié ? | tirage une fois par usager, probabilité `p_device_bound` ; conséquence : `channel = APP` ⇒ `device_bound = true` |
+
+**Hypothèses déclarées** (MODÉLISÉ, SUPPOSÉ ; aucun chiffre présenté comme réel, le jeu réel de T3-01 n'a ni canal ni appareil) :
+
+| Archétype | `p_device_bound` | `p_app_if_bound` | Part APP attendue | Motif |
+|---|--:|--:|--:|---|
+| Ordinaire / Victime | 0,40 | 0,60 | ≈ 24 % | usage majoritaire du USSD, téléphones basiques fréquents |
+| Salarié régulier | 0,85 | 0,80 | ≈ 68 % | smartphone et application privilégiés (consigne du propriétaire) |
+| Petit marchand | 0,60 | 0,40 | ≈ 24 % | encaissement surtout par USSD (consigne du propriétaire) |
+| Agent | 0,50 | 0,20 | ≈ 10 % | opérations au comptoir par USSD (consigne du propriétaire) |
+
+**Plage de sensibilité** à explorer en T3-07 : `p_device_bound` de 0,2 à 0,9, et `p_app_if_bound` de 0,2 à 0,9. La liaison d'appareil conditionne ce que la couche pourra prouver après un changement d'IMSI : c'est une variable de premier ordre pour la mesure de friction.
+
+Mesuré sur l'échantillon de contrôle (400 usagers, 7 jours) : part APP 6,8 % (agent), 25,3 % (marchand, ordinaire), 63,8 % (salarié) ; 0 transaction APP sans téléphone lié. Sur des effectifs aussi petits (20 agents), la part de téléphones liés s'écarte de la probabilité déclarée (35 % mesurés pour 50 % déclarés) : c'est du bruit d'échantillonnage, à re-mesurer sur le jeu complet.
 ---
 
 ## 2. Mix de population (justifié) — cap ~500 000 transactions
@@ -260,6 +283,11 @@ On **rapporte** les quantiles population, **attendus SOUS** la médiane réelle 
 ---
 
 ## 9. Journal des modifications
+
+### v1.2 — 2026-09-25 (T3-04a, morceau M2)
+
+- Ajout de §1.9 : colonnes `current_imsi`, `channel`, `device_bound`, avec leurs lois et hypothèses déclarées (`p_device_bound`, `p_app_if_bound`) et une plage de sensibilité. Les onze colonnes existantes sont inchangées (vérifié : leur projection a le même SHA-256 que l'échantillon v1.1).
+- Rien n'est supprimé.
 
 ### v1.1 — 2026-09-25 (implémentation du générateur, T3-03)
 

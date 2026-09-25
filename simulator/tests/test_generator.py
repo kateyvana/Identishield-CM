@@ -1,6 +1,7 @@
 """Legitimate-traffic generator (T3-03): determinism, balances, fictitious MSISDNs, calibration."""
 
 import json
+import re
 import uuid
 from datetime import date
 from pathlib import Path
@@ -115,3 +116,29 @@ def test_night_and_velocity_windows_are_read_from_a_rule_set(tmp_path):
     )
     assert ruleset_windows(snippet) == ({22, 23, 0, 1, 2, 3, 4, 5}, 5, 900)
     ruleset_windows(RULESET)  # the real versioned rule set parses too
+
+
+# --- PERSONAS v1.2: current IMSI, channel, device binding ---------------------------------------
+
+
+# @covers ED-09
+def test_current_imsi_is_a_15_digit_operator_imsi_stable_and_unique_per_user(sample):
+    imsi_of = {}
+    for r in sample[0]:
+        assert re.fullmatch(r"62401\d{10}", r["current_imsi"]), r["current_imsi"]
+        assert imsi_of.setdefault(r["user"], r["current_imsi"]) == r["current_imsi"]
+    assert len(set(imsi_of.values())) == len(imsi_of), "two users share an IMSI"
+
+
+def test_channel_is_ussd_or_app(sample):
+    assert {r["channel"] for r in sample[0]} <= {"USSD", "APP"}
+    assert {r["channel"] for r in sample[0]} == {"USSD", "APP"}, "both channels must occur"
+
+
+def test_app_channel_implies_a_bound_device(sample):
+    bound_of = {}
+    for r in sample[0]:
+        assert r["device_bound"] in {"true", "false"}
+        assert bound_of.setdefault(r["user"], r["device_bound"]) == r["device_bound"]
+        if r["channel"] == "APP":
+            assert r["device_bound"] == "true"

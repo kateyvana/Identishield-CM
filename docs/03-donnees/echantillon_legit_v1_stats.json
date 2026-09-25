@@ -195,8 +195,8 @@
     "fichier": "echantillon_legit_v1.csv",
     "isc_seed": 20260925,
     "jours": 7,
-    "personas_version": "v1.1",
-    "sha256": "47ca409c776530ce76c0677d93434f4940b679041f63bee40aa2feb118d93b99",
+    "personas_version": "v1.2",
+    "sha256": "264c08dea222e848dd64775a5e941efae945f953a05dc2ca8f355deefcf0b5d1",
     "sha256_manifeste_identique": true,
     "transactions": 8460,
     "usagers": 400
@@ -214,5 +214,40 @@
     "population_pct": 11.98,
     "reel_pct": 39.06,
     "regle": ">3 transactions en 10 min (glissant)"
+  },
+  "g_canal_appareil": {
+    "app_sans_appareil_lie": 0,
+    "par_archetype": {
+      "agent": {
+        "part_app_pct": 6.76,
+        "part_appareil_lie_pct": 35.0,
+        "part_ussd_pct": 93.24,
+        "usagers_actifs": 20
+      },
+      "marchand": {
+        "part_app_pct": 25.26,
+        "part_appareil_lie_pct": 60.0,
+        "part_ussd_pct": 74.74,
+        "usagers_actifs": 60
+      },
+      "ordinaire": {
+        "part_app_pct": 25.27,
+        "part_appareil_lie_pct": 42.24,
+        "part_ussd_pct": 74.73,
+        "usagers_actifs": 161
+      },
+      "salarie": {
+        "part_app_pct": 63.82,
+        "part_appareil_lie_pct": 80.0,
+        "part_ussd_pct": 36.18,
+        "usagers_actifs": 100
+      },
+      "victime": {
+        "part_app_pct": 14.29,
+        "part_appareil_lie_pct": 33.33,
+        "part_ussd_pct": 85.71,
+        "usagers_actifs": 18
+      }
+    }
   }
 }

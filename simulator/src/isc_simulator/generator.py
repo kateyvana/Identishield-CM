@@ -42,6 +42,8 @@ from isc_simulator.personas import (
     ARCHETYPES,
     BASE_HOUR_WEIGHTS,
     BURST_SPAN_S,
+    IMSI_PREFIX,
+    MSIN_DIGITS,
     MSISDN_HIGH,
     MSISDN_LOW,
     PAYDAY_DAYS,
@@ -64,6 +66,9 @@ FIELDS = (
     "balance_before",
     "balance_after",
     "label",
+    "current_imsi",
+    "channel",
+    "device_bound",
 )
 
 
@@ -138,6 +143,14 @@ def transaction_id(master: int, i: int, seq: int) -> str:
     return str(uuid.UUID(bytes=digest[:16], version=4))
 
 
+def imsi(index: int) -> str:
+    """Initial IMSI of a user (ADR-035): 624-01 + MSIN = index + 1 on 10 digits."""
+    msin = index + 1
+    if not 1 <= msin < 10**MSIN_DIGITS:
+        raise ValueError(f"user index {index} has no MSIN")
+    return f"{IMSI_PREFIX}{msin:0{MSIN_DIGITS}d}"
+
+
 def msisdn(index: int) -> str:
     number = MSISDN_LOW + index
     if not MSISDN_LOW <= number <= MSISDN_HIGH:
@@ -208,6 +221,9 @@ def generate(seed: int, users: int, days: int, start: date) -> tuple[list[dict],
         ra = stream(seed, "amount", i)
         rb = stream(seed, "beneficiary", i)
         balance = draw_lognormal(stream(seed, "opening", i), arch.opening_balance)
+        # v1.2: separate sub-seeds, so the draws of the existing fields are untouched.
+        bound = stream(seed, "device", i).random() < arch.p_device_bound
+        rc = stream(seed, "channel", i)
         for seq, (ts, _, direction, kind) in enumerate(plan_events(seed, i, arch, start, days)):
             if kind == "salary":
                 amount = draw_lognormal(ra, arch.salary)
@@ -233,11 +249,27 @@ def generate(seed: int, users: int, days: int, start: date) -> tuple[list[dict],
             else:
                 j = known_list[rb.randrange(len(known_list))]
                 before, balance = balance, balance + amount
-            rows.append((ts, i, seq, arch.name, direction, amount, j, is_new, before, balance))
+            channel = "APP" if bound and rc.random() < arch.p_app_if_bound else "USSD"
+            rows.append(
+                (
+                    ts,
+                    i,
+                    seq,
+                    arch.name,
+                    direction,
+                    amount,
+                    j,
+                    is_new,
+                    before,
+                    balance,
+                    channel,
+                    bound,
+                )
+            )
 
     rows.sort()
     out = []
-    for ts, i, seq, name, direction, amount, j, is_new, before, after in rows:
+    for ts, i, seq, name, direction, amount, j, is_new, before, after, channel, bound in rows:
         out.append(
             {
                 "id": transaction_id(seed, i, seq),
@@ -251,6 +283,9 @@ def generate(seed: int, users: int, days: int, start: date) -> tuple[list[dict],
                 "balance_before": before,
                 "balance_after": after,
                 "label": LABEL,
+                "current_imsi": imsi(i),
+                "channel": channel,
+                "device_bound": "true" if bound else "false",
             }
         )
     facts = {

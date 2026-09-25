@@ -18,11 +18,14 @@
     "is_new_beneficiary",
     "balance_before",
     "balance_after",
-    "label"
+    "label",
+    "current_imsi",
+    "channel",
+    "device_bound"
   ],
   "isc_seed": 20260925,
-  "personas_version": "v1.1",
-  "sha256": "47ca409c776530ce76c0677d93434f4940b679041f63bee40aa2feb118d93b99",
+  "personas_version": "v1.2",
+  "sha256": "264c08dea222e848dd64775a5e941efae945f953a05dc2ca8f355deefcf0b5d1",
   "skipped_out": 157,
   "start": "2026-10-25",
   "transactions": 8460,

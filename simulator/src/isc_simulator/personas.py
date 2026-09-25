@@ -16,11 +16,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-PERSONAS_VERSION = "v1.1"
+PERSONAS_VERSION = "v1.2"
 
 # Fictitious MSISDN range (ED-09): users AND beneficiaries are drawn here, nowhere else.
 MSISDN_LOW = 677000000
 MSISDN_HIGH = 677009999
+
+# IMSI of the simulated operator (ADR-035): MCC 624 + MNC 01 + 10-digit MSIN, 15 digits. Each user
+# starts with MSIN = user index + 1 (block 0000000001-0000009999), stable until a SIM event (M3).
+IMSI_PREFIX = "62401"
+MSIN_DIGITS = 10
 
 # CALIBRATED — quantile function of real amounts > 0 (FCFA), as (probability, amount) knots:
 # min, p10, p25, p50, p75, p90, p95, p99, max of profil_reel_v1.json. The agent amount law samples
@@ -69,6 +74,10 @@ class Archetype:
     known_beneficiaries: tuple[int, int]  # K at initialisation, inclusive range
     p_new: float  # probability that an OUT goes to a never-seen beneficiary
     opening_balance: Lognormal  # v1.1
+    p_device_bound: (
+        float  # v1.2 — probability that the user has a bound phone (declared assumption)
+    )
+    p_app_if_bound: float  # v1.2 — share of a bound user's transactions made through the app
     salary: Lognormal | None = None  # monthly salary IN on SALARY_DAY (salaried only)
     payday_extra_out: float = 0.0  # extra OUT per day on PAYDAY_DAYS (salaried only)
 
@@ -96,6 +105,8 @@ ARCHETYPES = (
         known_beneficiaries=(2, 4),
         p_new=0.05,
         opening_balance=Lognormal(5_000, 1.0, 500_000),
+        p_device_bound=0.40,
+        p_app_if_bound=0.60,
     ),
     Archetype(
         name="salarie",
@@ -112,6 +123,8 @@ ARCHETYPES = (
         known_beneficiaries=(3, 6),
         p_new=0.03,
         opening_balance=Lognormal(25_000, 0.9, 1_000_000),
+        p_device_bound=0.85,
+        p_app_if_bound=0.80,
         salary=Lognormal(80_000, 0.3, 500_000),
         payday_extra_out=1.0,
     ),
@@ -130,6 +143,8 @@ ARCHETYPES = (
         known_beneficiaries=(2, 4),
         p_new=0.05,
         opening_balance=Lognormal(5_000, 1.0, 500_000),
+        p_device_bound=0.40,
+        p_app_if_bound=0.60,
     ),
     Archetype(
         name="marchand",
@@ -146,6 +161,8 @@ ARCHETYPES = (
         known_beneficiaries=(10, 30),
         p_new=0.10,
         opening_balance=Lognormal(60_000, 0.9, 2_000_000),
+        p_device_bound=0.60,
+        p_app_if_bound=0.40,
     ),
     Archetype(
         name="agent",
@@ -162,5 +179,7 @@ ARCHETYPES = (
         known_beneficiaries=(50, 200),
         p_new=0.15,
         opening_balance=Lognormal(300_000, 0.7, 5_000_000),
+        p_device_bound=0.50,
+        p_app_if_bound=0.20,
     ),
 )
