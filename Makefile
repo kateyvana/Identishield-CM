@@ -8,13 +8,16 @@ SHELL := /bin/bash
 COMPOSE := MSYS_NO_PATHCONV=1 docker compose -f infra/docker-compose.yml
 PY      ?= $(shell command -v python >/dev/null 2>&1 && echo python || echo python3)
 GRADLE_PROJECTS := core pdp
-PY_PROJECTS     := simulator attacker hlr-agent evaluation
+PY_PROJECTS     := simulator attacker hlr-agent evaluation tools/mobile-mock
+# Faux serveur de l'API mobile (M-03) : port et mode démo sont des paramètres, pas du code.
+MOBILE_MOCK_PORT ?= 8089
+MOBILE_MOCK_DEMO ?=
 
 .PHONY: help up down reset check test abuse evaluate diagrams check-docs check-stack \
-        build format unit arch contract secrets fictitious-msisdn named-params traceability
+        build format unit arch contract secrets fictitious-msisdn named-params traceability \n        mobile-mock
 
 help:
-	@echo "Cibles : up down reset check test abuse evaluate diagrams check-docs check-stack"
+	@echo "Cibles : up down reset check test abuse evaluate diagrams check-docs check-stack mobile-mock"
 
 ## ---- pile ------------------------------------------------------------------
 up:
@@ -73,8 +76,8 @@ arch:
 	done
 
 contract:
-	@echo ">>> contract : redocly evaluate.yaml"
-	@npx --yes @redocly/cli@2.14.5 lint contracts/evaluate.yaml
+	@echo ">>> contract : redocly evaluate.yaml + mobile-api.yaml"
+	@npx --yes @redocly/cli@2.14.5 lint contracts/evaluate.yaml contracts/mobile-api.yaml
 
 check-docs:
 	@echo ">>> check-docs"
@@ -102,6 +105,12 @@ named-params:
 	@$(PY) tools/check_named_params.py
 
 ## ---- autres cibles ----------------------------------------------------------
+# Faux serveur de l'API mobile (M-03) pour développer l'application : NE VÉRIFIE NI la signature
+# NI l'attestation (voir tools/mobile-mock/README.md). `make mobile-mock MOBILE_MOCK_DEMO=1` expose
+# l'OTP de test dans la réponse.
+mobile-mock:
+	@cd tools/mobile-mock && uv run --quiet isc-mobile-mock --port $(MOBILE_MOCK_PORT) 	  --ruleset ../../config/ruleset.yaml --contract ../../contracts/mobile-api.yaml 	  --fixtures fixtures.json $(if $(MOBILE_MOCK_DEMO),--demo,)
+
 test: unit
 
 abuse:

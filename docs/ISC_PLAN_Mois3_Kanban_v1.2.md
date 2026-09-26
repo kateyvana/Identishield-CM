@@ -88,3 +88,7 @@ Tenu par une session Claude Code dédiée, sur ses propres branches, dans le dos
 | M-10 | Intégration réelle et acceptation A-1 à A-10 | M-08, M-09 |
 
 Les charges sont estimées carte par carte au passage en « Ready » (ISC-MOB-CDC v1.1 §13).
+
+**État du couloir Mobile**
+- AMD-02 : fusionnée dans `main` (b815849, 2026-09-25).
+- M-03 (contrat `contracts/mobile-api.yaml` + faux serveur `tools/mobile-mock/`) : **In Review**, branche `mobile-03-contrat-api` (2026-09-26).
