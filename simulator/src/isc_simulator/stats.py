@@ -102,6 +102,13 @@ def velocity_share(times_by_user: dict[str, list[int]], count: int, window: int)
 def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
     with open(sample, encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
+    # v1.4: annotations (archetype, is_new_beneficiary, label) live in the sidecar, joined on id.
+    with open(sample.with_name(sample.stem + ".labels.csv"), encoding="utf-8", newline="") as f:
+        labels = {r["id"]: r for r in csv.DictReader(f)}
+    if set(labels) != {r["id"] for r in rows}:
+        raise ValueError("detector view and label sidecar do not join one-to-one on id")
+    for r in rows:
+        r.update({k: v for k, v in labels[r["id"]].items() if k != "id"})
     facts = json.loads(manifest.read_text(encoding="utf-8"))
     ref = json.loads(etalon.read_text(encoding="utf-8"))
     night_hours, vel_count, vel_window = ruleset_windows(ruleset)
@@ -244,6 +251,30 @@ def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
         "reel_pct": ref["c_par_usager"]["velocite"]["part"],
     }
 
+    # g. Channel and device binding per archetype (PERSONAS v1.2, declared assumptions).
+    per_user_bound: dict[str, tuple[str, bool]] = {}
+    chan: dict[str, dict[str, int]] = {}
+    for r in rows:
+        per_user_bound[r["user"]] = (r["archetype"], r["device_bound"] == "true")
+        c = chan.setdefault(r["archetype"], {"tx": 0, "app": 0})
+        c["tx"] += 1
+        c["app"] += r["channel"] == "APP"
+    users_by_arch: dict[str, list[bool]] = {}
+    for arch_name, is_bound in per_user_bound.values():
+        users_by_arch.setdefault(arch_name, []).append(is_bound)
+    canal = {
+        name: {
+            "part_app_pct": r2(100 * c["app"] / c["tx"]),
+            "part_ussd_pct": r2(100 * (c["tx"] - c["app"]) / c["tx"]),
+            "usagers_actifs": len(users_by_arch[name]),
+            "part_appareil_lie_pct": r2(100 * sum(users_by_arch[name]) / len(users_by_arch[name])),
+        }
+        for name, c in sorted(chan.items())
+    }
+    app_without_device = sum(
+        1 for r in rows if r["channel"] == "APP" and r["device_bound"] != "true"
+    )
+
     return {
         "echantillon": {
             "fichier": sample.name,
@@ -265,6 +296,7 @@ def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
         "d_soldes": soldes,
         "e_controles": controles,
         "f_velocite": velocite,
+        "g_canal_appareil": {"par_archetype": canal, "app_sans_appareil_lie": app_without_device},
     }
 
 
@@ -397,6 +429,21 @@ def render_md(s: dict) -> str:
             f"agents seuls : **{v['agents_pct']} %** "
             f"(bande cible {band[0]}–{band[1]} %, réel {v['reel_pct']} %)."
         ),
+        "",
+        "## g. Canal et liaison d'appareil (PERSONAS v1.2, hypothèses déclarées)",
+        "",
+        "| Archétype | Usagers actifs | Téléphone lié % | APP % des tx | USSD % des tx |",
+        "|---|--:|--:|--:|--:|",
+    ]
+    g = s["g_canal_appareil"]
+    for name, a in g["par_archetype"].items():
+        out.append(
+            f"| {name} | {a['usagers_actifs']} | {a['part_appareil_lie_pct']} "
+            f"| {a['part_app_pct']} | {a['part_ussd_pct']} |"
+        )
+    out += [
+        "",
+        f"- Transactions APP sans téléphone lié : **{g['app_sans_appareil_lie']}** (attendu : 0).",
         "",
     ]
     return "\n".join(out)

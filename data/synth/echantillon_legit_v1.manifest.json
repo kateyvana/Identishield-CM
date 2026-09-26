@@ -7,24 +7,62 @@
     "victime": 20
   },
   "days": 7,
-  "fields": [
-    "id",
-    "user",
-    "archetype",
-    "direction",
-    "amount",
-    "timestamp",
-    "beneficiary",
-    "is_new_beneficiary",
-    "balance_before",
-    "balance_after",
-    "label"
-  ],
+  "files": {
+    "hlr_events": {
+      "events": 0,
+      "fields": [
+        "msisdn",
+        "old_imsi",
+        "new_imsi",
+        "timestamp",
+        "agent_id"
+      ],
+      "file": "echantillon_legit_v1.hlr_events.csv",
+      "sha256": "343fd48f3bd5411ea2cd5e7d3f5de433504a5f8a7373f7d2d5208db2b5fc5a02"
+    },
+    "sidecar_labels": {
+      "fields": [
+        "id",
+        "label",
+        "source",
+        "archetype",
+        "is_new_beneficiary",
+        "sim_event_case"
+      ],
+      "file": "echantillon_legit_v1.labels.csv",
+      "sha256": "f3f951bac93eb6909c20b130314201d6fca6c931060ee99d75d67eeebeda65c1"
+    },
+    "vue_detecteur": {
+      "fields": [
+        "id",
+        "user",
+        "direction",
+        "amount",
+        "timestamp",
+        "beneficiary",
+        "balance_before",
+        "balance_after",
+        "current_imsi",
+        "channel",
+        "device_bound"
+      ],
+      "file": "echantillon_legit_v1.csv",
+      "sha256": "bee8e47ef0c5b1ca432dec5e1a65e3e0b2f742ac9ef2f84cc436aea5881e672b"
+    }
+  },
   "isc_seed": 20260925,
-  "personas_version": "v1.1",
-  "sha256": "47ca409c776530ce76c0677d93434f4940b679041f63bee40aa2feb118d93b99",
+  "personas_version": "v1.4",
+  "sha256": "bee8e47ef0c5b1ca432dec5e1a65e3e0b2f742ac9ef2f84cc436aea5881e672b",
   "skipped_out": 157,
   "start": "2026-10-25",
   "transactions": 8460,
-  "users": 400
+  "users": 400,
+  "verite_terrain_sim_events": {
+    "per_case": {
+      "a": 0,
+      "b": 0,
+      "c": 1
+    },
+    "total": 1
+  }
 }

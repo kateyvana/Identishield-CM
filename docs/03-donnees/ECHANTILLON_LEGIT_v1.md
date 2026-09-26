@@ -1,7 +1,7 @@
 # Échantillon de contrôle — trafic légitime v1
 
-- **Fichier** : `data/synth/echantillon_legit_v1.csv` (SHA-256 `47ca409c776530ce76c0677d93434f4940b679041f63bee40aa2feb118d93b99`)
-- **Graine** : ISC_SEED = 20260925 ; personas v1.1
+- **Fichier** : `data/synth/echantillon_legit_v1.csv` (SHA-256 `bee8e47ef0c5b1ca432dec5e1a65e3e0b2f742ac9ef2f84cc436aea5881e672b`)
+- **Graine** : ISC_SEED = 20260925 ; personas v1.4
 - **Population** : 400 usagers, 7 jours à partir du 2026-10-25 → **8460 transactions**, toutes étiquetées `LEGIT`
 - **Étalon** : `profil_reel_v1.json` (source `84cd01ae…`)
 
@@ -69,3 +69,15 @@ Population entière (informatif, non forcé) : p10 = 230.0, p25 = 678.75, p50 = 
 
 - Règle : >3 transactions en 10 min (glissant) (lue dans VEL).
 - Population : **11.98 %** des usagers ; agents seuls : **100.0 %** (bande cible 25–55 %, réel 39.06 %).
+
+## g. Canal et liaison d'appareil (PERSONAS v1.2, hypothèses déclarées)
+
+| Archétype | Usagers actifs | Téléphone lié % | APP % des tx | USSD % des tx |
+|---|--:|--:|--:|--:|
+| agent | 20 | 35.0 | 6.76 | 93.24 |
+| marchand | 60 | 60.0 | 25.26 | 74.74 |
+| ordinaire | 161 | 42.24 | 25.27 | 74.73 |
+| salarie | 100 | 80.0 | 63.82 | 36.18 |
+| victime | 18 | 33.33 | 14.29 | 85.71 |
+
+- Transactions APP sans téléphone lié : **0** (attendu : 0).
