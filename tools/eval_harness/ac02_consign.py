@@ -23,6 +23,7 @@ INTÉGRATION À VÉRIFIER PAR CLAUDE CODE contre le dépôt réel (marquées TOD
     l'aide adm() de verify_attacker.sh) ;
   - l'endpoint de bascule de mode (CONSOLE/api/mode).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,22 +40,33 @@ NETWORK = os.environ.get("ISC_NET", "isc-net")
 
 # Les 4 oracles d'AC-02 (ISC-TM §8). Noms lus dans la sortie de l'outil existant.
 ORACLE_KEYS = [
-    "ORACLE_BALANCE_FINAL",            # solde de la victime vidé (attendu 0)
-    "ORACLE_OUTPUT_BENEFICIARY",       # sortie vers le bénéficiaire attaquant
-    "ORACLE_OTP_TARGET_IMSI",          # OTP parti vers l'IMSI attaquant
-    "ORACLE_OLD_DEVICE_NOTIFICATIONS", # 0 notification à l'ancien appareil
+    "ORACLE_BALANCE_FINAL",  # solde de la victime vidé (attendu 0)
+    "ORACLE_OUTPUT_BENEFICIARY",  # sortie vers le bénéficiaire attaquant
+    "ORACLE_OTP_TARGET_IMSI",  # OTP parti vers l'IMSI attaquant
+    "ORACLE_OLD_DEVICE_NOTIFICATIONS",  # 0 notification à l'ancien appareil
 ]
 
 
 def _run(cmd: list[str], timeout: int = 120) -> str:
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout).stdout
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False).stdout
 
 
 def set_mode(layerless: bool) -> None:
     """Bascule le mode de la pile via l'API console (comme verify_attacker.sh)."""
     body = '{"layerless":true}' if layerless else '{"layerless":false}'
-    _run(["curl", "-sS", "-X", "POST", f"{CONSOLE}/api/mode",
-          "-H", "Content-Type: application/json", "-d", body])
+    _run(
+        [
+            "curl",
+            "-sS",
+            "-X",
+            "POST",
+            f"{CONSOLE}/api/mode",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            body,
+        ]
+    )
     # attendre la prise en compte
     for _ in range(15):
         out = _run(["curl", "-sS", f"{CONSOLE}/api/mode"])
@@ -73,20 +85,47 @@ def seed_victim(msisdn: str, imsi: str, balance: int) -> None:
         f"ON CONFLICT (msisdn) DO UPDATE SET current_imsi=EXCLUDED.current_imsi, "
         f"balance_xaf=EXCLUDED.balance_xaf;"
     )
-    _run(["docker", "exec", "isc-postgres", "psql", "-U", "isc_admin",
-          "-d", "identishield", "-tAc", sql])
+    _run(
+        [
+            "docker",
+            "exec",
+            "isc-postgres",
+            "psql",
+            "-U",
+            "isc_admin",
+            "-d",
+            "identishield",
+            "-tAc",
+            sql,
+        ]
+    )
 
 
 def run_scenario(c: dict) -> str:
     """Lance le scénario AC-02 EXISTANT sur un cas. Ne réécrit pas l'attaque."""
     cmd = [
-        "docker", "run", "--rm", "--network", NETWORK,
-        "-e", "CORE_URL=http://core:8080", "-e", "SIM_URL=http://sim:8080",
-        ATTACKER_IMAGE, "python", "-m", "isc_attacker", "ac02",
-        "--victim", c["victim_msisdn"],
-        "--victim-imsi", c["victim_imsi"],
-        "--beneficiary", c["beneficiary_msisdn"],
-        "--attacker-imsi", c["attacker_imsi"],
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        NETWORK,
+        "-e",
+        "CORE_URL=http://core:8080",
+        "-e",
+        "SIM_URL=http://sim:8080",
+        ATTACKER_IMAGE,
+        "python",
+        "-m",
+        "isc_attacker",
+        "ac02",
+        "--victim",
+        c["victim_msisdn"],
+        "--victim-imsi",
+        c["victim_imsi"],
+        "--beneficiary",
+        c["beneficiary_msisdn"],
+        "--attacker-imsi",
+        c["attacker_imsi"],
     ]
     return _run(cmd)
 
@@ -112,17 +151,25 @@ def oracle_verdict(c: dict, vals: dict[str, str]) -> dict[str, bool]:
     }
 
 
-def consign(plan_csv: Path, out_view: Path, out_labels: Path,
-            dry_run: bool = False) -> tuple[str, str, int, int]:
+def consign(
+    plan_csv: Path, out_view: Path, out_labels: Path, dry_run: bool = False
+) -> tuple[str, str, int, int]:
     """Parcourt le plan, orchestre le scénario existant, écrit les deux vues.
     dry_run=True : n'appelle NI la pile NI Docker (pour les tests hors sandbox)."""
     with plan_csv.open(encoding="utf-8", newline="") as f:
         cases = list(csv.DictReader(f))
 
-    view_fields = ["run_id", "victim_msisdn", "instant",
-                   "balance_emptied", "out_to_attacker",
-                   "otp_to_attacker_imsi", "no_old_device_notif",
-                   "all_oracles_ok", "duration_s"]
+    view_fields = [
+        "run_id",
+        "victim_msisdn",
+        "instant",
+        "balance_emptied",
+        "out_to_attacker",
+        "otp_to_attacker_imsi",
+        "no_old_device_notif",
+        "all_oracles_ok",
+        "duration_s",
+    ]
     label_fields = ["run_id", "label", "source"]
     view_rows, label_rows = [], []
     ok = fail = 0
@@ -133,9 +180,15 @@ def consign(plan_csv: Path, out_view: Path, out_labels: Path,
         for c in cases:
             t0 = time.time()
             if dry_run:
-                verdict = {k: True for k in
-                           ("balance_emptied", "out_to_attacker",
-                            "otp_to_attacker_imsi", "no_old_device_notif")}
+                verdict = {
+                    k: True
+                    for k in (
+                        "balance_emptied",
+                        "out_to_attacker",
+                        "otp_to_attacker_imsi",
+                        "no_old_device_notif",
+                    )
+                }
                 dur = 0.0
             else:
                 seed_victim(c["victim_msisdn"], c["victim_imsi"], int(c["balance_xaf"]))
@@ -145,11 +198,16 @@ def consign(plan_csv: Path, out_view: Path, out_labels: Path,
             all_ok = all(verdict.values())
             ok += all_ok
             fail += not all_ok
-            view_rows.append({
-                "run_id": c["run_id"], "victim_msisdn": c["victim_msisdn"],
-                "instant": c["instant"], **{k: str(v).lower() for k, v in verdict.items()},
-                "all_oracles_ok": str(all_ok).lower(), "duration_s": dur,
-            })
+            view_rows.append(
+                {
+                    "run_id": c["run_id"],
+                    "victim_msisdn": c["victim_msisdn"],
+                    "instant": c["instant"],
+                    **{k: str(v).lower() for k, v in verdict.items()},
+                    "all_oracles_ok": str(all_ok).lower(),
+                    "duration_s": dur,
+                }
+            )
             label_rows.append({"run_id": c["run_id"], "label": "FRAUD", "source": "harness"})
     finally:
         if not dry_run:
@@ -172,12 +230,14 @@ def _write(path: Path, fields: list[str], rows: list[dict]) -> str:
 
 def main() -> None:
     p = argparse.ArgumentParser(
-        description="Consigne le résultat du scénario AC-02 existant, cas par cas.")
+        description="Consigne le résultat du scénario AC-02 existant, cas par cas."
+    )
     p.add_argument("--plan", required=True, type=Path)
     p.add_argument("--out-view", required=True, type=Path)
     p.add_argument("--out-labels", required=True, type=Path)
-    p.add_argument("--dry-run", action="store_true",
-                   help="ne touche NI la pile NI Docker (tests hors sandbox)")
+    p.add_argument(
+        "--dry-run", action="store_true", help="ne touche NI la pile NI Docker (tests hors sandbox)"
+    )
     a = p.parse_args()
     hv, hl, ok, fail = consign(a.plan, a.out_view, a.out_labels, a.dry_run)
     print(f"vue    {a.out_view} sha256 {hv}")
