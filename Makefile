@@ -87,7 +87,17 @@ contract:
 .PHONY: mobile
 mobile:
 	@echo ">>> mobile : lint, tests unitaires, APK debug (mobile/)"
-	@sdk="$${ANDROID_HOME:-$${ANDROID_SDK_ROOT:-}}"; 	if [ -z "$$sdk" ] && [ -n "$$LOCALAPPDATA" ] && [ -d "$$LOCALAPPDATA/Android/Sdk" ]; then sdk="$$LOCALAPPDATA/Android/Sdk"; fi; 	if [ -z "$$sdk" ] && [ -d "$$HOME/Android/Sdk" ]; then sdk="$$HOME/Android/Sdk"; fi; 	if [ -z "$$sdk" ] || [ ! -d "$$sdk/platforms" ]; then 	  if [ -n "$(ISC_REQUIRE_MOBILE)" ]; then 	    echo "mobile : ÉCHEC — SDK Android introuvable (ANDROID_HOME, ANDROID_SDK_ROOT, ~/Android/Sdk) et ISC_REQUIRE_MOBILE=1"; exit 1; 	  fi; 	  echo "mobile : SAUTÉE — SDK Android introuvable (ANDROID_HOME, ANDROID_SDK_ROOT, ~/Android/Sdk) : RIEN n'a été vérifié pour mobile/ (installer le SDK, voir mobile/README.md)"; 	  exit 0; 	fi; 	cd mobile && ANDROID_HOME="$$sdk" ./gradlew --quiet lint testDebugUnitTest assembleDebug && echo "mobile : VERT (SDK : $$sdk)"
+	@sdk="$${ANDROID_HOME:-$${ANDROID_SDK_ROOT:-}}"; \
+	if [ -z "$$sdk" ] && [ -n "$$LOCALAPPDATA" ] && [ -d "$$LOCALAPPDATA/Android/Sdk" ]; then sdk="$$LOCALAPPDATA/Android/Sdk"; fi; \
+	if [ -z "$$sdk" ] && [ -d "$$HOME/Android/Sdk" ]; then sdk="$$HOME/Android/Sdk"; fi; \
+	if [ -z "$$sdk" ] || [ ! -d "$$sdk/platforms" ]; then \
+	  if [ -n "$(ISC_REQUIRE_MOBILE)" ]; then \
+	    echo "mobile : ÉCHEC — SDK Android introuvable (ANDROID_HOME, ANDROID_SDK_ROOT, ~/Android/Sdk) et ISC_REQUIRE_MOBILE=1"; exit 1; \
+	  fi; \
+	  echo "mobile : SAUTÉE — SDK Android introuvable (ANDROID_HOME, ANDROID_SDK_ROOT, ~/Android/Sdk) : RIEN n'a été vérifié pour mobile/ (installer le SDK, voir mobile/README.md)"; \
+	  exit 0; \
+	fi; \
+	cd mobile && ANDROID_HOME="$$sdk" ./gradlew --quiet lint testDebugUnitTest assembleDebug && echo "mobile : VERT (SDK : $$sdk)"
 
 check-docs:
 	@echo ">>> check-docs"
@@ -116,10 +126,21 @@ named-params:
 
 ## ---- autres cibles ----------------------------------------------------------
 # Faux serveur de l'API mobile (M-03) pour développer l'application : NE VÉRIFIE NI la signature
-# NI l'attestation (voir tools/mobile-mock/README.md). `make mobile-mock MOBILE_MOCK_DEMO=1` expose
-# l'OTP de test dans la réponse.
+# NI l'attestation (voir tools/mobile-mock/README.md). HTTPS obligatoire (ADR-038) avec la CA de
+# DÉVELOPPEMENT de tools/mobile-mock/.tls/ (git-ignoré), générée par `make mobile-mock-tls`
+# (SAN supplémentaires : MOBILE_MOCK_SAN="IP:192.168.1.20"). `MOBILE_MOCK_DEMO=1` expose l'OTP de test.
+.PHONY: mobile-mock-tls
+mobile-mock-tls:
+	@bash tools/mobile-mock/gen-dev-tls.sh $(MOBILE_MOCK_SAN)
+
 mobile-mock:
-	@cd tools/mobile-mock && uv run --quiet isc-mobile-mock --port $(MOBILE_MOCK_PORT) 	  --ruleset ../../config/ruleset.yaml --contract ../../contracts/mobile-api.yaml 	  --fixtures fixtures.json $(if $(MOBILE_MOCK_DEMO),--demo,)
+	@if [ ! -f tools/mobile-mock/.tls/mock.crt ] || [ ! -f tools/mobile-mock/.tls/mock.key ]; then \
+	  echo "mobile-mock : certificat HTTPS absent (ADR-038) -- lancer d'abord : make mobile-mock-tls"; exit 1; \
+	fi
+	@cd tools/mobile-mock && uv run --quiet isc-mobile-mock --port $(MOBILE_MOCK_PORT) \
+	  --ruleset ../../config/ruleset.yaml --contract ../../contracts/mobile-api.yaml \
+	  --fixtures fixtures.json --cert .tls/mock.crt --key .tls/mock.key \
+	  $(if $(MOBILE_MOCK_HOST),--host $(MOBILE_MOCK_HOST),) $(if $(MOBILE_MOCK_DEMO),--demo,)
 
 test: unit
 

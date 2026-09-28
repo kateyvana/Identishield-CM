@@ -1,3 +1,6 @@
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -68,6 +71,11 @@ android {
  *   construire.
  */
 abstract class SandboxTrustTask : DefaultTask() {
+    companion object {
+        /** Marqueur du sujet de la CA de développement du faux serveur (tools/mobile-mock/gen-dev-tls.sh). */
+        const val DEV_CA_MARKER = "ISC-DEV-MOBILE-MOCK"
+    }
+
     @get:Optional
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
@@ -85,6 +93,21 @@ abstract class SandboxTrustTask : DefaultTask() {
         out.deleteRecursively()
         val xmlDir = File(out, "xml").apply { mkdirs() }
         val ca = sandboxCa.orNull?.asFile
+        if (ca != null) {
+            // La CA fournie doit être un vrai certificat X.509 ; la CA de DÉVELOPPEMENT du faux
+            // serveur (marqueur OU=ISC-DEV-MOBILE-MOCK, ADR-038) est REFUSÉE pour un build release.
+            val subject =
+                ca.inputStream().use {
+                    (CertificateFactory.getInstance("X.509").generateCertificate(it) as X509Certificate)
+                        .subjectX500Principal.name
+                }
+            if (requireCa.get() && subject.contains("OU=$DEV_CA_MARKER")) {
+                throw GradleException(
+                    "ADR-038 : la CA de développement du faux serveur ($subject) est interdite en release. " +
+                        "Fournir la CA du bac à sable.",
+                )
+            }
+        }
         val anchors =
             if (ca != null) {
                 val rawDir = File(out, "raw").apply { mkdirs() }

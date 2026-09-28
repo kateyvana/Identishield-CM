@@ -13,14 +13,21 @@ Faux serveur de **développement** de l'application mobile. Il sert les 18 route
   - `ALLOW` : dans tous les autres cas.
 - **Attestation de mock :** un certificat dont le contenu commence par `SOFTWARE` est refusé (`422 DEVICE_UNSUPPORTED`), pour simuler l'écran E-27b.
 - **État en mémoire, volatile,** rechargé depuis `fixtures.json` à chaque démarrage. Toutes les données sont **fictives** (plage 677000000–677009999, ADR-035).
-- **HTTP en clair,** sur `127.0.0.1` par défaut. Pas de TLS épinglé (MOB-S-08) : c'est une limite du mock, à traiter avant de brancher un téléphone physique (M-05 ou M-06).
+- ~~**HTTP en clair,** sur `127.0.0.1` par défaut. Pas de TLS épinglé (MOB-S-08) : c'est une limite du mock, à traiter avant de brancher un téléphone physique (M-05 ou M-06).~~ **HTTPS obligatoire, sans repli en clair (ADR-038).**
+  - Le certificat est émis par une **CA de DÉVELOPPEMENT** distincte (`gen-dev-tls.sh`), jamais par la CA du bac à sable. Cette CA et les clés vivent dans `.tls/`, ignoré par git.
+  - La CA porte le marqueur `OU=ISC-DEV-MOBILE-MOCK`. L'application la **refuse pour un build release**.
+  - La poignée de main TLS se fait par connexion : un client muet ne bloque pas les autres.
+  - Écoute sur `127.0.0.1` par défaut.
 - **ES-22 :** un compte inexistant et un PIN faux reçoivent le même code et le même corps, mais **pas forcément le même temps de réponse**.
 - **Non simulés :** le freinage de la recherche du nom du titulaire (MT-06), l'anti-force-brute du PIN (QM-14, décision ouverte) et l'expiration du nonce.
 
 ## Lancer
 
 ```bash
+make mobile-mock-tls                           # une fois : CA de dev + certificat (SAN : 10.0.2.2, 127.0.0.1, localhost)
+make mobile-mock-tls MOBILE_MOCK_SAN="IP:192.168.1.20"   # téléphone physique : ajouter l'adresse du poste
 make mobile-mock                               # port : MOBILE_MOCK_PORT (défaut du Makefile)
+make mobile-mock MOBILE_MOCK_HOST=0.0.0.0      # écoute sur le réseau local (téléphone physique)
 make mobile-mock MOBILE_MOCK_PORT=9000         # autre port
 make mobile-mock MOBILE_MOCK_DEMO=1            # mode démo : l'OTP de test est renvoyé par /enrolment/start
 ```
