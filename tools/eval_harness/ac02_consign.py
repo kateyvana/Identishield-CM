@@ -61,9 +61,7 @@ ORACLE_KEYS = [
 
 
 def _run(cmd: list[str], timeout: int = 120) -> str:
-    return subprocess.run(
-        cmd, capture_output=True, text=True, timeout=timeout, check=False
-    ).stdout
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False).stdout
 
 
 def set_mode(layerless: bool) -> None:
@@ -208,8 +206,7 @@ def oracle_verdict(c: dict, vals: dict[str, str]) -> dict[str, bool]:
             and vals.get("ORACLE_OUTPUT_STATE") == "EXECUTED"
             and vals.get("ORACLE_OUTPUT_BENEFICIARY") == c["beneficiary_msisdn"]
         ),
-        "otp_to_attacker_imsi": vals.get("ORACLE_OTP_TARGET_IMSI")
-        == c["attacker_imsi"],
+        "otp_to_attacker_imsi": vals.get("ORACLE_OTP_TARGET_IMSI") == c["attacker_imsi"],
         "no_old_device_notif": vals.get("ORACLE_OLD_DEVICE_NOTIFICATIONS") == "0",
     }
 
@@ -278,9 +275,7 @@ def consign(
                     "duration_s": dur,
                 }
             )
-            label_rows.append(
-                {"run_id": c["run_id"], "label": "FRAUD", "source": "harness"}
-            )
+            label_rows.append({"run_id": c["run_id"], "label": "FRAUD", "source": "harness"})
     finally:
         if not dry_run:
             set_mode(layerless=False)
