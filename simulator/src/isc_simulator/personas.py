@@ -1,4 +1,4 @@
-"""Synthesis parameters of the legitimate population (docs/03-donnees/PERSONAS_v1.md, v1.1).
+"""Synthesis parameters of the legitimate population (docs/03-donnees/PERSONAS_v1.md, v2.0).
 
 These are DATA-SYNTHESIS parameters, not product parameters: they drive the traffic generator
 (T3-03), never the PDP. Product parameters (CAP_PROB, VEL, NIGHT, ...) live only in
@@ -7,6 +7,12 @@ config/ruleset.yaml.
 CALIBRATED values copy the T3-01 reference profile (docs/03-donnees/profil_reel_v1.json,
 aggregates only); tests/test_generator.py fails if they drift from it. Every other value is
 MODELED (an assumption documented in PERSONAS, to be sensitivity-tested in T3-07).
+
+v2.0 (T3-05a): the population mix, the per-user rates, the grouping of the public into sessions and
+the amount law now come from config/synthese.yaml and the reference profile v1.1 (see
+synthese.py). In each Archetype below, `share`, `rate`, `dispersion` and the per-direction
+`amount_out` / `amount_in` are therefore SUPERSEDED for generation (kept for the record of
+PERSONAS v1.x); `burst_share` / `burst_size` still apply to the merchant only.
 """
 
 # @implements EAR-01
@@ -16,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-PERSONAS_VERSION = "v1.4"
+PERSONAS_VERSION = "v2.0"
 
 # Fictitious MSISDN range (ED-09): users AND beneficiaries are drawn here, nowhere else.
 MSISDN_LOW = 677000000
@@ -36,21 +42,6 @@ SIM_EVENT_RATES_PER_MONTH = {"a": 0.008, "b": 0.005, "c": 0.015}
 DAYS_PER_MONTH = 30
 # Replacement IMSIs come from a separate MSIN block: base + user index x 10 + ordinal (1..9).
 REPLACEMENT_MSIN_BASE = 1_000_000_000
-
-# CALIBRATED — quantile function of real amounts > 0 (FCFA), as (probability, amount) knots:
-# min, p10, p25, p50, p75, p90, p95, p99, max of profil_reel_v1.json. The agent amount law samples
-# it by log-linear interpolation (PERSONAS v1.1 §1.4: a single lognormal misses the real tail).
-AGENT_AMOUNT_KNOTS = (
-    (0.00, 0.5),
-    (0.10, 128.2),
-    (0.25, 500.0),
-    (0.50, 1854.0),
-    (0.75, 5000.0),
-    (0.90, 15340.0),
-    (0.95, 50750.0),
-    (0.99, 500000.0),
-    (1.00, 2015424.0),
-)
 
 # CALIBRATED — real transaction counts per hour 0..23: the diurnal profile shared by all archetypes.
 BASE_HOUR_WEIGHTS = (
@@ -77,7 +68,7 @@ class Archetype:
     burst_share: float  # share of transactions emitted inside bursts
     burst_size: tuple[int, int]  # transactions per burst, inclusive range
     p_out: float  # probability that a regular transaction is an OUT (v1.1)
-    amount_out: Lognormal | None  # None = empirical agent law (AGENT_AMOUNT_KNOTS)
+    amount_out: Lognormal | None  # v1.x only (superseded in v2.0 by the reference amount mixture)
     amount_in: Lognormal | None
     hour_boost_hours: tuple[int, ...]  # hours whose base weight is multiplied...
     hour_boost: float  # ...by this factor (1.0 = base profile)
@@ -90,6 +81,7 @@ class Archetype:
     p_app_if_bound: float  # v1.2 — share of a bound user's transactions made through the app
     salary: Lognormal | None = None  # monthly salary IN on SALARY_DAY (salaried only)
     payday_extra_out: float = 0.0  # extra OUT per day on PAYDAY_DAYS (salaried only)
+    burst_span_s: int | None = None  # v2.0: seconds a burst spans (None = BURST_SPAN_S)
 
 
 # Salaried seasonality (PERSONAS §1.2): salary credited on day 28, bill burst on days 28-30.

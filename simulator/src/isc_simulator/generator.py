@@ -28,17 +28,19 @@ from __future__ import annotations
 
 import argparse
 import csv
+import dataclasses
 import hashlib
 import json
 import math
 import random
 import uuid
 from datetime import UTC, date, datetime, timedelta
+from functools import cache
 from itertools import pairwise
 from pathlib import Path
 
+from isc_simulator import synthese
 from isc_simulator.personas import (
-    AGENT_AMOUNT_KNOTS,
     ARCHETYPES,
     BASE_HOUR_WEIGHTS,
     BURST_SPAN_S,
@@ -129,14 +131,85 @@ def draw_lognormal(rng: random.Random, law: Lognormal) -> int:
     return min(law.cap, max(1, round(x)))
 
 
-def draw_agent_amount(rng: random.Random) -> int:
-    """Inverse CDF of the real amounts: log-linear interpolation between the reference quantiles."""
-    u = rng.random()
-    for (p0, a0), (p1, a1) in pairwise(AGENT_AMOUNT_KNOTS):
+def log_interp(u: float, knots: list[tuple[float, float]]) -> float:
+    """Inverse CDF by log-linear interpolation between (probability, value) knots."""
+    for (p0, a0), (p1, a1) in pairwise(knots):
         if u <= p1:
             t = (u - p0) / (p1 - p0)
-            return max(1, round(math.exp(math.log(a0) + t * (math.log(a1) - math.log(a0)))))
-    return round(AGENT_AMOUNT_KNOTS[-1][1])
+            return math.exp(math.log(a0) + t * (math.log(a1) - math.log(a0)))
+    return knots[-1][1]
+
+
+@cache
+def amount_law() -> tuple:
+    """PERSONAS v2.0 §1.4 — amounts of EVERY archetype (salary apart): with the probability of the
+    reference point masses, one of the K most frequent real amounts (real frequency); otherwise
+    the log-linear quantile function of the real amounts outside those values. Aggregates only."""
+    m = synthese.load()["etalon_data"]["f_v1_1"]["montants_masses_ponctuelles"]
+    values = [round(x["montant"]) for x in m["masses"]]
+    cum, acc = [], 0.0
+    for x in m["masses"]:
+        acc += x["part"]
+        cum.append(acc)
+    knots = [(k["p"], k["montant"]) for k in m["noeuds_du_reste"]]
+    return m["part_totale"], values, cum, knots
+
+
+def draw_amount(rng: random.Random) -> int:
+    p_mass, values, cum, knots = amount_law()
+    if rng.random() < p_mass:
+        return rng.choices(values, cum_weights=cum)[0]
+    return max(1, round(log_interp(rng.random(), knots)))
+
+
+@cache
+def rate_law() -> tuple:
+    """PERSONAS v2.0 §1.2 — per-user rate: the real per-user monetary rate quantile function, cut
+    into bands by the mix (ordinaire and victime, then salarié, then marchand). The agent is a
+    declared overlay, outside the bands (its own lognormal)."""
+    cfg = synthese.load()
+    mix = cfg["mix"]
+    knots = [
+        (k["p"], k["tx_par_jour"])
+        for k in cfg["etalon_data"]["f_v1_1"]["rythme_monetaire_par_usager"]["noeuds"]
+    ]
+    order = (("ordinaire", "victime"), ("salarie",), ("marchand",))
+    total = sum(mix[n] for group in order for n in group)
+    bands, lo = {}, 0.0
+    for group in order:
+        hi = lo + sum(mix[n] for n in group) / total
+        for n in group:
+            bands[n] = (lo, min(hi, 1.0))
+        lo = hi
+    return knots, bands
+
+
+def draw_rate(rng: random.Random, name: str) -> float:
+    cfg = synthese.load()
+    if name == "agent":
+        a = cfg["agent"]
+        return rng.lognormvariate(math.log(a["rate_median"]), a["rate_sigma"])
+    knots, bands = rate_law()
+    lo, hi = bands[name]
+    return log_interp(lo + (hi - lo) * rng.random(), knots)
+
+
+def user_archetype(arch: Archetype, rate: float) -> Archetype:
+    """The user's own copy of its archetype: per-user rate, plain Poisson, and the grouping of
+    transactions of PERSONAS v2.0 (sessions for the public, bursts kept for the merchant)."""
+    cfg = synthese.load()
+    if arch.name == "agent":
+        grouping = {"burst_share": cfg["agent"]["burst_share"]}
+    elif arch.name == "marchand":
+        grouping = {}
+    else:
+        s = cfg["sessions"]
+        grouping = {
+            "burst_share": s["burst_share"],
+            "burst_size": (s["size_min"], s["size_max"]),
+            "burst_span_s": s["span_s"],
+        }
+    return dataclasses.replace(arch, rate=rate, dispersion=None, **grouping)
 
 
 def hour_cum_weights(arch: Archetype) -> list[float]:
@@ -157,8 +230,9 @@ def burst_probability(arch: Archetype) -> float:
 
 
 def archetype_counts(users: int) -> list[int]:
-    """Users per archetype from the population shares (largest remainder, deterministic)."""
-    raw = [a.share * users for a in ARCHETYPES]
+    """Users per archetype from the mix of config/synthese.yaml (largest remainder, deterministic)."""
+    mix = synthese.load()["mix"]
+    raw = [mix[a.name] * users for a in ARCHETYPES]
     counts = [math.floor(r) for r in raw]
     order = sorted(range(len(raw)), key=lambda i: (-(raw[i] - counts[i]), i))
     for i in order[: users - sum(counts)]:
@@ -262,7 +336,8 @@ def plan_events(master: int, i: int, arch: Archetype, start: date, days: int) ->
             if q > 0 and rt.random() < q:
                 size = min(remaining, rt.randint(*arch.burst_size))
             t0 = instant(base)
-            offsets = [0] + sorted(rt.randrange(BURST_SPAN_S) for _ in range(size - 1))
+            span = arch.burst_span_s or BURST_SPAN_S
+            offsets = [0] + sorted(rt.randrange(span) for _ in range(size - 1))
             for off in offsets:
                 direction = "OUT" if rd.random() < arch.p_out else "IN"
                 events.append((t0 + off, len(events), direction, "regular"))
@@ -323,12 +398,15 @@ def generate(
                 agent = f"agent-kyc-{ragent.randrange(1, HLR_AGENTS + 1):02d}"
                 hlr_events.append((ts_ev, i, old, new, agent))
         current, pending = imsi(i), list(user_events)
-        for seq, (ts, _, direction, kind) in enumerate(plan_events(seed, i, arch, start, days)):
-            if kind == "salary":
+        # v2.0 (T3-05a): the user's own rate, from its own sub-seed, drives its calendar.
+        user_arch = user_archetype(arch, draw_rate(stream(seed, "rate", i), arch.name))
+        for seq, (ts, _, direction, kind) in enumerate(
+            plan_events(seed, i, user_arch, start, days)
+        ):
+            if kind == "salary":  # declared overlay: the salary keeps its own law
                 amount = draw_lognormal(ra, arch.salary)
-            else:
-                law = arch.amount_out if direction == "OUT" else arch.amount_in
-                amount = draw_agent_amount(ra) if law is None else draw_lognormal(ra, law)
+            else:  # v2.0: one amount law for every archetype and both directions
+                amount = draw_amount(ra)
             is_new = False
             if direction == "OUT":
                 if amount > balance:
@@ -493,6 +571,8 @@ def main(argv: list[str] | None = None) -> int:
     }
     manifest = {
         "personas_version": PERSONAS_VERSION,
+        "synthese_version": synthese.load()["version"],
+        "etalon": synthese.load()["etalon"],
         "isc_seed": args.seed,
         "users": args.users,
         "days": args.days,

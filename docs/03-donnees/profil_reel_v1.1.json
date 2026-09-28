@@ -404,7 +404,13 @@
           "p": 1.0
         }
       ],
-      "part_totale": 0.7535
+      "part_totale": 0.7535,
+      "parts_multiples": {
+        "100": 0.8156,
+        "1000": 0.4682,
+        "500": 0.6128,
+        "5000": 0.1577
+      }
     },
     "rythme_monetaire_par_usager": {
       "definition": "tx monétaires (montant > 0) / durée d'activité de l'usager (jours, >= 1)",

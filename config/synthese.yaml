@@ -1,0 +1,42 @@
+# Paramètres de SYNTHÈSE du générateur de trafic (T3-05a, PERSONAS v2.0). SOURCE UNIQUE des
+# paramètres du générateur introduits en T3-05a. Ce ne sont PAS des paramètres produit : ceux du PDP
+# vivent dans config/ruleset.yaml, et rien de ce fichier n'y entre (décision du propriétaire).
+#
+# Référence de plausibilité = la POPULATION ENTIÈRE du réel (64 usagers, non étiquetés), sur ses
+# transactions monétaires (étalon profil_reel_v1.1.json, agrégats seulement). Le grand public est un
+# continuum calé sur ce réel ; l'agent et la paie sont des SURCOUCHES DÉCLARÉES, sans ancrage réel.
+# Format : sous-ensemble strict de YAML (clés, sous-clés, scalaires), lu sans dépendance (ADR-033).
+synthese:
+  version: syn-1.0.0
+  etalon: docs/03-donnees/profil_reel_v1.1.json
+
+  horizon:
+    users: 2480 # option A : environ 2 455 usagers réalistes + environ 25 agents
+    days: 182 # 6 mois (PO-1 ratifié, ED-07)
+    start: "2026-10-01"
+    seed: 20260925
+
+  mix: # parts des USAGERS ; §2 conservé entre archétypes réalistes, agents ramenés à 1 % (× 99/95)
+    ordinaire: 0.521053
+    salarie: 0.260526
+    victime: 0.052105
+    marchand: 0.156316
+    agent: 0.010000
+
+  rythme: # λ par usager (sous-graine « rate »), transactions quotidiennes ~ Poisson(λ)
+    loi: bandes_empiriques # fonction quantile réelle, découpée en bandes selon le mix
+    # Bandes, dans l'ordre : ordinaire et victime, puis salarié, puis marchand. L'agent est exclu.
+
+  agent: # SURCOUCHE DÉCLARÉE : rythme sans ancrage réel (réel : max 4,73 tx/jour)
+    rate_median: 10.0
+    rate_sigma: 1.0
+    burst_share: 0.0
+
+  sessions: # PO-6 : regroupement en sessions du grand public (ordinaire, victime, salarié)
+    burst_share: 0.65 # part des tx émises en sessions ; calé (T3-05a) : 13,4 % d'écarts < 10 min (réel 13,04)
+    size_min: 2
+    size_max: 3
+    span_s: 150 # durée d'une session (s) ; les marchands gardent leurs rafales de 600 s
+
+  montants: # mélange « masses ponctuelles + reste » de l'étalon, pour TOUS les archétypes
+    point_masses_k: 20 # doit valoir la valeur k de l'étalon

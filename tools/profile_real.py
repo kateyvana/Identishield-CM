@@ -169,6 +169,11 @@ def v1_1_aggregates(
             "masses": [{"montant": v, "part": r4(c / npos)} for v, c in masses],
             "noeuds_du_reste": resid_knots,
             "n_reste": len(resid),
+            # parts de montants ronds (bande « aucune surcorrection » de T3-06)
+            "parts_multiples": {
+                str(g): r4(sum(1 for a in amounts_pos if a % g == 0) / npos)
+                for g in (100, 500, 1000, 5000)
+            },
         },
         "rythme_monetaire_par_usager": {
             "definition": "tx monétaires (montant > 0) / durée d'activité de l'usager (jours, >= 1)",

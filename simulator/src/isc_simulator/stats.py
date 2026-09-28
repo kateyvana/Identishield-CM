@@ -18,6 +18,7 @@ import hashlib
 import json
 import re
 from datetime import datetime
+from itertools import pairwise
 from pathlib import Path
 
 from isc_simulator.personas import MSISDN_HIGH, MSISDN_LOW
@@ -116,14 +117,15 @@ def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
     digest = hashlib.sha256(sample.read_bytes()).hexdigest()
     n = len(rows)
 
-    # a. Amount — agents only (calibrated) versus the real amounts > 0.
+    # a. Amount — WHOLE synthetic population (salary included) versus the real amounts > 0:
+    #    the real data set is the population, not a sub-population (PERSONAS v2.0 §5.1).
     ref_amt = ref["a_montant"]["montants_strictement_positifs"]
-    agents = sorted(float(r["amount"]) for r in rows if r["archetype"] == "agent")
-    agent_q = {}
+    amounts = sorted(float(r["amount"]) for r in rows)
+    amount_q = {}
     for k, q in QUANTILES:
-        synth, real = percentile(agents, q), ref_amt["quantiles"][k]
+        synth, real = percentile(amounts, q), ref_amt["quantiles"][k]
         err = 100 * (synth - real) / real
-        agent_q[k] = {
+        amount_q[k] = {
             "synthetique": r2(synth),
             "reel": real,
             "ecart_relatif_pct": r2(err),
@@ -134,23 +136,29 @@ def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
     ref_pos = ref_amt["n"]
     hist, l1 = [], 0.0
     for label, lo, hi in AMOUNT_BINS:
-        c = sum(1 for a in agents if lo <= a < hi)
-        synth = c / len(agents) if agents else 0.0
+        c = sum(1 for a in amounts if lo <= a < hi)
+        synth = c / n if n else 0.0
         real = ref_bins[label] / ref_pos
         l1 += abs(synth - real)
         hist.append({"tranche": label, "part_synth": r2(100 * synth), "part_reel": r2(100 * real)})
-    population = sorted(float(r["amount"]) for r in rows)
+    # Round amounts: the synthetic population must not be rounder than the real one.
+    ref_mult = ref["f_v1_1"]["montants_masses_ponctuelles"]["parts_multiples"]
+    multiples = {}
+    for g, real in ref_mult.items():
+        share = sum(1 for a in amounts if a % int(g) == 0) / n if n else 0.0
+        multiples[g] = {
+            "synthetique_pct": r2(100 * share),
+            "reel_pct": r2(100 * real),
+            "pas_plus_rond_que_le_reel": share <= real,
+        }
     montant = {
-        "agents": {
-            "n": len(agents),
-            "quantiles": agent_q,
+        "population": {
+            "n": n,
+            "quantiles": amount_q,
             "histogramme": hist,
             "distance_l1_histogramme": round(l1, 4),
             "cible_l1": 0.10,
-        },
-        "population_informatif": {
-            "n": n,
-            "quantiles": {k: r2(percentile(population, q)) for k, q in QUANTILES},
+            "parts_multiples": multiples,
         },
     }
 
@@ -233,22 +241,74 @@ def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
         "labels": sorted({r["label"] for r in rows}),
     }
 
-    # f. Velocity — reported, NOT forced to the real value (PERSONAS §5.4).
+    # Comparable population (PERSONAS v2.0 §5): every user but the declared agent overlay.
     times: dict[str, list[int]] = {}
-    agent_times: dict[str, list[int]] = {}
+    out_times: dict[str, list[int]] = {}
     for r in rows:
+        if r["archetype"] == "agent":
+            continue
         t = epoch(r["timestamp"])
         times.setdefault(r["user"], []).append(t)
-        if r["archetype"] == "agent":
-            agent_times.setdefault(r["user"], []).append(t)
-    pop_flag, pop_n = velocity_share(times, vel_count, vel_window)
-    agt_flag, agt_n = velocity_share(agent_times, vel_count, vel_window)
+        if r["direction"] == "OUT":
+            out_times.setdefault(r["user"], []).append(t)
+    for ts in times.values():
+        ts.sort()
+    f1 = ref["f_v1_1"]
+
+    # f. Velocity — DIAGNOSTIC only, never a target (PERSONAS v2.0 §5.4): population without
+    #    agents, monetary transactions and outputs, over the sample window (stated).
+    mon_flag, mon_n = velocity_share(times, vel_count, vel_window)
+    out_flag, out_n = velocity_share(out_times, vel_count, vel_window)
+    vel_ref = f1["velocite_par_perimetre"]
     velocite = {
         "regle": f">{vel_count} transactions en {vel_window // 60} min (glissant)",
-        "population_pct": r2(100 * pop_flag / pop_n) if pop_n else 0.0,
-        "agents_pct": r2(100 * agt_flag / agt_n) if agt_n else 0.0,
-        "bande_agents_cible_pct": [25, 55],
-        "reel_pct": ref["c_par_usager"]["velocite"]["part"],
+        "perimetre": "population hors agents",
+        "fenetre_jours": facts["days"],
+        "activite_mediane_reel_jours": f1["fenetre_observation"]["activite_par_usager_jours"][
+            "median"
+        ],
+        "monetaire_pct": r2(100 * mon_flag / mon_n) if mon_n else 0.0,
+        "monetaire_reel_pct": vel_ref["montants_positifs"]["part"],
+        "sorties_pct": r2(100 * out_flag / out_n) if out_n else 0.0,
+        "sorties_reel_pct": vel_ref["sorties_positives"]["part"],
+    }
+
+    # h. Per-user monetary rate — population without agents (PERSONAS v2.0 §5.2): transactions /
+    #    the user's activity span in days (>= 1), the definition of the reference profile.
+    rates = sorted(len(ts) / max(1.0, (ts[-1] - ts[0]) / 86400) for ts in times.values())
+    ref_rate = {
+        round(k["p"] * 100): k["tx_par_jour"] for k in f1["rythme_monetaire_par_usager"]["noeuds"]
+    }
+    rythme = {"n_usagers": len(rates), "quantiles": {}}
+    for p, tol in ((10, 25), (25, 15), (50, 15), (75, 15), (90, 15), (95, 25)):
+        synth, real = percentile(rates, p), ref_rate[p]
+        err = 100 * (synth - real) / real
+        rythme["quantiles"][f"p{p}"] = {
+            "synthetique": round(synth, 3),
+            "reel": real,
+            "ecart_relatif_pct": r2(err),
+            "tolerance_pct": tol,
+            "dans_tolerance": abs(err) <= tol,
+        }
+    rythme["max_synthetique"] = round(rates[-1], 3) if rates else 0.0
+    rythme["max_reel"] = ref_rate[100]
+
+    # i. Sessions — share of consecutive monetary transactions of a user less than 10 min / 1 min
+    #    apart (PERSONAS v2.0 §5.5); target: ±25 % (relative) of the real share under 10 min.
+    gaps = [b - a for ts in times.values() for a, b in pairwise(ts)]
+    ref_s = f1["sessions"]
+    lt600 = 100 * sum(1 for g in gaps if g < 600) / len(gaps) if gaps else 0.0
+    lt60 = 100 * sum(1 for g in gaps if g < 60) / len(gaps) if gaps else 0.0
+    sess_err = 100 * (lt600 - ref_s["part_ecarts_lt_600s"]) / ref_s["part_ecarts_lt_600s"]
+    sessions = {
+        "part_ecarts_lt_600s_pct": r2(lt600),
+        "reel_lt_600s_pct": ref_s["part_ecarts_lt_600s"],
+        "ecart_relatif_pct": r2(sess_err),
+        "tolerance_pct": 25,
+        "dans_tolerance": abs(sess_err) <= 25,
+        "part_ecarts_lt_60s_pct": r2(lt60),
+        "reel_lt_60s_pct": ref_s["part_ecarts_lt_60s"],
+        "n_ecarts": len(gaps),
     }
 
     # g. Channel and device binding per archetype (PERSONAS v1.2, declared assumptions).
@@ -296,6 +356,8 @@ def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
         "d_soldes": soldes,
         "e_controles": controles,
         "f_velocite": velocite,
+        "h_rythme": rythme,
+        "i_sessions": sessions,
         "g_canal_appareil": {"par_archetype": canal, "app_sans_appareil_lie": app_without_device},
     }
 
@@ -308,7 +370,7 @@ def render_md(s: dict) -> str:
     e, m, h = s["echantillon"], s["a_montant"], s["b_heure"]
     so, nb, sd = s["c_sorties"], s["c_nouveau_beneficiaire"], s["d_soldes"]
     c, v = s["e_controles"], s["f_velocite"]
-    agents = m["agents"]
+    pop = m["population"]
     out = [
         "# Échantillon de contrôle — trafic légitime v1",
         "",
@@ -328,12 +390,12 @@ def render_md(s: dict) -> str:
             "de PERSONAS §5 sont indiquées à titre d'information : les tenir est l'objet de T3-06."
         ),
         "",
-        "## a. Montant — agents seuls vs réel (montants > 0)",
+        "## a. Montant — population entière vs réel (montants > 0, salaire compris)",
         "",
         "| Quantile | Synthétique | Réel | Écart | Tolérance | Dans la tolérance |",
         "|---|--:|--:|--:|--:|---|",
     ]
-    for k, q in agents["quantiles"].items():
+    for k, q in pop["quantiles"].items():
         out.append(
             f"| {k} | {q['synthetique']} | {q['reel']} | {q['ecart_relatif_pct']:+} % "
             f"| ±{q['tolerance_pct']} % | {yes(q['dans_tolerance'])} |"
@@ -341,22 +403,28 @@ def render_md(s: dict) -> str:
     out += [
         "",
         (
-            f"Agents : n = {agents['n']}. Distance L1 d'histogramme = "
-            f"**{agents['distance_l1_histogramme']}** (cible < {agents['cible_l1']})."
+            f"n = {pop['n']}. Distance L1 d'histogramme = "
+            f"**{pop['distance_l1_histogramme']}** (cible < {pop['cible_l1']})."
         ),
         "",
         "| Tranche | Synthétique % | Réel % |",
         "|---|--:|--:|",
     ]
     out += [
-        f"| {b['tranche']} | {b['part_synth']} | {b['part_reel']} |" for b in agents["histogramme"]
+        f"| {b['tranche']} | {b['part_synth']} | {b['part_reel']} |" for b in pop["histogramme"]
     ]
-    pq = m["population_informatif"]["quantiles"]
     out += [
         "",
-        "Population entière (informatif, non forcé) : "
-        + ", ".join(f"{k} = {x}" for k, x in pq.items())
-        + ".",
+        "Montants ronds (le synthétique ne doit pas être plus rond que le réel) :",
+        "",
+        "| Multiple de | Synthétique % | Réel % | Pas plus rond que le réel |",
+        "|--:|--:|--:|---|",
+    ]
+    out += [
+        f"| {g} | {x['synthetique_pct']} | {x['reel_pct']} | {yes(x['pas_plus_rond_que_le_reel'])} |"
+        for g, x in pop["parts_multiples"].items()
+    ]
+    out += [
         "",
         "## b. Heure du jour — population",
         "",
@@ -392,7 +460,6 @@ def render_md(s: dict) -> str:
             f"| {name} | {a['usagers']} | {a['transactions']} | {a['part_volume_pct']} "
             f"| {a['part_sorties_pct']} | {a['part_nouveau_parmi_sorties_pct']} |"
         )
-    band = v["bande_agents_cible_pct"]
     out += [
         "",
         "## d. Soldes",
@@ -421,14 +488,18 @@ def render_md(s: dict) -> str:
             f"Étiquettes présentes : {', '.join(c['labels'])}."
         ),
         "",
-        "## f. Vélocité — rapportée, NON alignée sur le réel (PERSONAS §5.4)",
+        "## f. Vélocité — DIAGNOSTIC, jamais une cible (PERSONAS v2.0 §5.4)",
         "",
-        f"- Règle : {v['regle']} (lue dans VEL).",
         (
-            f"- Population : **{v['population_pct']} %** des usagers ; "
-            f"agents seuls : **{v['agents_pct']} %** "
-            f"(bande cible {band[0]}–{band[1]} %, réel {v['reel_pct']} %)."
+            f"- Règle : {v['regle']} (lue dans VEL). Périmètre : {v['perimetre']}, "
+            f"sur {v['fenetre_jours']} jours (activité médiane du réel : "
+            f"{v['activite_mediane_reel_jours']} jours ; fenêtres non identiques)."
         ),
+        (
+            f"- Transactions monétaires : **{v['monetaire_pct']} %** des usagers "
+            f"(réel {v['monetaire_reel_pct']} %)."
+        ),
+        f"- Sorties seules : **{v['sorties_pct']} %** (réel {v['sorties_reel_pct']} %).",
         "",
         "## g. Canal et liaison d'appareil (PERSONAS v1.2, hypothèses déclarées)",
         "",
@@ -444,6 +515,37 @@ def render_md(s: dict) -> str:
     out += [
         "",
         f"- Transactions APP sans téléphone lié : **{g['app_sans_appareil_lie']}** (attendu : 0).",
+        "",
+    ]
+    rt, se = s["h_rythme"], s["i_sessions"]
+    out += [
+        "## h. Rythme monétaire par usager — population hors agents (PERSONAS v2.0 §5.2)",
+        "",
+        f"{rt['n_usagers']} usagers ; tx / durée d'activité de l'usager (jours, ≥ 1).",
+        "",
+        "| Quantile | Synthétique | Réel | Écart | Tolérance | Dans la tolérance |",
+        "|---|--:|--:|--:|--:|---|",
+    ]
+    for k, q in rt["quantiles"].items():
+        out.append(
+            f"| {k} | {q['synthetique']} | {q['reel']} | {q['ecart_relatif_pct']:+} % "
+            f"| ±{q['tolerance_pct']} % | {yes(q['dans_tolerance'])} |"
+        )
+    out += [
+        "",
+        f"Maximum (rapporté seulement) : {rt['max_synthetique']} (réel {rt['max_reel']}).",
+        "",
+        "## i. Sessions — population hors agents (PERSONAS v2.0 §5.5)",
+        "",
+        (
+            f"- Écarts consécutifs < 10 min : **{se['part_ecarts_lt_600s_pct']} %** "
+            f"(réel {se['reel_lt_600s_pct']} % ; écart {se['ecart_relatif_pct']:+} %, "
+            f"tolérance ±{se['tolerance_pct']} % : {yes(se['dans_tolerance'])})."
+        ),
+        (
+            f"- Écarts consécutifs < 1 min : {se['part_ecarts_lt_60s_pct']} % "
+            f"(réel {se['reel_lt_60s_pct']} %, rapporté)."
+        ),
         "",
     ]
     return "\n".join(out)
