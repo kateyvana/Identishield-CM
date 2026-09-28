@@ -199,9 +199,7 @@ def write_plan(cases: list[Case], out: Path) -> str:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(
-        description="Plan figé d'évaluation AC-02 (aucune exécution)."
-    )
+    p = argparse.ArgumentParser(description="Plan figé d'évaluation AC-02 (aucune exécution).")
     p.add_argument("--detector", required=True, type=Path)
     p.add_argument("--sidecar", required=True, type=Path)
     p.add_argument("--hlr", required=True, type=Path)

@@ -15,12 +15,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools" / "eval_harness"))
 
-import ac02_consign  # noqa: E402
-import ac02_plan  # noqa: E402
+import ac02_consign
+import ac02_plan
 
-FORBIDDEN = re.compile(
-    r"(?i)(label|archetype|victime|fraud|ground[_-]?truth|intent|legit)"
-)
+FORBIDDEN = re.compile(r"(?i)(label|archetype|victime|fraud|ground[_-]?truth|intent|legit)")
 
 
 def _make_dev(tmp: Path) -> tuple[Path, Path, Path]:
@@ -90,16 +88,14 @@ def test_plan_selects_only_ordinary(tmp_path: Path) -> None:
 def test_consign_dry_run_separates_views(tmp_path: Path) -> None:
     det, side, hlr = _make_dev(tmp_path)
     ac02_plan.write_plan(ac02_plan.build_plan(det, side, hlr), tmp_path / "plan.csv")
-    hv, hl, ok, fail = ac02_consign.consign(
+    _hv, _hl, _ok, _fail = ac02_consign.consign(
         tmp_path / "plan.csv",
         tmp_path / "runs.csv",
         tmp_path / "runs.labels.csv",
         dry_run=True,
     )
     view_cols = set((tmp_path / "runs.csv").read_text().splitlines()[0].split(","))
-    label_cols = set(
-        (tmp_path / "runs.labels.csv").read_text().splitlines()[0].split(",")
-    )
+    label_cols = set((tmp_path / "runs.labels.csv").read_text().splitlines()[0].split(","))
     # anti-fuite : la vue d'évaluation ne contient aucune colonne de vérité-terrain
     for col in view_cols:
         assert not FORBIDDEN.search(col) or col in {
