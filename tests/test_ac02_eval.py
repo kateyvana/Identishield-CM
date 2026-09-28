@@ -4,6 +4,7 @@ Aucun de ces tests ne lance l'attaque : le consignateur est appelé en --dry-run
 et le plan est du pur calcul déterministe. On vérifie la séparation vérité-terrain
 (anti-fuite), le déterminisme, et la forme des sorties.
 """
+
 from __future__ import annotations
 
 import csv
@@ -14,10 +15,12 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools" / "eval_harness"))
 
-import ac02_plan  # noqa: E402
 import ac02_consign  # noqa: E402
+import ac02_plan  # noqa: E402
 
-FORBIDDEN = re.compile(r"(?i)(label|archetype|victime|fraud|ground[_-]?truth|intent|legit)")
+FORBIDDEN = re.compile(
+    r"(?i)(label|archetype|victime|fraud|ground[_-]?truth|intent|legit)"
+)
 
 
 def _make_dev(tmp: Path) -> tuple[Path, Path, Path]:
@@ -25,17 +28,23 @@ def _make_dev(tmp: Path) -> tuple[Path, Path, Path]:
     det.write_text(
         "id,user,direction,amount,timestamp,beneficiary,balance_before,balance_after,current_imsi,channel,device_bound\n"
         + "".join(
-            f"t{i},67700{i:04d},OUT,{1000+i},2026-10-{(i%27)+1:02d}T10:00:00Z,"
-            f"677001111,{9000+i},{8000+i},6240100000{i:05d},USSD,false\n"
+            f"t{i},67700{i:04d},OUT,{1000 + i},2026-10-{(i % 27) + 1:02d}T10:00:00Z,"
+            f"677001111,{9000 + i},{8000 + i},6240100000{i:05d},USSD,false\n"
             for i in range(400)
-        ), encoding="utf-8")
+        ),
+        encoding="utf-8",
+    )
+    # sidecar au format réel : PAS de colonne 'user', jointure par 'id' ;
+    # archétypes mélangés (340 ordinaire, 60 agent) pour exercer le filtre.
     side = tmp / "dev.labels.csv"
     side.write_text(
-        "id,user,label,source,archetype,is_new_beneficiary,sim_event_case\n"
+        "id,label,source,archetype,is_new_beneficiary,sim_event_case\n"
         + "".join(
-            f"t{i},67700{i:04d},LEGIT,generator,ordinaire,false,\n"
+            f"t{i},LEGIT,generator,{'ordinaire' if i < 340 else 'agent'},false,\n"
             for i in range(400)
-        ), encoding="utf-8")
+        ),
+        encoding="utf-8",
+    )
     hlr = tmp / "dev.hlr_events.csv"
     hlr.write_text("msisdn,old_imsi,new_imsi,timestamp,agent_id\n", encoding="utf-8")
     return det, side, hlr
@@ -69,19 +78,37 @@ def test_plan_size_and_fictitious_range(tmp_path: Path) -> None:
         assert c.beneficiary_msisdn.startswith("677"), "bénéficiaire hors plage"
 
 
+def test_plan_selects_only_ordinary(tmp_path: Path) -> None:
+    # les usagers i>=340 sont 'agent' via la jointure id du sidecar : jamais tirés.
+    det, side, hlr = _make_dev(tmp_path)
+    cases = ac02_plan.build_plan(det, side, hlr)
+    non_ordinary = {f"67700{i:04d}" for i in range(340, 400)}
+    for c in cases:
+        assert c.victim_msisdn not in non_ordinary, "un non-ordinaire a été tiré"
+
+
 def test_consign_dry_run_separates_views(tmp_path: Path) -> None:
     det, side, hlr = _make_dev(tmp_path)
     ac02_plan.write_plan(ac02_plan.build_plan(det, side, hlr), tmp_path / "plan.csv")
     hv, hl, ok, fail = ac02_consign.consign(
-        tmp_path / "plan.csv", tmp_path / "runs.csv", tmp_path / "runs.labels.csv",
-        dry_run=True)
+        tmp_path / "plan.csv",
+        tmp_path / "runs.csv",
+        tmp_path / "runs.labels.csv",
+        dry_run=True,
+    )
     view_cols = set((tmp_path / "runs.csv").read_text().splitlines()[0].split(","))
-    label_cols = set((tmp_path / "runs.labels.csv").read_text().splitlines()[0].split(","))
+    label_cols = set(
+        (tmp_path / "runs.labels.csv").read_text().splitlines()[0].split(",")
+    )
     # anti-fuite : la vue d'évaluation ne contient aucune colonne de vérité-terrain
     for col in view_cols:
         assert not FORBIDDEN.search(col) or col in {
-            "balance_emptied", "out_to_attacker", "otp_to_attacker_imsi",
-            "no_old_device_notif", "all_oracles_ok"}, f"fuite possible : {col}"
+            "balance_emptied",
+            "out_to_attacker",
+            "otp_to_attacker_imsi",
+            "no_old_device_notif",
+            "all_oracles_ok",
+        }, f"fuite possible : {col}"
     assert "label" not in view_cols
     assert "label" in label_cols
     # jointure 1-pour-1 sur run_id
@@ -91,18 +118,24 @@ def test_consign_dry_run_separates_views(tmp_path: Path) -> None:
 def test_consign_dry_run_is_deterministic(tmp_path: Path) -> None:
     det, side, hlr = _make_dev(tmp_path)
     ac02_plan.write_plan(ac02_plan.build_plan(det, side, hlr), tmp_path / "plan.csv")
-    a = ac02_consign.consign(tmp_path / "plan.csv", tmp_path / "v1.csv",
-                             tmp_path / "l1.csv", dry_run=True)
-    b = ac02_consign.consign(tmp_path / "plan.csv", tmp_path / "v2.csv",
-                             tmp_path / "l2.csv", dry_run=True)
+    a = ac02_consign.consign(
+        tmp_path / "plan.csv", tmp_path / "v1.csv", tmp_path / "l1.csv", dry_run=True
+    )
+    b = ac02_consign.consign(
+        tmp_path / "plan.csv", tmp_path / "v2.csv", tmp_path / "l2.csv", dry_run=True
+    )
     assert a[:2] == b[:2], "vue et sidecar doivent être identiques à l'octet"
 
 
 def test_every_view_row_has_one_label(tmp_path: Path) -> None:
     det, side, hlr = _make_dev(tmp_path)
     ac02_plan.write_plan(ac02_plan.build_plan(det, side, hlr), tmp_path / "plan.csv")
-    ac02_consign.consign(tmp_path / "plan.csv", tmp_path / "runs.csv",
-                         tmp_path / "runs.labels.csv", dry_run=True)
+    ac02_consign.consign(
+        tmp_path / "plan.csv",
+        tmp_path / "runs.csv",
+        tmp_path / "runs.labels.csv",
+        dry_run=True,
+    )
     with (tmp_path / "runs.csv").open() as f:
         view_ids = {r["run_id"] for r in csv.DictReader(f)}
     with (tmp_path / "runs.labels.csv").open() as f:

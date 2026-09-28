@@ -9,6 +9,10 @@ Chaque cas est une victime tirée parmi les personas « ordinaire » du jeu de d
 changement de SIM légitime dans une fenêtre proche (sinon on mélange le signal
 « fraude » et le signal « remplacement légitime »).
 
+L'archétype (vérité-terrain) vit dans le SIDECAR, qui se joint à la vue détecteur
+par `id` (le sidecar réel n'a pas de colonne `user`). Il n'est lu que pour choisir
+les victimes ; il ne ressort jamais dans le plan (aucune colonne d'archétype).
+
 Le suréchantillonnage est ASSUMÉ et DÉCLARÉ : N cas ne représentent pas la
 fréquence réelle de la fraude ; ils servent à obtenir une puissance statistique
 (règle de trois) sur la mesure du Mois 5.
@@ -51,8 +55,8 @@ class Case:
 
 
 def _read_detector_view(path: Path) -> dict[str, dict]:
-    """Renvoie, par usager, son current_imsi le plus récent et son solde médian
-    observé (pour placer un solde plausible). Lecture seule, aucune écriture."""
+    """Renvoie, par usager, son current_imsi le plus récent et ses montants
+    observés (pour placer un solde plausible). Lecture seule, aucune écriture."""
     users: dict[str, dict] = {}
     with path.open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
@@ -78,16 +82,24 @@ def _read_sim_events(path: Path) -> dict[str, list[datetime]]:
     return events
 
 
-def _archetype_by_user(sidecar: Path) -> dict[str, str]:
-    """La vérité-terrain (archétype) vit dans le SIDECAR, jamais dans le flux.
-    On la lit ici seulement pour choisir des victimes 'ordinaire' ; elle ne
-    ressort jamais dans le plan (le plan ne contient pas d'archétype)."""
+def _archetype_by_user(detector: Path, sidecar: Path) -> dict[str, str]:
+    """user -> archétype, par jointure `id` : le sidecar réel n'a pas de colonne
+    `user` (il se joint à la vue détecteur par `id`, comme voulu en M4). On lit
+    d'abord id -> user dans la vue, puis id -> archétype dans le sidecar.
+    La vérité-terrain ne sert qu'à choisir des victimes ; elle ne sort pas d'ici."""
+    id_to_user: dict[str, str] = {}
+    with detector.open(encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            if row.get("id") and row.get("user"):
+                id_to_user[row["id"]] = row["user"]
     m: dict[str, str] = {}
     with sidecar.open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
-            # le sidecar est par transaction ; on garde l'archétype de l'usager
-            if "user" in row:
-                m[row["user"]] = row.get("archetype", "")
+            # sidecar réel : jointure par id ; ancien format toléré : colonne user.
+            u = row.get("user") or id_to_user.get(row.get("id", ""))
+            a = row.get("archetype", "")
+            if u and a:
+                m[u] = a
     return m
 
 
@@ -100,29 +112,35 @@ def _median(xs: list[int]) -> int:
 
 
 def build_plan(
-    detector_csv: Path, sidecar_csv: Path, hlr_csv: Path, users_index_csv: Path | None = None
+    detector_csv: Path,
+    sidecar_csv: Path,
+    hlr_csv: Path,
+    users_index_csv: Path | None = None,
 ) -> list[Case]:
     """Construit la liste déterministe des N cas. Aucune exécution."""
     rng = random.Random(PLAN_SEED)
     users = _read_detector_view(detector_csv)
     events = _read_sim_events(hlr_csv)
 
-    # archétype par usager : depuis le sidecar (vérité-terrain), ou un index dédié
-    arch = {}
+    # archétype par usager : depuis un index dédié (user,archetype) si fourni,
+    # sinon par jointure id depuis le sidecar (vérité-terrain).
     if users_index_csv and users_index_csv.exists():
+        arch = {}
         with users_index_csv.open(encoding="utf-8", newline="") as f:
             for row in csv.DictReader(f):
                 arch[row["user"]] = row.get("archetype", "")
     else:
-        arch = _archetype_by_user(sidecar_csv)
+        arch = _archetype_by_user(detector_csv, sidecar_csv)
 
-    # usagers éligibles : ordinaires, connus de la vue détecteur
+    # usagers éligibles : ordinaires, connus de la vue détecteur.
     eligible = sorted(u for u in users if arch.get(u) == ORDINARY)
     if len(eligible) < N_CASES:
-        # à défaut d'assez d'ordinaires étiquetés, on prend tous les usagers connus
-        eligible = sorted(users)
-
-    chosen = rng.sample(eligible, min(N_CASES, len(eligible)))
+        raise ValueError(
+            f"Seulement {len(eligible)} usagers '{ORDINARY}' pour {N_CASES} cas : "
+            f"utiliser le jeu horizon (pas l'échantillon de contrôle) et vérifier "
+            f"la jointure d'archétype (le sidecar se joint par 'id', sans 'user')."
+        )
+    chosen = rng.sample(eligible, N_CASES)
 
     # horizon des instants : borné par les timestamps observés
     all_ts = []
@@ -181,7 +199,9 @@ def write_plan(cases: list[Case], out: Path) -> str:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Plan figé d'évaluation AC-02 (aucune exécution).")
+    p = argparse.ArgumentParser(
+        description="Plan figé d'évaluation AC-02 (aucune exécution)."
+    )
     p.add_argument("--detector", required=True, type=Path)
     p.add_argument("--sidecar", required=True, type=Path)
     p.add_argument("--hlr", required=True, type=Path)
@@ -189,7 +209,7 @@ def main() -> None:
         "--users-index",
         type=Path,
         default=None,
-        help="CSV optionnel user,archetype (sinon lu depuis le sidecar)",
+        help="CSV optionnel user,archetype (sinon jointure id du sidecar)",
     )
     p.add_argument("--out", required=True, type=Path)
     a = p.parse_args()
