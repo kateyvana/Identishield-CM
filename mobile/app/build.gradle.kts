@@ -1,6 +1,21 @@
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
+// Paramètres nommés lus à la construction dans config/ruleset.yaml, source unique (ES-15) :
+// jamais de valeur en dur dans le code de l'application.
+val rulesetText = providers.fileContents(layout.projectDirectory.file("../../config/ruleset.yaml")).asText
+
+fun rulesetSeconds(name: String): Int {
+    val match =
+        Regex("^\\s*$name:\\s*PT(\\d+)S\\b", RegexOption.MULTILINE).find(rulesetText.get())
+            ?: throw GradleException("$name absent de config/ruleset.yaml (forme attendue : PT<n>S)")
+    return match.groupValues[1].toInt()
+}
+
+// URL de base de l'API mobile (HTTPS obligatoire, ADR-038). Défaut : faux serveur vu depuis
+// l'émulateur (10.0.2.2, port MOBILE_MOCK_PORT du Makefile). Téléphone : -Pisc.apiBaseUrl=...
+val apiBaseUrl = providers.gradleProperty("isc.apiBaseUrl").orElse("https://10.0.2.2:8089/mobile/v1/")
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -22,6 +37,13 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val baseUrl = apiBaseUrl.get()
+        if (!baseUrl.startsWith("https://")) {
+            throw GradleException("MOB-S-08 / ADR-038 : isc.apiBaseUrl doit être en https:// (reçu : $baseUrl)")
+        }
+        buildConfigField("String", "API_BASE_URL", "\"$baseUrl\"")
+        buildConfigField("int", "OTP_RESEND_DELAY_SECONDS", rulesetSeconds("OTP_RESEND_DELAY").toString())
     }
 
     buildTypes {
@@ -40,6 +62,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {
@@ -176,6 +199,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.robolectric)
+    testImplementation(libs.okhttp.mockwebserver)
     // Espresso 3.5.0, tiré par Compose, appelle InputManager.getInstance(), absent d'Android 17.
     testImplementation(libs.androidx.test.espresso.core)
     testImplementation(platform(libs.androidx.compose.bom))
