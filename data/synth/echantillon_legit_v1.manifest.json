@@ -1,12 +1,13 @@
 {
   "archetype_users": {
-    "agent": 20,
-    "marchand": 60,
-    "ordinaire": 200,
-    "salarie": 100,
-    "victime": 20
+    "agent": 4,
+    "marchand": 63,
+    "ordinaire": 208,
+    "salarie": 104,
+    "victime": 21
   },
   "days": 7,
+  "etalon": "docs/03-donnees/profil_reel_v1.1.json",
   "files": {
     "hlr_events": {
       "events": 0,
@@ -30,7 +31,7 @@
         "sim_event_case"
       ],
       "file": "echantillon_legit_v1.labels.csv",
-      "sha256": "f3f951bac93eb6909c20b130314201d6fca6c931060ee99d75d67eeebeda65c1"
+      "sha256": "706281da39399ee3d28466b0333235a22ee35009cc74f9825945c03ffe070414"
     },
     "vue_detecteur": {
       "fields": [
@@ -47,15 +48,16 @@
         "device_bound"
       ],
       "file": "echantillon_legit_v1.csv",
-      "sha256": "bee8e47ef0c5b1ca432dec5e1a65e3e0b2f742ac9ef2f84cc436aea5881e672b"
+      "sha256": "1486aeaecc41dd561a7b0d0c361514ca5e8a57773aa7015347d181a7c4285dc2"
     }
   },
   "isc_seed": 20260925,
-  "personas_version": "v1.4",
-  "sha256": "bee8e47ef0c5b1ca432dec5e1a65e3e0b2f742ac9ef2f84cc436aea5881e672b",
-  "skipped_out": 157,
+  "personas_version": "v2.0",
+  "sha256": "1486aeaecc41dd561a7b0d0c361514ca5e8a57773aa7015347d181a7c4285dc2",
+  "skipped_out": 184,
   "start": "2026-10-25",
-  "transactions": 8460,
+  "synthese_version": "syn-1.0.0",
+  "transactions": 4018,
   "users": 400,
   "verite_terrain_sim_events": {
     "per_case": {

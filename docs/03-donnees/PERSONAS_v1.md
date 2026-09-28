@@ -1,14 +1,29 @@
-# Modèle de personas de la population de synthèse — v1.4
+# Modèle de personas de la population de synthèse — v2.0
 
-- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2) ; 2026-09-25 (v1.3) ; 2026-09-26 (v1.4)
-- **Version** : **v1.4** — vues détecteur / sidecar / HLR, anti-fuite (T3-04a) ; ~~**v1.3**~~ changements de SIM légitimes (T3-04a) ; ~~**v1.2**~~ champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
+- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2) ; 2026-09-25 (v1.3) ; 2026-09-26 (v1.4) ; 2026-09-28 (v2.0)
+- **Version** : **v2.0** — révision de conception (T3-05a) : le réel est la POPULATION ENTIÈRE ; continuum grand public calé sur le réel + surcouches déclarées (§0 v2.0) ; ~~**v1.4**~~ vues détecteur / sidecar / HLR, anti-fuite (T3-04a) ; ~~**v1.3**~~ changements de SIM légitimes (T3-04a) ; ~~**v1.2**~~ champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
 - **Implémentation** : `simulator/src/isc_simulator/personas.py` (paramètres) et `generator.py` (générateur, T3-03)
-- **Étalon de référence** : [profil_reel_v1.json](profil_reel_v1.json) (T3-01, SHA-256 du CSV source `84cd01ae…83401fb1`, 26 989 transactions)
+- **Paramètres de synthèse (v2.0)** : `config/synthese.yaml` (lu par `synthese.py`), jamais `ruleset.yaml`
+- **Étalon de référence** : [profil_reel_v1.1.json](profil_reel_v1.1.json) (v2.0 ; agrégats ajoutés en section f) ; ~~[profil_reel_v1.json](profil_reel_v1.json)~~ (v1.x) (T3-01, SHA-256 du CSV source `84cd01ae…83401fb1`, 26 989 transactions)
 - **Objet** : définir la population synthétique — archétypes, lois, mix, graphe de bénéficiaires, cibles de plausibilité et graine — qui produira ~500 000 transactions (T3-05), sera validée contre l'étalon (T3-06) et servira de base au calibrage des seuils (T3-07).
 
 ---
 
-## 0. Règle cardinale — dimensions CALIBRÉES vs MODÉLISÉES
+## 0. Règle cardinale — v2.0 : un continuum grand public calé sur le réel, plus des surcouches déclarées
+
+**Ce qui renverse la conception v1.x (mesuré en T3-05a sur le réel, agrégats seulement).** Le CSV réel couvre **1 755 jours** (2021-06-06 → 2026-03-27) ; chaque usager est actif **322 jours** en médiane, pour **≈ 1,07 transaction monétaire par jour** (médiane sur les 52 usagers ayant au moins une transaction monétaire ; p90 2,18 ; **max 4,73**). Ces 64 usagers ont donc un **rythme de grand public** : **le réel est la population entière**, et non une sous-population d'agents.
+
+**L'erreur de T3-02, expliquée.** La fenêtre d'observation n'avait pas été mesurée en T3-01 (angle mort signalé en §2.2). La « médiane de 240 transactions par usager » a alors été lue comme la marque de gros comptes, et le réel assimilé à l'archétype agent (30 tx/jour). Rapportées à ~322 jours d'activité, ces 240 transactions font moins d'une par jour. Toute la calibration v1.x qui en découlait (loi de montant « des agents », vélocité « des agents » à 39 %) est remplacée ci-dessous ; le texte v1.x reste conservé plus bas.
+
+| Statut v2.0 | Dimension | Ancrage |
+|---|---|---|
+| **CALIBRÉ sur le réel** (population entière, transactions monétaires) | rythme par usager (distribution), montants (mélange de 20 masses ponctuelles + reste), heures du jour, sessions (écarts < 10 min) | étalon v1.1 (sections b et f), `config/synthese.yaml` |
+| **SURCOUCHE DÉCLARÉE** (sans ancrage réel) | agent (rythme, 1 % des usagers, **exclu de la comparaison**), paie (salaire ~80 000 le 28, sorties des 28–30), événements SIM (§1.10), canal et liaison (§1.9), graphe de bénéficiaires (§4) | hypothèses documentées, sensibilité en T3-07 |
+| **DIAGNOSTIC seulement** (jamais une cible) | pourcentage d'usagers dépassant VEL | rapporté avec son dénominateur et sa fenêtre (§5 v2.0) |
+
+> Le texte v1.x de cette section est conservé ci-dessous ; il est remplacé par la règle v2.0 ci-dessus.
+
+### ~~0. Règle cardinale — dimensions CALIBRÉES vs MODÉLISÉES~~ (v1.x, remplacé en v2.0)
 
 > **Une variable est soit ancrée sur une mesure réelle, soit assumée. On ne mélange jamais les deux sans le dire.**
 
@@ -28,6 +43,8 @@ Conséquence directe sur la calibration :
 ---
 
 ## 1. Archétypes
+
+> **v2.0 :** pour chaque archétype, le **rythme** (λ par usager, bandes de la fonction quantile réelle), la **part des usagers** (mix §2 v2.0) et la **loi de montant** (mélange unique pour tous, les deux sens) viennent désormais de `config/synthese.yaml` et de l'étalon v1.1. Les valeurs v1.x de ces trois paramètres dans les tableaux ci-dessous sont remplacées ; le reste (heures, P(OUT), solde, bénéficiaires, canal) reste en vigueur. La loi lognormale par archétype a été **essayée puis écartée** en T3-05a : elle ne tient pas à la fois la queue basse (p10) et la queue haute (p90) du rythme réel.
 
 Cinq archétypes. Pour chacun : loi de fréquence (tx/jour), loi de montant par direction (IN = entrée/crédit, OUT = sortie/débit), heures actives, comportement de vélocité, bénéficiaires connus + taux de nouveau bénéficiaire.
 
@@ -191,7 +208,23 @@ Une partie des usagers connaît, au cours de l'horizon, un événement de servic
 **Échantillon de contrôle régénéré dans ce format** : ses hashes changent, c'est attendu, puisque les colonnes ont quitté la vue. Vue détecteur `bee8e47e…672b`, sidecar `f3f951ba…65c1`, vue HLR `343fd48f…5a02` (en-tête seul : son unique événement est un cas c). Les statistiques de contrôle, recalculées par jointure avec le sidecar, sont inchangées.
 ---
 
-## 2. Mix de population (justifié) — cap ~500 000 transactions
+## 2. Mix de population — v2.0 (option A, ED-07)
+
+| Archétype | Part des usagers v2.0 | Statut |
+|---|--:|---|
+| Ordinaire occasionnel | **52,11 %** | continuum calé (bande basse du rythme) |
+| Salarié régulier | **26,05 %** | continuum calé (bande médiane) + paie déclarée |
+| Victime (ordinaire étiqueté) | **5,21 %** | continuum calé (bande de l'ordinaire) |
+| Petit marchand | **15,63 %** | continuum calé (bande haute ; rythme ≤ max réel) |
+| Agent | **1,00 %** | surcouche déclarée, exclue de la comparaison |
+
+Les proportions v1.x entre archétypes réalistes sont **conservées** (× 99/95) ; les agents passent de 5 % à **1 %** (décision du propriétaire, option A), pour que **le volume d'ED-07 soit porté par des usagers réalistes**, pas par les agents.
+
+**Dimensionnement v2.0** (PO-1 ratifié : 6 mois) : **2 480 usagers × 182 jours** (graine 20260925, début 2026-10-01) → **623 439 transactions**, dont **84,2 % (≈ 524 700) portées par les usagers réalistes** (≥ 500 000, ED-07) et 15,8 % par les 25 agents. Part du volume : ordinaire 21,7 %, victime 2,2 %, salarié 30,3 %, marchand 30,0 %, agent 15,8 %.
+
+> Le texte v1.x de cette section est conservé ci-dessous ; son mix (agents 5 %) et son dimensionnement (5 800 usagers × 30 jours) sont remplacés.
+
+## ~~2. Mix de population (justifié) — cap ~500 000 transactions~~ (v1.x, remplacé en v2.0)
 
 **Recommandation retenue : grand public largement majoritaire, agents petite minorité — l'INVERSE du réel, et c'est VOULU.** Le réel ne contient que des agents ; notre population de synthèse doit représenter le **public** que la couche protège (la victime en fait partie), tout en **reproduisant la queue lourde de volume** via une minorité d'agents.
 
@@ -205,7 +238,7 @@ Une partie des usagers connaît, au cours de l'horizon, un événement de servic
 | **Grand public (ordinaire+salarié+victime)** | **80 %** | > 80 % comme recommandé |
 
 ### 2.1 Dimensionnement vers ~500 000 transactions
-Instanciation concrète (à ajuster finement en T3-05 pour viser 500 000 pile) : **≈ 5 800 usagers sur une fenêtre de 30 jours**.
+~~Instanciation concrète (à ajuster finement en T3-05 pour viser 500 000 pile)~~ (remplacé en v2.0 : 2 480 usagers × 182 jours) : **≈ 5 800 usagers sur une fenêtre de 30 jours**.
 
 | Archétype | Usagers | tx/jour/usager | tx/jour | Part du VOLUME |
 |---|--:|--:|--:|--:|
@@ -259,7 +292,23 @@ Récapitulatif des lois (détail et statut CALIBRÉ/MODÉLISÉ/SUPPOSÉ en §1).
 
 ---
 
-## 5. Cibles de plausibilité (ce que T3-06 vérifiera)
+## 5. Cibles de plausibilité — v2.0 (ce que T3-06 vérifiera)
+
+Toutes calculées par `python -m isc_simulator.stats` contre l'étalon v1.1. Mesures sur l'horizon v2.0 (2 480 usagers × 182 jours) :
+
+| Dimension | Périmètre (dénominateur) | Bande | Mesuré v2.0 |
+|---|---|---|---|
+| Rythme par usager | usagers **hors agents** ayant ≥ 1 transaction ; tx / durée d'activité (jours, ≥ 1) | ±15 % de p25 à p90 ; ±25 % pour p10 et p95 ; max rapporté | pire écart p75 +7,8 % ; max 5,07 (réel 4,73) |
+| Montants | **toutes** les transactions synthétiques (salaire compris) contre tous les montants > 0 du réel | L1 d'histogramme < 0,10 ; quantiles ±15 % (p10–p90), ±25 % (p95, p99) ; part de multiples de 100/500/1 000/5 000 **≤ réel** | L1 0,022 ; pire écart p95 +14,6 % ; multiples 68 / 54 / 41 / 13 % (réel 82 / 61 / 47 / 16 %) |
+| Heures du jour | toutes les transactions | L1 sur 24 h < 0,08 ; part NUIT ±1,5 pt | L1 0,048 ; nuit 5,89 % (réel 6,51) |
+| Sessions | écarts entre transactions consécutives d'un même usager, hors agents | écarts < 10 min à ±25 % (relatif) des 13,04 % réels ; < 1 min rapporté | 13,12 % ; < 1 min 5,38 % (réel 5,38) |
+| VEL (**diagnostic**) | usagers hors agents dépassant > 3 tx en 10 min, **sur la fenêtre de l'échantillon (182 j)** ; réel : 52 usagers (monétaire) et 49 (sorties), **activité médiane 322 j** | aucune (jamais une cible) | monétaire 15,6 % (réel 26,92) ; sorties 0,53 % (réel 10,20) → PO-7 |
+
+La bande v1.x « 25–55 % des agents » et la cible « < 5 % de la population » (§5.4 v1.x) sont remplacées : la vélocité n'est plus qu'un diagnostic, avec son dénominateur explicite (usagers hors agents) et son périmètre (transactions monétaires, ou sorties seules).
+
+> Le texte v1.x de cette section est conservé ci-dessous et remplacé par le tableau v2.0.
+
+## ~~5. Cibles de plausibilité (ce que T3-06 vérifiera)~~ (v1.x, remplacé en v2.0)
 
 Toutes calculables en stdlib à partir de `profil_reel_v1.json`.
 
@@ -320,6 +369,15 @@ On **rapporte** les quantiles population, **attendus SOUS** la médiane réelle 
 
 ## 9. Journal des modifications
 
+### v2.0 — 2026-09-28 (T3-05a, révision de conception)
+
+- **Le réel est la population entière** (fenêtre de 1 755 jours mesurée ; ~1 tx monétaire/jour par usager) : §0 réécrite ; erreur de T3-02 (fenêtre non mesurée) expliquée.
+- Rythme : λ par usager tiré dans une **bande de la fonction quantile réelle** (ordinaire et victime / salarié / marchand) ; la lognormale par archétype, essayée, est écartée.
+- Montants : **mélange unique** (20 masses ponctuelles + reste, étalon v1.1) pour tous les archétypes et les deux sens ; le salaire garde sa loi propre (surcouche déclarée).
+- Sessions (PO-6) : 65 % des transactions du grand public en sessions de 2–3 sur 150 s.
+- Mix : agents à 1 % (option A) ; dimensionnement 2 480 usagers × 182 jours (§2 v2.0) ; paramètres dans `config/synthese.yaml`.
+- §5 réécrite (bandes, dénominateurs, VEL en diagnostic) ; §10 mis à jour. Tout le texte v1.x est conservé, barré ou signalé comme remplacé.
+
 ### v1.4 — 2026-09-26 (T3-04a, morceau M4)
 
 - Ajout de §1.11 : séparation en trois vues (détecteur, sidecar, HLR) ; `label`, `archetype` et `is_new_beneficiary` quittent le flux ; le cas des événements SIM passe dans le sidecar ; la vue HLR remplace `sim_events_v1.csv` de v1.3 (conservé dans l'historique git).
@@ -349,7 +407,20 @@ Trois décisions **ratifiées par le propriétaire** (question posée avant le c
 
 ---
 
-## 10. Points ouverts (constatés en T3-03, à trancher avant T3-05 / T3-06)
+## 10. Points ouverts — état v2.0 (2026-09-28)
+
+- **PO-1 — RATIFIÉ le 2026-09-25** : 6 mois simulés ; effectif fixé à 2 480 usagers (§2 v2.0).
+- **PO-2 — CLOS (reformulé)** : la vélocité « des agents » n'est plus une cible ; l'agent est une surcouche déclarée, exclue de la comparaison (§0 v2.0).
+- **PO-3 — RÉSOLU** : mélange des montants ; L1 0,022 ; aucune part de multiples au-dessus du réel.
+- **PO-4 — RÉSOLU** : p99 des montants à 0,0 % d'écart sur la population v2.0.
+- **PO-5 — PARTIEL** : IMSI, canal et appareil faits (T3-04a) ; types d'opération et localité (ED-10) ouverts.
+- **PO-6 — RÉSOLU** : sessions à 13,12 % d'écarts < 10 min (réel 13,04 %).
+- **PO-7 — NOUVEAU** : regroupement des **sorties**. Le diagnostic VEL sur les sorties est de 0,53 % contre 10,20 % dans le réel : le synthétique sous-représente les rafales de sorties légitimes. **À traiter avant T3-07**, sinon le taux de faux positifs de VEL sera sous-estimé.
+- **PO-8 — NOUVEAU** : les parts de sorties par archétype (§1.7) avaient été dérivées des lois de montant par sens, désormais remplacées par le mélange unique. Mesuré v2.0 : 2,55 % de sorties sautées, aucun solde négatif. À revoir si T3-06 le demande.
+
+> Le texte v1.x de cette section est conservé ci-dessous.
+
+## ~~10. Points ouverts (constatés en T3-03, à trancher avant T3-05 / T3-06)~~ (v1.x, remplacé en v2.0)
 
 - **PO-1 — ED-07 contre §2.1.** ED-07 (SRS) exige « ≥ 1 000 agents, **≥ 6 mois simulés**, ≥ 500 000 transactions ». Le dimensionnement de §2.1 (≈ 5 800 usagers × **30 jours**) viole la durée. Piste compatible : ≈ 1 000 usagers × 6 mois (≈ 520k transactions au rythme moyen de 2,87 tx/usager/jour). **Décision du propriétaire requise pour T3-05.**
 - **PO-2 — Vélocité des agents.** Avec λ = 30 tx/jour, **100 % des agents** dépassent 3 transactions en 10 min dès 7 jours (échantillon T3-03), contre une bande §5.4 de 25 à 55 %. Même sans rafales, le seul regroupement aléatoire de Poisson donne environ 57 % de dépassements par semaine. Le réel (39 %) suggère un rythme par compte bien plus faible, mais la durée d'observation du CSV reste inconnue (angle mort de §2.2). À trancher en T3-06/T3-07 : baisser λ, réduire les rafales, ou revoir la bande.
