@@ -33,3 +33,7 @@ datasets/*.parquet
 
 # Donnees reelles confidentielles (Mois 3) : JAMAIS versionnees
 data/real/
+
+# mobile (Android, M-05)
+mobile/local.properties
+mobile/.kotlin/

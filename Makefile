@@ -34,7 +34,7 @@ check-stack:
 	@bash tools/check_stack.sh
 
 ## ---- portes legeres (ISC-DEV §4) -------------------------------------------
-check: build format unit arch contract check-docs secrets fictitious-msisdn named-params
+check: build format unit arch contract mobile check-docs secrets fictitious-msisdn named-params
 	@echo "make check : VERT"
 
 build:
@@ -78,6 +78,16 @@ arch:
 contract:
 	@echo ">>> contract : redocly evaluate.yaml + mobile-api.yaml"
 	@npx --yes @redocly/cli@2.14.5 lint contracts/evaluate.yaml contracts/mobile-api.yaml
+
+# Porte mobile (M-05, ADR-037) : lint, tests unitaires (dont le test d'interface Compose sur la JVM)
+# et assemblage de l'APK debug. SDK Android cherché dans ANDROID_HOME, ANDROID_SDK_ROOT,
+# %LOCALAPPDATA%/Android/Sdk (Windows) puis ~/Android/Sdk. SDK absent : la porte le DIT
+# (« SAUTÉE — rien n'a été vérifié ») sans faire échouer make check, comme la console sans tests ;
+# ISC_REQUIRE_MOBILE=1 (VM/CI équipée du SDK) transforme cette absence en ÉCHEC.
+.PHONY: mobile
+mobile:
+	@echo ">>> mobile : lint, tests unitaires, APK debug (mobile/)"
+	@sdk="$${ANDROID_HOME:-$${ANDROID_SDK_ROOT:-}}"; 	if [ -z "$$sdk" ] && [ -n "$$LOCALAPPDATA" ] && [ -d "$$LOCALAPPDATA/Android/Sdk" ]; then sdk="$$LOCALAPPDATA/Android/Sdk"; fi; 	if [ -z "$$sdk" ] && [ -d "$$HOME/Android/Sdk" ]; then sdk="$$HOME/Android/Sdk"; fi; 	if [ -z "$$sdk" ] || [ ! -d "$$sdk/platforms" ]; then 	  if [ -n "$(ISC_REQUIRE_MOBILE)" ]; then 	    echo "mobile : ÉCHEC — SDK Android introuvable (ANDROID_HOME, ANDROID_SDK_ROOT, ~/Android/Sdk) et ISC_REQUIRE_MOBILE=1"; exit 1; 	  fi; 	  echo "mobile : SAUTÉE — SDK Android introuvable (ANDROID_HOME, ANDROID_SDK_ROOT, ~/Android/Sdk) : RIEN n'a été vérifié pour mobile/ (installer le SDK, voir mobile/README.md)"; 	  exit 0; 	fi; 	cd mobile && ANDROID_HOME="$$sdk" ./gradlew --quiet lint testDebugUnitTest assembleDebug && echo "mobile : VERT (SDK : $$sdk)"
 
 check-docs:
 	@echo ">>> check-docs"

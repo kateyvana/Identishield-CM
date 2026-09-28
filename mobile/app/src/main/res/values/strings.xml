@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IdentiShield</string>
+    <string name="brand_identi">Identi</string>
+    <string name="brand_shield">Shield</string>
+    <string name="launch_tagline">Votre téléphone est votre clé</string>
+    <string name="launch_checking">Vérification de la clé de cet appareil…</string>
+    <string name="launch_logo_description">Logo IdentiShield : un bouclier protège un téléphone</string>
+</resources>
