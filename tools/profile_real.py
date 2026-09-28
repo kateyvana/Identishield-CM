@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""T3-01 — Profil de référence des transactions réelles (ÉTALON du Mois 3).
+"""T3-01 / T3-05a — Profil de référence des transactions réelles (ÉTALON du Mois 3), v1.1.
 
 Lit data/real/cleaned_transactions__1_.csv (CONFIDENTIEL, jamais versionné) et produit DEUX
 artefacts figés, eux versionnés (aucune ligne brute, aucun montant individuel, aucun identifiant) :
-  - docs/03-donnees/profil_reel_v1.json  (chiffres lisibles machine, pour comparaison auto en T3-06)
-  - docs/03-donnees/PROFIL_REEL_v1.md    (mêmes chiffres en tableaux)
+  - docs/03-donnees/profil_reel_v1.1.json  (chiffres lisibles machine, comparaison auto en T3-06)
+  - docs/03-donnees/PROFIL_REEL_v1.1.md    (mêmes chiffres en tableaux)
+
+v1.1 (T3-05a) = sections a à e INCHANGÉES par rapport à v1 + section f (agrégats ajoutés) :
+masses ponctuelles de montant et nœuds du reste, rythme monétaire par usager, regroupement en
+sessions, vélocité par périmètre, fenêtre d'observation. Les fichiers v1 (profil_reel_v1.json,
+PROFIL_REEL_v1.md) restent l'étalon figé de T3-01 et ne sont plus réécrits.
 
 DÉTERMINISTE : relancer le script redonne un JSON identique. Aucun horodatage de run n'est écrit ;
 la date de l'artefact (DATE) et la version (VERSION) sont figées. Stdlib uniquement (reproductible).
@@ -12,27 +17,31 @@ la date de l'artefact (DATE) et la version (VERSION) sont figées. Stdlib unique
 
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
 import json
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
+from itertools import pairwise
 from pathlib import Path
 
 # --- Métadonnées FIGÉES de l'artefact v1 (pas de datetime.now() : déterminisme). ------------------
-VERSION = "v1"
-DATE = "2026-09-25"
+VERSION = "v1.1"
+DATE = "2026-09-28"
 SOURCE_NAME = "cleaned_transactions__1_.csv"
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "data" / "real" / SOURCE_NAME
-OUT_JSON = ROOT / "docs" / "03-donnees" / "profil_reel_v1.json"
-OUT_MD = ROOT / "docs" / "03-donnees" / "PROFIL_REEL_v1.md"
+OUT_JSON = ROOT / "docs" / "03-donnees" / "profil_reel_v1.1.json"
+OUT_MD = ROOT / "docs" / "03-donnees" / "PROFIL_REEL_v1.1.md"
 
 CAP_PROB = 25000  # futur seuil (FCFA) : part des sorties >= CAP_PROB.
 NIGHT_HOURS = [23, 0, 1, 2, 3, 4]  # fenêtre NUIT 23h–05h (23:00–04:59).
 VELOCITY_N = 3  # « dépasser 3 transactions » => >3, soit >=4 dans la fenêtre.
 VELOCITY_WINDOW_S = 600  # 10 minutes.
+POINT_MASSES_K = 20  # v1.1 : nombre de masses ponctuelles de montant publiées (agrégats).
+SESSION_GAPS_S = (60, 600)  # v1.1 : seuils d'écart entre transactions consécutives d'un usager.
 
 # Tranches de montant lisibles (bornes hautes exclusives ; dernière = +inf).
 AMOUNT_BINS = [
@@ -91,17 +100,117 @@ def stats_amounts(vals: list[float]) -> dict:
     }
 
 
-def main() -> int:
-    src_sha = sha256(SRC)
+def r4(x: float) -> float:
+    return round(x, 4)
+
+
+def velocity(times_by_user: dict[str, list[float]]) -> dict:
+    """Usagers dépassant VELOCITY_N transactions dans une fenêtre glissante de VELOCITY_WINDOW_S."""
+    flagged = 0
+    for times in times_by_user.values():
+        ts = sorted(times)
+        j = 0
+        for i in range(len(ts)):
+            while ts[i] - ts[j] > VELOCITY_WINDOW_S:
+                j += 1
+            if i - j + 1 > VELOCITY_N:
+                flagged += 1
+                break
+    n = len(times_by_user)
+    return {
+        "usagers_depassant": flagged,
+        "nb_usagers": n,
+        "part": r2(100 * flagged / n) if n else 0.0,
+    }
+
+
+def v1_1_aggregates(
+    amounts_pos: list[float],
+    per_user_times: dict[str, list[float]],
+    mon_times: dict[str, list[float]],
+    out_times: dict[str, list[float]],
+) -> dict:
+    """Section f (v1.1, T3-05a) : agrégats seulement, aucune ligne ni identifiant."""
+    # Montants : les POINT_MASSES_K valeurs exactes les plus fréquentes (ordre déterministe :
+    # fréquence décroissante puis montant), et les nœuds du reste (montants hors de ces valeurs).
+    counts = Counter(amounts_pos)
+    masses = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:POINT_MASSES_K]
+    npos = len(amounts_pos)
+    mass_values = {v for v, _ in masses}
+    resid = sorted(a for a in amounts_pos if a not in mass_values)
+    resid_knots = [
+        {"p": p / 100, "montant": r4(percentile(resid, p))}
+        for p in (0, 10, 25, 50, 75, 90, 95, 99, 100)
+    ]
+    # Rythme monétaire par usager (usagers ayant >= 1 transaction monétaire) : transactions
+    # monétaires / durée d'activité de l'usager (jours, >= 1), indépendant de la fenêtre globale.
+    spans = {u: max(1.0, (max(v) - min(v)) / 86400) for u, v in per_user_times.items() if v}
+    rates = sorted(len(v) / spans[u] for u, v in mon_times.items() if v)
+    rate_knots = [
+        {"p": p / 100, "tx_par_jour": r4(percentile(rates, p))}
+        for p in (0, 5, 10, 25, 50, 75, 90, 95, 100)
+    ]
+    # Regroupement en sessions : écarts entre transactions monétaires consécutives d'un usager.
+    gaps = []
+    for v in mon_times.values():
+        ts = sorted(v)
+        gaps += [b - a for a, b in pairwise(ts)]
+    sessions = {
+        f"part_ecarts_lt_{s}s": r2(100 * sum(1 for g in gaps if g < s) / len(gaps)) if gaps else 0.0
+        for s in SESSION_GAPS_S
+    }
+    sessions["n_ecarts"] = len(gaps)
+    all_t = [t for v in per_user_times.values() for t in v]
+    span_days = sorted(spans.values())
+    return {
+        "montants_masses_ponctuelles": {
+            "k": POINT_MASSES_K,
+            "part_totale": r4(sum(c for _, c in masses) / npos),
+            "masses": [{"montant": v, "part": r4(c / npos)} for v, c in masses],
+            "noeuds_du_reste": resid_knots,
+            "n_reste": len(resid),
+        },
+        "rythme_monetaire_par_usager": {
+            "definition": "tx monétaires (montant > 0) / durée d'activité de l'usager (jours, >= 1)",
+            "nb_usagers": len(rates),
+            "noeuds": rate_knots,
+        },
+        "sessions": sessions,
+        "velocite_par_perimetre": {
+            "regle": f">{VELOCITY_N} transactions en {VELOCITY_WINDOW_S // 60} min (glissant)",
+            "toutes_lignes": velocity(per_user_times),
+            "montants_positifs": velocity({u: v for u, v in mon_times.items() if v}),
+            "sorties_positives": velocity({u: v for u, v in out_times.items() if v}),
+        },
+        "fenetre_observation": {
+            "debut": datetime.fromtimestamp(min(all_t), UTC).date().isoformat(),
+            "fin": datetime.fromtimestamp(max(all_t), UTC).date().isoformat(),
+            "jours": round((max(all_t) - min(all_t)) / 86400),
+            "activite_par_usager_jours": {
+                "p10": round(percentile(span_days, 10)),
+                "median": round(percentile(span_days, 50)),
+                "p90": round(percentile(span_days, 90)),
+            },
+        },
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Étalon des transactions réelles (agrégats).")
+    parser.add_argument("--source", type=Path, default=SRC, help="CSV réel (défaut : data/real/)")
+    src = parser.parse_args(argv).source
+    src_sha = sha256(src)
     amounts_all: list[float] = []
     amounts_pos: list[float] = []
     by_hour = Counter()
     dir_counts = Counter()
     out_amounts: list[float] = []
     per_user_times: dict[str, list[float]] = defaultdict(list)
+    mon_times: dict[str, list[float]] = defaultdict(list)  # v1.1 : montants > 0
+    out_times: dict[str, list[float]] = defaultdict(list)  # v1.1 : sorties > 0
     n = 0
 
-    with open(SRC, newline="", encoding="utf-8-sig") as f:
+    with open(src, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             n += 1
@@ -136,6 +245,10 @@ def main() -> int:
                     .timestamp()
                 )
                 per_user_times[uid].append(ts)
+                if amt > 0:
+                    mon_times[uid].append(ts)
+                    if direction == "OUT":
+                        out_times[uid].append(ts)
             except (TypeError, ValueError):
                 pass
 
@@ -261,6 +374,7 @@ def main() -> int:
         "c_par_usager": par_usager,
         "d_sorties": sorties,
         "e_champs_absents": champs_absents,
+        "f_v1_1": v1_1_aggregates(amounts_pos, per_user_times, mon_times, out_times),
     }
 
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
@@ -376,6 +490,124 @@ def write_md(p: dict) -> None:
     lines.append("- **Champs présents utiles :**")
     for x in e["champs_presents_utiles"]:
         lines.append(f"  - {x}")
+    lines.append("")
+    f1 = p["f_v1_1"]
+    fo = f1["fenetre_observation"]
+    lines += [
+        "## f. Agrégats ajoutés en v1.1 (T3-05a)",
+        "",
+        (
+            f"**Fenêtre d'observation** : du {fo['debut']} au {fo['fin']} ({fo['jours']} jours). "
+            f"Activité par usager : médiane {fo['activite_par_usager_jours']['median']} jours "
+            f"(p10 {fo['activite_par_usager_jours']['p10']}, "
+            f"p90 {fo['activite_par_usager_jours']['p90']})."
+        ),
+        "",
+    ]
+    rt = f1["rythme_monetaire_par_usager"]
+    lines += [
+        f"**Rythme monétaire par usager** ({rt['definition']}) — {rt['nb_usagers']} usagers :",
+        "",
+        "| Quantile | tx / jour |",
+        "|---|--:|",
+    ]
+    lines += [f"| p{round(k['p'] * 100)} | {k['tx_par_jour']} |" for k in rt["noeuds"]]
+    se = f1["sessions"]
+    lines += [
+        "",
+        (
+            f"**Sessions** : écarts entre transactions monétaires consécutives d'un usager < 10 min : "
+            f"**{se['part_ecarts_lt_600s']} %** ; < 1 min : {se['part_ecarts_lt_60s']} % "
+            f"({se['n_ecarts']} écarts)."
+        ),
+        "",
+        "**Vélocité par périmètre** :",
+        "",
+        "| Périmètre | Usagers dépassant | Usagers | % |",
+        "|---|--:|--:|--:|",
+    ]
+    for name, v in f1["velocite_par_perimetre"].items():
+        if isinstance(v, dict):
+            lines.append(f"| {name} | {v['usagers_depassant']} | {v['nb_usagers']} | {v['part']} |")
+    mm = f1["montants_masses_ponctuelles"]
+    lines += [
+        "",
+        (
+            f"**Montants : {mm['k']} masses ponctuelles** ({round(100 * mm['part_totale'], 2)} % "
+            f"des montants > 0) :"
+        ),
+        "",
+        "| Montant (FCFA) | Part |",
+        "|--:|--:|",
+    ]
+    lines += [f"| {m['montant']} | {m['part']} |" for m in mm["masses"]]
+    lines += [
+        "",
+        f"**Nœuds du reste** (montants hors de ces valeurs, n = {mm['n_reste']}) :",
+        "",
+        "| Quantile | Montant |",
+        "|---|--:|",
+    ]
+    lines += [f"| p{round(k['p'] * 100)} | {k['montant']} |" for k in mm["noeuds_du_reste"]]
+    lines.append("")
+    f1 = p["f_v1_1"]
+    fo = f1["fenetre_observation"]
+    lines += [
+        "## f. Agrégats ajoutés en v1.1 (T3-05a)",
+        "",
+        (
+            f"**Fenêtre d'observation** : du {fo['debut']} au {fo['fin']} ({fo['jours']} jours). "
+            f"Activité par usager : médiane {fo['activite_par_usager_jours']['median']} jours "
+            f"(p10 {fo['activite_par_usager_jours']['p10']}, "
+            f"p90 {fo['activite_par_usager_jours']['p90']})."
+        ),
+        "",
+    ]
+    rt = f1["rythme_monetaire_par_usager"]
+    lines += [
+        f"**Rythme monétaire par usager** ({rt['definition']}) — {rt['nb_usagers']} usagers :",
+        "",
+        "| Quantile | tx / jour |",
+        "|---|--:|",
+    ]
+    lines += [f"| p{round(k['p'] * 100)} | {k['tx_par_jour']} |" for k in rt["noeuds"]]
+    se = f1["sessions"]
+    lines += [
+        "",
+        (
+            f"**Sessions** : écarts entre transactions monétaires consécutives d'un usager < 10 min : "
+            f"**{se['part_ecarts_lt_600s']} %** ; < 1 min : {se['part_ecarts_lt_60s']} % "
+            f"({se['n_ecarts']} écarts)."
+        ),
+        "",
+        "**Vélocité par périmètre** :",
+        "",
+        "| Périmètre | Usagers dépassant | Usagers | % |",
+        "|---|--:|--:|--:|",
+    ]
+    for name, v in f1["velocite_par_perimetre"].items():
+        if isinstance(v, dict):
+            lines.append(f"| {name} | {v['usagers_depassant']} | {v['nb_usagers']} | {v['part']} |")
+    mm = f1["montants_masses_ponctuelles"]
+    lines += [
+        "",
+        (
+            f"**Montants : {mm['k']} masses ponctuelles** ({round(100 * mm['part_totale'], 2)} % "
+            f"des montants > 0) :"
+        ),
+        "",
+        "| Montant (FCFA) | Part |",
+        "|--:|--:|",
+    ]
+    lines += [f"| {m['montant']} | {m['part']} |" for m in mm["masses"]]
+    lines += [
+        "",
+        f"**Nœuds du reste** (montants hors de ces valeurs, n = {mm['n_reste']}) :",
+        "",
+        "| Quantile | Montant |",
+        "|---|--:|",
+    ]
+    lines += [f"| p{round(k['p'] * 100)} | {k['montant']} |" for k in mm["noeuds_du_reste"]]
     lines.append("")
     with open(OUT_MD, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines))
