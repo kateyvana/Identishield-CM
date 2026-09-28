@@ -77,20 +77,29 @@ détecteur, et que vue et sidecar ne partagent que `run_id`.
   écrit les deux vues, puis restaure le mode protégé. Le mode `--dry-run`
   n'appelle ni la pile ni Docker et sert aux tests.
 
-## 7. Points d'intégration à vérifier (Claude Code, contre le dépôt réel)
+## 7. Points d'intégration — vérifiés le 2026-09-27 contre le dépôt réel
 
-Le harnais est écrit contre les interfaces vues dans les rapports du Mois 2. À
-confirmer avant exécution (marqués `TODO-INT` dans le code) :
+Les interfaces ont été confirmées contre `attacker/src/isc_attacker/cli.py` et
+`tools/verify_attacker.sh`, et le harnais a été adapté au dépôt (jamais l'inverse).
+État des quatre points anciennement marqués `TODO-INT` :
 
-1. la signature exacte de `python -m isc_attacker ac02 --victim … --victim-imsi …
-   --beneficiary … --attacker-imsi …` ;
-2. les noms exacts des lignes `ORACLE_*` (au moins : solde final, bénéficiaire de
-   la sortie, IMSI cible de l'OTP, notifications à l'ancien appareil) ;
-3. la requête SQL de placement d'un solde fictif sur un compte victime (schéma
-   réel de la table `account` ; cf. l'aide `adm()` de `tools/verify_attacker.sh`) ;
-4. l'endpoint `CONSOLE/api/mode` de bascule du mode.
-
-Si une interface diffère, **adapter le harnais au dépôt**, jamais l'inverse.
+1. **CLI** — `python -m isc_attacker ac02` a **six** options obligatoires :
+   `--victim`, `--victim-imsi`, `--attacker-imsi`, `--beneficiary`, `--agent-id`,
+   `--motif`. Les deux dernières manquaient au harnais ; ajoutées, avec les valeurs
+   éprouvées de `verify_attacker.sh` (`agent-kyc-07`, `« remplacement SIM »`).
+2. **Oracles** — lignes `ORACLE_*` de `cli.py`. Attention : `ORACLE_OUTPUT_BENEFICIARY`
+   ne fait qu'**écho de l'entrée**, il n'est pas probant seul. « Sortie aboutie » se
+   mesure donc sur `ORACLE_OUTPUTS ≥ 1` **et** `ORACLE_OUTPUT_STATE == EXECUTED`
+   (comme la vérif SQL `count(*) … state='EXECUTED'` du script). Oracle renforcé.
+3. **Solde/HLR** — schéma réel : `core.account(msisdn, balance_xaf, created_at)`
+   et `core.hlr_subscriber(msisdn, current_imsi, updated_at)` (pas de table `account`
+   unique). `seed_victim` réécrit à l'identique du script : purge préalable, compte
+   victime + bénéficiaire, HLR ; via `docker exec isc-postgres psql -U isc_admin
+   -d identishield -tAc`. Invocation Docker alignée : `python:3.12-alpine` +
+   montage de `attacker/src`, pas d'image `isc-attacker:latest`.
+4. **Mode** — `POST CONSOLE/api/mode`, corps `{"layerless": true|false}` ; la boucle
+   d'attente guette la présence de la clé `"layerless"` (porte de disponibilité
+   console), et non plus sa valeur (bug corrigé pour `layerless=false`).
 
 ## 8. Limites déclarées
 
