@@ -73,6 +73,7 @@ def test_plan_size_and_fictitious_range(tmp_path: Path) -> None:
     for c in cases:
         assert c.victim_msisdn.startswith("677"), "MSISDN hors plage fictive"
         assert c.attacker_imsi.startswith("624019999999"), "IMSI attaquant non fictif"
+        assert len(c.attacker_imsi) == 15, "IMSI attaquant hors format 15 chiffres"
         assert c.beneficiary_msisdn.startswith("677"), "bénéficiaire hors plage"
 
 

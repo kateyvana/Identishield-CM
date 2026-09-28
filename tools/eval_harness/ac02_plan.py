@@ -40,7 +40,10 @@ ORDINARY = "ordinaire"  # archétype ciblé (usager ordinaire = victime plausibl
 # Identifiants attaquant, FICTIFS, hors de la plage des usagers (plage 677 00x xxx).
 # Le bénéficiaire attaquant est un compte fictif du même opérateur simulé.
 ATTACKER_BENEFICIARY = "677009000"  # dans la plage fictive, réservé à l'attaquant
-ATTACKER_IMSI_PREFIX = "624019999999"  # IMSI attaquant fictif, distinct des usagers
+# IMSI attaquant : vrai IMSI 624-01 sur 15 chiffres (62401 + MSIN 10 chiffres).
+# Bloc MSIN 9999999NNN, distinct des usagers (0000000…) et des remplacements
+# légitimes (1…). Le compteur NNN (3 chiffres) suppose N_CASES < 1000.
+ATTACKER_IMSI_PREFIX = "624019999999"  # 12 chiffres ; + compteur 3 chiffres = 15
 
 
 @dataclass(frozen=True)
@@ -170,7 +173,7 @@ def build_plan(
                 victim_imsi=users[u]["imsi"],
                 instant=t.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 beneficiary_msisdn=ATTACKER_BENEFICIARY,
-                attacker_imsi=f"{ATTACKER_IMSI_PREFIX}{i % 10}",
+                attacker_imsi=f"{ATTACKER_IMSI_PREFIX}{i:03d}",
                 balance_xaf=int(bal),
             )
         )
