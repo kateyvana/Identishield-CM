@@ -100,6 +100,26 @@ def velocity_share(times_by_user: dict[str, list[int]], count: int, window: int)
     return flagged, len(times_by_user)
 
 
+def out_sessions(out_times: dict[str, list[int]], ref_s: dict) -> dict:
+    """PO-7 : distribution des écarts entre sorties consécutives ; bande ±25 % (relatif) < 10 min."""
+    gaps = []
+    for ts in out_times.values():
+        gaps += [b - a for a, b in pairwise(sorted(ts))]
+    lt600 = 100 * sum(1 for g in gaps if g < 600) / len(gaps) if gaps else 0.0
+    lt60 = 100 * sum(1 for g in gaps if g < 60) / len(gaps) if gaps else 0.0
+    err = (
+        100 * (lt600 - ref_s["sorties_part_ecarts_lt_600s"]) / ref_s["sorties_part_ecarts_lt_600s"]
+    )
+    return {
+        "sorties_lt_600s_pct": r2(lt600),
+        "sorties_reel_lt_600s_pct": ref_s["sorties_part_ecarts_lt_600s"],
+        "sorties_ecart_relatif_pct": r2(err),
+        "sorties_dans_tolerance": abs(err) <= 25,
+        "sorties_lt_60s_pct": r2(lt60),
+        "sorties_reel_lt_60s_pct": ref_s["sorties_part_ecarts_lt_60s"],
+    }
+
+
 def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
     with open(sample, encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
@@ -309,6 +329,8 @@ def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
         "part_ecarts_lt_60s_pct": r2(lt60),
         "reel_lt_60s_pct": ref_s["part_ecarts_lt_60s"],
         "n_ecarts": len(gaps),
+        # PO-7 : écarts entre SORTIES consécutives d'un même usager (hors agents).
+        **out_sessions(out_times, ref_s),
     }
 
     # g. Channel and device binding per archetype (PERSONAS v1.2, declared assumptions).
@@ -545,6 +567,12 @@ def render_md(s: dict) -> str:
         (
             f"- Écarts consécutifs < 1 min : {se['part_ecarts_lt_60s_pct']} % "
             f"(réel {se['reel_lt_60s_pct']} %, rapporté)."
+        ),
+        (
+            f"- Écarts entre SORTIES consécutives < 10 min : **{se['sorties_lt_600s_pct']} %** "
+            f"(réel {se['sorties_reel_lt_600s_pct']} % ; écart {se['sorties_ecart_relatif_pct']:+} %, "
+            f"tolérance ±25 % : {yes(se['sorties_dans_tolerance'])}) ; < 1 min "
+            f"{se['sorties_lt_60s_pct']} % (réel {se['sorties_reel_lt_60s_pct']} %)."
         ),
         "",
     ]

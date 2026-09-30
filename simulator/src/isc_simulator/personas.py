@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-PERSONAS_VERSION = "v2.0"
+PERSONAS_VERSION = "v2.1"
 
 # Fictitious MSISDN range (ED-09): users AND beneficiaries are drawn here, nowhere else.
 MSISDN_LOW = 677000000
@@ -82,6 +82,15 @@ class Archetype:
     salary: Lognormal | None = None  # monthly salary IN on SALARY_DAY (salaried only)
     payday_extra_out: float = 0.0  # extra OUT per day on PAYDAY_DAYS (salaried only)
     burst_span_s: int | None = None  # v2.0: seconds a burst spans (None = BURST_SPAN_S)
+    # v2.0 (PO-7) — orientation of the public sessions:
+    # burst_alternate: probability that a regular session alternates directions (IN->OUT->...),
+    #   the first one drawn with p_out; otherwise each transaction draws its own direction.
+    # burst_large_share: probability that a session is LARGE (burst_large_size) and takes ONE
+    #   direction for all its transactions, drawn once with p_out (the output bursts of PO-7).
+    burst_alternate: float = 0.0
+    burst_large_share: float = 0.0
+    burst_large_size: tuple[int, int] = (4, 6)
+    burst_large_span_s: int | None = None  # seconds a LARGE session spans (None = burst_span_s)
 
 
 # Salaried seasonality (PERSONAS §1.2): salary credited on day 28, bill burst on days 28-30.

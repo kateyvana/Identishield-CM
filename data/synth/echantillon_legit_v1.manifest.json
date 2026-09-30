@@ -31,7 +31,7 @@
         "sim_event_case"
       ],
       "file": "echantillon_legit_v1.labels.csv",
-      "sha256": "706281da39399ee3d28466b0333235a22ee35009cc74f9825945c03ffe070414"
+      "sha256": "2d12bdb38f2816a880af18bfea1c6adf0c6e27061f0f3df37a59db09d9e2f86a"
     },
     "vue_detecteur": {
       "fields": [
@@ -48,16 +48,16 @@
         "device_bound"
       ],
       "file": "echantillon_legit_v1.csv",
-      "sha256": "1486aeaecc41dd561a7b0d0c361514ca5e8a57773aa7015347d181a7c4285dc2"
+      "sha256": "a9cf441be14423123491d8d77b5959bb1df2e1168d1648a410c8c07b6f33f833"
     }
   },
   "isc_seed": 20260925,
-  "personas_version": "v2.0",
-  "sha256": "1486aeaecc41dd561a7b0d0c361514ca5e8a57773aa7015347d181a7c4285dc2",
-  "skipped_out": 184,
+  "personas_version": "v2.1",
+  "sha256": "a9cf441be14423123491d8d77b5959bb1df2e1168d1648a410c8c07b6f33f833",
+  "skipped_out": 160,
   "start": "2026-10-25",
   "synthese_version": "syn-1.0.0",
-  "transactions": 4018,
+  "transactions": 4036,
   "users": 400,
   "verite_terrain_sim_events": {
     "per_case": {

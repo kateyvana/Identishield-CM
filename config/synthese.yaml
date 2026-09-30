@@ -37,6 +37,11 @@ synthese:
     size_min: 2
     size_max: 3
     span_s: 150 # durée d'une session (s) ; les marchands gardent leurs rafales de 600 s
+    alternate_share: 0.8 # PO-7 : part des sessions courantes qui alternent (reçoit puis envoie)
+    large_share: 0.12 # PO-7 : part des sessions « grandes », à direction unique tirée avec P(OUT)
+    large_size_min: 4
+    large_size_max: 6
+    large_span_s: 300 # durée d'une grande session (s), < 600 pour rester dans la fenêtre de VEL
 
   montants: # mélange « masses ponctuelles + reste » de l'étalon, pour TOUS les archétypes
     point_masses_k: 20 # doit valoir la valeur k de l'étalon

@@ -1,7 +1,7 @@
-# Modèle de personas de la population de synthèse — v2.0
+# Modèle de personas de la population de synthèse — v2.1
 
-- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2) ; 2026-09-25 (v1.3) ; 2026-09-26 (v1.4) ; 2026-09-28 (v2.0)
-- **Version** : **v2.0** — révision de conception (T3-05a) : le réel est la POPULATION ENTIÈRE ; continuum grand public calé sur le réel + surcouches déclarées (§0 v2.0) ; ~~**v1.4**~~ vues détecteur / sidecar / HLR, anti-fuite (T3-04a) ; ~~**v1.3**~~ changements de SIM légitimes (T3-04a) ; ~~**v1.2**~~ champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
+- **Date** : 2026-09-25 (v1.0) ; 2026-09-25 (v1.1) ; 2026-09-25 (v1.2) ; 2026-09-25 (v1.3) ; 2026-09-26 (v1.4) ; 2026-09-28 (v2.0) ; 2026-09-30 (v2.1)
+- **Version** : **v2.1** — sessions orientées : grappes de sorties légitimes (PO-7) ; ~~**v2.0**~~ révision de conception (T3-05a) : le réel est la POPULATION ENTIÈRE ; continuum grand public calé sur le réel + surcouches déclarées (§0 v2.0) ; ~~**v1.4**~~ vues détecteur / sidecar / HLR, anti-fuite (T3-04a) ; ~~**v1.3**~~ changements de SIM légitimes (T3-04a) ; ~~**v1.2**~~ champs IMSI, canal et liaison d'appareil ajoutés (T3-04a) ; ~~**v1.1**~~ amendée à l'implémentation du générateur (T3-03) ; journal des modifications en §9. Rien n'est supprimé : les valeurs remplacées restent visibles, barrées.
 - **Implémentation** : `simulator/src/isc_simulator/personas.py` (paramètres) et `generator.py` (générateur, T3-03)
 - **Paramètres de synthèse (v2.0)** : `config/synthese.yaml` (lu par `synthese.py`), jamais `ruleset.yaml`
 - **Étalon de référence** : [profil_reel_v1.1.json](profil_reel_v1.1.json) (v2.0 ; agrégats ajoutés en section f) ; ~~[profil_reel_v1.json](profil_reel_v1.json)~~ (v1.x) (T3-01, SHA-256 du CSV source `84cd01ae…83401fb1`, 26 989 transactions)
@@ -206,6 +206,20 @@ Une partie des usagers connaît, au cours de l'horizon, un événement de servic
 **Garanties testées.** (1) colonnes(vue détecteur) ∩ colonnes(sidecar) = {`id`} ; (2) aucune colonne de la vue détecteur ni de la vue HLR ne porte un nom oracle (liste : label, case, legit, fraud, ground_truth, intent, archetype, is_new_beneficiary, source ; plus une expression régulière) ; (3) aucune valeur de vérité-terrain dans la vue détecteur (LEGIT, noms d'archétypes…) ; (4) jointure un pour un sur `id` ; (5) vue HLR = changements d'IMSI seulement ; (6) les trois fichiers sont identiques à l'octet pour une même graine ; le manifeste liste leurs trois empreintes.
 
 **Échantillon de contrôle régénéré dans ce format** : ses hashes changent, c'est attendu, puisque les colonnes ont quitté la vue. Vue détecteur `bee8e47e…672b`, sidecar `f3f951ba…65c1`, vue HLR `343fd48f…5a02` (en-tête seul : son unique événement est un cas c). Les statistiques de contrôle, recalculées par jointure avec le sidecar, sont inchangées.
+
+### 1.12 Sessions orientées du grand public — *ajouté en v2.1 (T3-05a, PO-7)*
+
+Le grand public (ordinaire, victime, salarié) regroupe 65 % de ses transactions en sessions. Deux types de session, tous paramétrés dans `config/synthese.yaml` (`sessions`) :
+
+| Type | Part des sessions | Taille | Durée | Direction |
+|---|--:|--:|--:|---|
+| **Courante** | 88 % | 2 à 3 | 150 s | alterne dans 80 % des cas (« reçoit puis envoie »), sinon chaque transaction tire la sienne |
+| **Grande** | 12 % | 4 à 6 | 300 s | **une seule** direction pour toute la session, tirée une fois avec P(OUT) |
+
+**Pourquoi deux types.** Dans le réel, les écarts courts toutes directions sont fréquents (13,04 % sous 10 min), mais les écarts courts **entre sorties** sont rares (5,05 %) ; pourtant 10,20 % des usagers franchissent VEL sur leurs sorties. Les sorties rapprochées sont donc **rares mais concentrées** en vraies rafales (≥ 4 sorties en 10 min), et les regroupements toutes directions viennent surtout d'alternances entrée/sortie. Des sessions indépendantes de 2–3 transactions produisaient l'inverse : trop de paires de sorties (7,0 %) et presque aucune rafale (VEL sorties 0,38 %).
+
+**Calage** (cible = distributions de l'étalon v1.1, jamais le % VEL) : écarts consécutifs toutes directions < 10 min / < 1 min, et écarts entre sorties consécutives < 10 min / < 1 min. **P(OUT) est conservé** : une grande session tire sa direction avec P(OUT) ; seule l'alternance rapproche vers 0,5 la part de sorties des salariés dans leurs sessions (42,2 % → 44,4 % de leurs transactions), sans effet sur les soldes (§10, PO-8).
+
 ---
 
 ## 2. Mix de population — v2.0 (option A, ED-07)
@@ -301,8 +315,9 @@ Toutes calculées par `python -m isc_simulator.stats` contre l'étalon v1.1. Mes
 | Rythme par usager | usagers **hors agents** ayant ≥ 1 transaction ; tx / durée d'activité (jours, ≥ 1) | ±15 % de p25 à p90 ; ±25 % pour p10 et p95 ; max rapporté | pire écart p75 +7,8 % ; max 5,07 (réel 4,73) |
 | Montants | **toutes** les transactions synthétiques (salaire compris) contre tous les montants > 0 du réel | L1 d'histogramme < 0,10 ; quantiles ±15 % (p10–p90), ±25 % (p95, p99) ; part de multiples de 100/500/1 000/5 000 **≤ réel** | L1 0,022 ; pire écart p95 +14,6 % ; multiples 68 / 54 / 41 / 13 % (réel 82 / 61 / 47 / 16 %) |
 | Heures du jour | toutes les transactions | L1 sur 24 h < 0,08 ; part NUIT ±1,5 pt | L1 0,048 ; nuit 5,89 % (réel 6,51) |
-| Sessions | écarts entre transactions consécutives d'un même usager, hors agents | écarts < 10 min à ±25 % (relatif) des 13,04 % réels ; < 1 min rapporté | 13,12 % ; < 1 min 5,38 % (réel 5,38) |
-| VEL (**diagnostic**) | usagers hors agents dépassant > 3 tx en 10 min, **sur la fenêtre de l'échantillon (182 j)** ; réel : 52 usagers (monétaire) et 49 (sorties), **activité médiane 322 j** | aucune (jamais une cible) | monétaire 15,6 % (réel 26,92) ; sorties 0,53 % (réel 10,20) → PO-7 |
+| Sessions | écarts entre transactions consécutives d'un même usager, hors agents | écarts < 10 min à ±25 % (relatif) des 13,04 % réels ; < 1 min rapporté | ~~13,12 % ; < 1 min 5,38 %~~ (v2.0) → **v2.1 : 13,49 % ; < 1 min 5,29 %** (réel 5,38) |
+| Sessions de sorties (v2.1) | écarts entre **sorties** consécutives d'un même usager, hors agents | < 10 min à ±25 % (relatif) des 5,05 % réels ; < 1 min rapporté | **4,88 %** ; < 1 min **1,38 %** (réel 1,49) |
+| VEL (**diagnostic**) | usagers hors agents dépassant > 3 tx en 10 min, **sur la fenêtre de l'échantillon (182 j)** ; réel : 52 usagers (monétaire) et 49 (sorties), **activité médiane 322 j** | aucune (jamais une cible) | ~~monétaire 15,6 % ; sorties 0,53 %~~ (v2.0) → **v2.1, fenêtre 182 j : monétaire 31,1 %, sorties 8,0 %** ; fenêtre 322 j (comparable ; échantillon de 800 usagers) : sorties 13,7 % (réel 10,20) |
 
 La bande v1.x « 25–55 % des agents » et la cible « < 5 % de la population » (§5.4 v1.x) sont remplacées : la vélocité n'est plus qu'un diagnostic, avec son dénominateur explicite (usagers hors agents) et son périmètre (transactions monétaires, ou sorties seules).
 
@@ -369,6 +384,13 @@ On **rapporte** les quantiles population, **attendus SOUS** la médiane réelle 
 
 ## 9. Journal des modifications
 
+### v2.1 — 2026-09-30 (T3-05a, PO-7)
+
+- Ajout de §1.12 : sessions orientées (courantes alternées, grandes à direction unique) ; paramètres `alternate_share`, `large_share`, `large_size_min`/`max`, `large_span_s` dans `config/synthese.yaml`.
+- Étalon v1.1 : distribution des écarts entre sorties consécutives ajoutée (section f, `sessions`) ; doublon du rendu Markdown de la section f supprimé.
+- §5 : ligne « sessions de sorties » ajoutée ; mesures v2.1 ; VEL (diagnostic) rapporté sur 182 et 322 jours.
+- §10 : PO-7 résolu, PO-8 confirmé. Rien n'est supprimé.
+
 ### v2.0 — 2026-09-28 (T3-05a, révision de conception)
 
 - **Le réel est la population entière** (fenêtre de 1 755 jours mesurée ; ~1 tx monétaire/jour par usager) : §0 réécrite ; erreur de T3-02 (fenêtre non mesurée) expliquée.
@@ -415,8 +437,8 @@ Trois décisions **ratifiées par le propriétaire** (question posée avant le c
 - **PO-4 — RÉSOLU** : p99 des montants à 0,0 % d'écart sur la population v2.0.
 - **PO-5 — PARTIEL** : IMSI, canal et appareil faits (T3-04a) ; types d'opération et localité (ED-10) ouverts.
 - **PO-6 — RÉSOLU** : sessions à 13,12 % d'écarts < 10 min (réel 13,04 %).
-- **PO-7 — NOUVEAU** : regroupement des **sorties**. Le diagnostic VEL sur les sorties est de 0,53 % contre 10,20 % dans le réel : le synthétique sous-représente les rafales de sorties légitimes. **À traiter avant T3-07**, sinon le taux de faux positifs de VEL sera sous-estimé.
-- **PO-8 — NOUVEAU** : les parts de sorties par archétype (§1.7) avaient été dérivées des lois de montant par sens, désormais remplacées par le mélange unique. Mesuré v2.0 : 2,55 % de sorties sautées, aucun solde négatif. À revoir si T3-06 le demande.
+- **PO-7 — RÉSOLU en v2.1** (§1.12) : écarts entre sorties < 10 min 4,88 % (réel 5,05), < 1 min 1,38 % (réel 1,49) ; en conséquence, VEL sorties passe de 0,53 % à 8,0 % sur 182 jours et 13,7 % sur 322 jours (réel 10,20 %). ~~**PO-7 — NOUVEAU** : regroupement des **sorties**.~~ Le diagnostic VEL sur les sorties est de 0,53 % contre 10,20 % dans le réel : le synthétique sous-représente les rafales de sorties légitimes. **À traiter avant T3-07**, sinon le taux de faux positifs de VEL sera sous-estimé.
+- **PO-8 — CONFIRMÉ en v2.1** : sorties sautées 2,54 % (v2.0 : 2,55 %), aucun solde négatif, aucune incohérence ; part de sorties par archétype stable, sauf salarié 42,2 % → 44,4 % (effet de l'alternance), sans effet sur les soldes. ~~**PO-8 — NOUVEAU**~~ : les parts de sorties par archétype (§1.7) avaient été dérivées des lois de montant par sens, désormais remplacées par le mélange unique. Mesuré v2.0 : 2,55 % de sorties sautées, aucun solde négatif. À revoir si T3-06 le demande.
 
 > Le texte v1.x de cette section est conservé ci-dessous.
 

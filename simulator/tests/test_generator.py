@@ -420,3 +420,21 @@ def test_the_public_groups_its_transactions_into_sessions(dense):
         b - a for ts in times.values() for a, b in zip(sorted(ts), sorted(ts)[1:], strict=False)
     ]
     assert sum(1 for g in gaps if g <= span) / len(gaps) > 0.05
+
+
+def test_session_directions_large_is_one_direction_and_regular_alternates():
+    import dataclasses
+    import random
+
+    from isc_simulator.generator import session_directions
+    from isc_simulator.personas import ARCHETYPES
+
+    base = next(a for a in ARCHETYPES if a.name == "ordinaire")
+    rng = random.Random(1)
+    for _ in range(200):
+        d = session_directions(rng, base, 5, True)
+        assert len(set(d)) == 1  # a large session takes ONE direction
+    alt = dataclasses.replace(base, burst_alternate=1.0)
+    for _ in range(200):
+        d = session_directions(rng, alt, 3, False)
+        assert d[0] != d[1] and d[1] != d[2]  # a regular session alternates

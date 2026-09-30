@@ -2,75 +2,75 @@
   "a_montant": {
     "population": {
       "cible_l1": 0.1,
-      "distance_l1_histogramme": 0.074,
+      "distance_l1_histogramme": 0.0689,
       "histogramme": [
         {
           "part_reel": 20.25,
-          "part_synth": 21.98,
+          "part_synth": 21.95,
           "tranche": "1–500"
         },
         {
           "part_reel": 14.38,
-          "part_synth": 14.39,
+          "part_synth": 14.57,
           "tranche": "500–1k"
         },
         {
           "part_reel": 39.85,
-          "part_synth": 38.7,
+          "part_synth": 38.88,
           "tranche": "1k–5k"
         },
         {
           "part_reel": 9.87,
-          "part_synth": 9.01,
+          "part_synth": 8.67,
           "tranche": "5k–10k"
         },
         {
           "part_reel": 8.23,
-          "part_synth": 7.79,
+          "part_synth": 7.73,
           "tranche": "10k–25k"
         },
         {
           "part_reel": 1.9,
-          "part_synth": 1.39,
+          "part_synth": 1.61,
           "tranche": "25k–50k"
         },
         {
           "part_reel": 1.95,
-          "part_synth": 3.93,
+          "part_synth": 3.52,
           "tranche": "50k–100k"
         },
         {
           "part_reel": 2.47,
-          "part_synth": 2.07,
+          "part_synth": 2.43,
           "tranche": "100k–500k"
         },
         {
           "part_reel": 1.08,
-          "part_synth": 0.75,
+          "part_synth": 0.64,
           "tranche": "500k+"
         }
       ],
-      "n": 4018,
+      "n": 4036,
       "parts_multiples": {
         "100": {
           "pas_plus_rond_que_le_reel": true,
           "reel_pct": 81.56,
-          "synthetique_pct": 66.53
+          "synthetique_pct": 66.3
         },
         "1000": {
           "pas_plus_rond_que_le_reel": true,
           "reel_pct": 46.82,
-          "synthetique_pct": 39.32
+          "synthetique_pct": 38.9
         },
         "500": {
           "pas_plus_rond_que_le_reel": true,
           "reel_pct": 61.28,
-          "synthetique_pct": 52.09
+          "synthetique_pct": 51.76
         },
         "5000": {
           "pas_plus_rond_que_le_reel": true,
           "reel_pct": 15.77,
-          "synthetique_pct": 11.67
+          "synthetique_pct": 11.17
         }
       },
       "quantiles": {
@@ -97,30 +97,30 @@
         },
         "p75": {
           "dans_tolerance": true,
-          "ecart_relatif_pct": -3.66,
+          "ecart_relatif_pct": -14.4,
           "reel": 5000.0,
-          "synthetique": 4817.0,
+          "synthetique": 4279.75,
           "tolerance_pct": 15
         },
         "p90": {
           "dans_tolerance": false,
-          "ecart_relatif_pct": 23.41,
+          "ecart_relatif_pct": 30.36,
           "reel": 15340.0,
-          "synthetique": 18931.5,
+          "synthetique": 19997.0,
           "tolerance_pct": 15
         },
         "p95": {
           "dans_tolerance": false,
-          "ecart_relatif_pct": 37.71,
+          "ecart_relatif_pct": 39.6,
           "reel": 50750.0,
-          "synthetique": 69889.75,
+          "synthetique": 70847.25,
           "tolerance_pct": 25
         },
         "p99": {
           "dans_tolerance": false,
-          "ecart_relatif_pct": -39.85,
+          "ecart_relatif_pct": -43.2,
           "reel": 500000.0,
-          "synthetique": 300766.49,
+          "synthetique": 283987.9,
           "tolerance_pct": 25
         }
       }
@@ -128,7 +128,7 @@
   },
   "b_heure": {
     "cible_l1": 0.08,
-    "distance_l1": 0.0776,
+    "distance_l1": 0.0724,
     "heures_nuit": [
       0,
       1,
@@ -137,55 +137,55 @@
       4,
       23
     ],
-    "part_nuit_pct": 6.15,
+    "part_nuit_pct": 6.1,
     "part_nuit_reel_pct": 6.51
   },
   "c_archetypes": {
     "agent": {
       "part_nouveau_parmi_sorties_pct": 13.78,
       "part_sorties_pct": 52.41,
-      "part_volume_pct": 13.44,
+      "part_volume_pct": 13.38,
       "transactions": 540,
       "usagers": 4
     },
     "marchand": {
       "part_nouveau_parmi_sorties_pct": 9.77,
       "part_sorties_pct": 14.82,
-      "part_volume_pct": 29.22,
+      "part_volume_pct": 29.09,
       "transactions": 1174,
       "usagers": 63
     },
     "ordinaire": {
-      "part_nouveau_parmi_sorties_pct": 4.27,
-      "part_sorties_pct": 43.62,
-      "part_volume_pct": 18.72,
-      "transactions": 752,
+      "part_nouveau_parmi_sorties_pct": 3.94,
+      "part_sorties_pct": 42.8,
+      "part_volume_pct": 19.1,
+      "transactions": 771,
       "usagers": 208
     },
     "salarie": {
-      "part_nouveau_parmi_sorties_pct": 3.93,
-      "part_sorties_pct": 50.72,
-      "part_volume_pct": 36.16,
+      "part_nouveau_parmi_sorties_pct": 2.95,
+      "part_sorties_pct": 51.27,
+      "part_volume_pct": 36.0,
       "transactions": 1453,
       "usagers": 104
     },
     "victime": {
       "part_nouveau_parmi_sorties_pct": 0.0,
-      "part_sorties_pct": 40.4,
-      "part_volume_pct": 2.46,
-      "transactions": 99,
+      "part_sorties_pct": 39.8,
+      "part_volume_pct": 2.43,
+      "transactions": 98,
       "usagers": 21
     }
   },
   "c_nouveau_beneficiaire": {
-    "part_nouveau_parmi_sorties_pct": 6.34,
-    "part_nouveau_parmi_toutes_pct": 2.46
+    "part_nouveau_parmi_sorties_pct": 5.79,
+    "part_nouveau_parmi_toutes_pct": 2.25
   },
   "c_sorties": {
-    "part_sorties_pct": 38.88,
+    "part_sorties_pct": 38.92,
     "part_sorties_reel_in_out_pct": 49.58,
-    "sorties_sautees_solde_insuffisant": 184,
-    "taux_saut_pct": 10.54
+    "sorties_sautees_solde_insuffisant": 160,
+    "taux_saut_pct": 9.24
   },
   "d_soldes": {
     "incoherences_arithmetiques": 0,
@@ -205,10 +205,10 @@
     "fichier": "echantillon_legit_v1.csv",
     "isc_seed": 20260925,
     "jours": 7,
-    "personas_version": "v2.0",
-    "sha256": "1486aeaecc41dd561a7b0d0c361514ca5e8a57773aa7015347d181a7c4285dc2",
+    "personas_version": "v2.1",
+    "sha256": "a9cf441be14423123491d8d77b5959bb1df2e1168d1648a410c8c07b6f33f833",
     "sha256_manifeste_identique": true,
-    "transactions": 4018,
+    "transactions": 4036,
     "usagers": 400
   },
   "etalon": {
@@ -218,11 +218,11 @@
   "f_velocite": {
     "activite_mediane_reel_jours": 322,
     "fenetre_jours": 7,
-    "monetaire_pct": 0.82,
+    "monetaire_pct": 1.37,
     "monetaire_reel_pct": 26.92,
     "perimetre": "population hors agents",
     "regle": ">3 transactions en 10 min (glissant)",
-    "sorties_pct": 0.0,
+    "sorties_pct": 0.62,
     "sorties_reel_pct": 10.2
   },
   "g_canal_appareil": {
@@ -241,21 +241,21 @@
         "usagers_actifs": 63
       },
       "ordinaire": {
-        "part_app_pct": 26.2,
-        "part_appareil_lie_pct": 40.88,
-        "part_ussd_pct": 73.8,
-        "usagers_actifs": 181
+        "part_app_pct": 28.02,
+        "part_appareil_lie_pct": 41.11,
+        "part_ussd_pct": 71.98,
+        "usagers_actifs": 180
       },
       "salarie": {
-        "part_app_pct": 60.91,
+        "part_app_pct": 63.45,
         "part_appareil_lie_pct": 76.92,
-        "part_ussd_pct": 39.09,
+        "part_ussd_pct": 36.55,
         "usagers_actifs": 104
       },
       "victime": {
-        "part_app_pct": 19.19,
+        "part_app_pct": 19.39,
         "part_appareil_lie_pct": 31.58,
-        "part_ussd_pct": 80.81,
+        "part_ussd_pct": 80.61,
         "usagers_actifs": 19
       }
     }
@@ -263,60 +263,66 @@
   "h_rythme": {
     "max_reel": 4.7264,
     "max_synthetique": 6.349,
-    "n_usagers": 367,
+    "n_usagers": 366,
     "quantiles": {
       "p10": {
         "dans_tolerance": false,
-        "ecart_relatif_pct": 330.27,
+        "ecart_relatif_pct": 368.37,
         "reel": 0.1793,
-        "synthetique": 0.771,
+        "synthetique": 0.84,
         "tolerance_pct": 25
       },
       "p25": {
         "dans_tolerance": false,
-        "ecart_relatif_pct": 84.16,
+        "ecart_relatif_pct": 90.21,
         "reel": 0.543,
-        "synthetique": 1.0,
+        "synthetique": 1.033,
         "tolerance_pct": 15
       },
       "p50": {
         "dans_tolerance": false,
-        "ecart_relatif_pct": 60.98,
+        "ecart_relatif_pct": 57.79,
         "reel": 1.071,
-        "synthetique": 1.724,
+        "synthetique": 1.69,
         "tolerance_pct": 15
       },
       "p75": {
         "dans_tolerance": false,
-        "ecart_relatif_pct": 62.13,
+        "ecart_relatif_pct": 62.67,
         "reel": 1.5671,
-        "synthetique": 2.541,
+        "synthetique": 2.549,
         "tolerance_pct": 15
       },
       "p90": {
         "dans_tolerance": false,
-        "ecart_relatif_pct": 51.78,
+        "ecart_relatif_pct": 52.62,
         "reel": 2.1816,
-        "synthetique": 3.311,
+        "synthetique": 3.33,
         "tolerance_pct": 15
       },
       "p95": {
         "dans_tolerance": false,
-        "ecart_relatif_pct": 45.85,
+        "ecart_relatif_pct": 52.08,
         "reel": 2.6332,
-        "synthetique": 3.841,
+        "synthetique": 4.005,
         "tolerance_pct": 25
       }
     }
   },
   "i_sessions": {
     "dans_tolerance": true,
-    "ecart_relatif_pct": -2.14,
-    "n_ecarts": 3111,
-    "part_ecarts_lt_600s_pct": 12.76,
-    "part_ecarts_lt_60s_pct": 4.69,
+    "ecart_relatif_pct": -1.75,
+    "n_ecarts": 3130,
+    "part_ecarts_lt_600s_pct": 12.81,
+    "part_ecarts_lt_60s_pct": 4.63,
     "reel_lt_600s_pct": 13.04,
     "reel_lt_60s_pct": 5.38,
+    "sorties_dans_tolerance": true,
+    "sorties_ecart_relatif_pct": -7.75,
+    "sorties_lt_600s_pct": 4.66,
+    "sorties_lt_60s_pct": 1.76,
+    "sorties_reel_lt_600s_pct": 5.05,
+    "sorties_reel_lt_60s_pct": 1.49,
     "tolerance_pct": 25
   }
 }

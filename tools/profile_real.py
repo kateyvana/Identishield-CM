@@ -160,6 +160,15 @@ def v1_1_aggregates(
         for s in SESSION_GAPS_S
     }
     sessions["n_ecarts"] = len(gaps)
+    # PO-7 : écarts entre SORTIES consécutives d'un même usager (suite de ses seules sorties).
+    out_gaps = []
+    for v in out_times.values():
+        ts = sorted(v)
+        out_gaps += [b - a for a, b in pairwise(ts)]
+    for s in SESSION_GAPS_S:
+        share = sum(1 for g in out_gaps if g < s) / len(out_gaps) if out_gaps else 0.0
+        sessions[f"sorties_part_ecarts_lt_{s}s"] = r2(100 * share)
+    sessions["sorties_n_ecarts"] = len(out_gaps)
     all_t = [t for v in per_user_times.values() for t in v]
     span_days = sorted(spans.values())
     return {
@@ -525,64 +534,10 @@ def write_md(p: dict) -> None:
             f"**{se['part_ecarts_lt_600s']} %** ; < 1 min : {se['part_ecarts_lt_60s']} % "
             f"({se['n_ecarts']} écarts)."
         ),
-        "",
-        "**Vélocité par périmètre** :",
-        "",
-        "| Périmètre | Usagers dépassant | Usagers | % |",
-        "|---|--:|--:|--:|",
-    ]
-    for name, v in f1["velocite_par_perimetre"].items():
-        if isinstance(v, dict):
-            lines.append(f"| {name} | {v['usagers_depassant']} | {v['nb_usagers']} | {v['part']} |")
-    mm = f1["montants_masses_ponctuelles"]
-    lines += [
-        "",
         (
-            f"**Montants : {mm['k']} masses ponctuelles** ({round(100 * mm['part_totale'], 2)} % "
-            f"des montants > 0) :"
-        ),
-        "",
-        "| Montant (FCFA) | Part |",
-        "|--:|--:|",
-    ]
-    lines += [f"| {m['montant']} | {m['part']} |" for m in mm["masses"]]
-    lines += [
-        "",
-        f"**Nœuds du reste** (montants hors de ces valeurs, n = {mm['n_reste']}) :",
-        "",
-        "| Quantile | Montant |",
-        "|---|--:|",
-    ]
-    lines += [f"| p{round(k['p'] * 100)} | {k['montant']} |" for k in mm["noeuds_du_reste"]]
-    lines.append("")
-    f1 = p["f_v1_1"]
-    fo = f1["fenetre_observation"]
-    lines += [
-        "## f. Agrégats ajoutés en v1.1 (T3-05a)",
-        "",
-        (
-            f"**Fenêtre d'observation** : du {fo['debut']} au {fo['fin']} ({fo['jours']} jours). "
-            f"Activité par usager : médiane {fo['activite_par_usager_jours']['median']} jours "
-            f"(p10 {fo['activite_par_usager_jours']['p10']}, "
-            f"p90 {fo['activite_par_usager_jours']['p90']})."
-        ),
-        "",
-    ]
-    rt = f1["rythme_monetaire_par_usager"]
-    lines += [
-        f"**Rythme monétaire par usager** ({rt['definition']}) — {rt['nb_usagers']} usagers :",
-        "",
-        "| Quantile | tx / jour |",
-        "|---|--:|",
-    ]
-    lines += [f"| p{round(k['p'] * 100)} | {k['tx_par_jour']} |" for k in rt["noeuds"]]
-    se = f1["sessions"]
-    lines += [
-        "",
-        (
-            f"**Sessions** : écarts entre transactions monétaires consécutives d'un usager < 10 min : "
-            f"**{se['part_ecarts_lt_600s']} %** ; < 1 min : {se['part_ecarts_lt_60s']} % "
-            f"({se['n_ecarts']} écarts)."
+            f"**Sessions de sorties** (écarts entre sorties consécutives d'un usager) : < 10 min "
+            f"**{se['sorties_part_ecarts_lt_600s']} %** ; < 1 min {se['sorties_part_ecarts_lt_60s']} % "
+            f"({se['sorties_n_ecarts']} écarts)."
         ),
         "",
         "**Vélocité par périmètre** :",

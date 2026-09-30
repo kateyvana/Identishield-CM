@@ -208,6 +208,10 @@ def user_archetype(arch: Archetype, rate: float) -> Archetype:
             "burst_share": s["burst_share"],
             "burst_size": (s["size_min"], s["size_max"]),
             "burst_span_s": s["span_s"],
+            "burst_alternate": s["alternate_share"],
+            "burst_large_share": s["large_share"],
+            "burst_large_size": (s["large_size_min"], s["large_size_max"]),
+            "burst_large_span_s": s["large_span_s"],
         }
     return dataclasses.replace(arch, rate=rate, dispersion=None, **grouping)
 
@@ -311,6 +315,21 @@ def msisdn(index: int) -> str:
     return str(number)
 
 
+def session_directions(rd: random.Random, arch: Archetype, size: int, large: bool) -> list[str]:
+    """Directions of one emission unit (PERSONAS v2.0 §1.12, PO-7). A LARGE session takes one
+    direction, drawn once with p_out (the real output bursts); a regular session alternates with
+    probability burst_alternate (receive-then-spend), otherwise each transaction draws its own.
+    With both parameters at 0, the draws are exactly those of v2.0 (no extra random call)."""
+    if size > 1 and large:
+        d = "OUT" if rd.random() < arch.p_out else "IN"
+        return [d] * size
+    if size > 1 and arch.burst_alternate > 0 and rd.random() < arch.burst_alternate:
+        first = "OUT" if rd.random() < arch.p_out else "IN"
+        other = "IN" if first == "OUT" else "OUT"
+        return [first if k % 2 == 0 else other for k in range(size)]
+    return ["OUT" if rd.random() < arch.p_out else "IN" for _ in range(size)]
+
+
 def plan_events(master: int, i: int, arch: Archetype, start: date, days: int) -> list[tuple]:
     """Timestamps and directions of one user's transactions, before amounts and balance."""
     rt = stream(master, "timing", i)
@@ -332,14 +351,18 @@ def plan_events(master: int, i: int, arch: Archetype, start: date, days: int) ->
             lam = rt.gammavariate(arch.dispersion, arch.rate / arch.dispersion)
         remaining = poisson(rt, lam)
         while remaining > 0:
-            size = 1
+            size, large = 1, False
             if q > 0 and rt.random() < q:
-                size = min(remaining, rt.randint(*arch.burst_size))
+                large = arch.burst_large_share > 0 and rt.random() < arch.burst_large_share
+                size = min(
+                    remaining, rt.randint(*(arch.burst_large_size if large else arch.burst_size))
+                )
             t0 = instant(base)
-            span = arch.burst_span_s or BURST_SPAN_S
+            span = (large and arch.burst_large_span_s) or arch.burst_span_s or BURST_SPAN_S
             offsets = [0] + sorted(rt.randrange(span) for _ in range(size - 1))
-            for off in offsets:
-                direction = "OUT" if rd.random() < arch.p_out else "IN"
+            for off, direction in zip(
+                offsets, session_directions(rd, arch, size, large), strict=True
+            ):
                 events.append((t0 + off, len(events), direction, "regular"))
             remaining -= size
         if arch.salary is not None and day.day == SALARY_DAY:

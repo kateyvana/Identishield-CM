@@ -457,7 +457,10 @@
     "sessions": {
       "n_ecarts": 19851,
       "part_ecarts_lt_600s": 13.04,
-      "part_ecarts_lt_60s": 5.38
+      "part_ecarts_lt_60s": 5.38,
+      "sorties_n_ecarts": 12296,
+      "sorties_part_ecarts_lt_600s": 5.05,
+      "sorties_part_ecarts_lt_60s": 1.49
     },
     "velocite_par_perimetre": {
       "montants_positifs": {

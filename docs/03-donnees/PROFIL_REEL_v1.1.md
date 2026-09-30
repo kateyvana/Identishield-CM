@@ -136,73 +136,7 @@ Champ de sens : Direction (valeurs : OUT = sortie/débit, IN = entrée, unknown 
 | p100 | 4.7264 |
 
 **Sessions** : écarts entre transactions monétaires consécutives d'un usager < 10 min : **13.04 %** ; < 1 min : 5.38 % (19851 écarts).
-
-**Vélocité par périmètre** :
-
-| Périmètre | Usagers dépassant | Usagers | % |
-|---|--:|--:|--:|
-| toutes_lignes | 25 | 64 | 39.06 |
-| montants_positifs | 14 | 52 | 26.92 |
-| sorties_positives | 5 | 49 | 10.2 |
-
-**Montants : 20 masses ponctuelles** (75.35 % des montants > 0) :
-
-| Montant (FCFA) | Part |
-|--:|--:|
-| 2000.0 | 0.1282 |
-| 500.0 | 0.1157 |
-| 1000.0 | 0.1009 |
-| 100.0 | 0.0694 |
-| 5000.0 | 0.0693 |
-| 3000.0 | 0.0515 |
-| 499.0 | 0.0359 |
-| 200.0 | 0.0295 |
-| 10000.0 | 0.0294 |
-| 250.0 | 0.0192 |
-| 125.0 | 0.015 |
-| 20000.0 | 0.0149 |
-| 2100.0 | 0.0119 |
-| 500000.0 | 0.0102 |
-| 700.0 | 0.0092 |
-| 1100.0 | 0.0092 |
-| 15000.0 | 0.009 |
-| 1500.0 | 0.0086 |
-| 3100.0 | 0.0085 |
-| 1050.0 | 0.0077 |
-
-**Nœuds du reste** (montants hors de ces valeurs, n = 4907) :
-
-| Quantile | Montant |
-|---|--:|
-| p0 | 0.5 |
-| p10 | 300.0 |
-| p25 | 1200.0 |
-| p50 | 4600.0 |
-| p75 | 25000.0 |
-| p90 | 100000.0 |
-| p95 | 213606.2 |
-| p99 | 455875.0 |
-| p100 | 2015424.0 |
-
-## f. Agrégats ajoutés en v1.1 (T3-05a)
-
-**Fenêtre d'observation** : du 2021-06-06 au 2026-03-27 (1755 jours). Activité par usager : médiane 322 jours (p10 68, p90 840).
-
-**Rythme monétaire par usager** (tx monétaires (montant > 0) / durée d'activité de l'usager (jours, >= 1)) — 52 usagers :
-
-| Quantile | tx / jour |
-|---|--:|
-| p0 | 0.0369 |
-| p5 | 0.0478 |
-| p10 | 0.1793 |
-| p25 | 0.543 |
-| p50 | 1.071 |
-| p75 | 1.5671 |
-| p90 | 2.1816 |
-| p95 | 2.6332 |
-| p100 | 4.7264 |
-
-**Sessions** : écarts entre transactions monétaires consécutives d'un usager < 10 min : **13.04 %** ; < 1 min : 5.38 % (19851 écarts).
+**Sessions de sorties** (écarts entre sorties consécutives d'un usager) : < 10 min **5.05 %** ; < 1 min 1.49 % (12296 écarts).
 
 **Vélocité par périmètre** :
 
