@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thème de fenêtre minimal ; les couleurs de l'interface vivent dans ui/theme (Compose). -->
+    <style name="Theme.IdentiShield" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+    <color name="background">#F4F7FB</color>
+</resources>

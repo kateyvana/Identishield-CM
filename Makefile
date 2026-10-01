@@ -35,7 +35,7 @@ check-stack:
 	@bash tools/check_stack.sh
 
 ## ---- portes legeres (ISC-DEV §4) -------------------------------------------
-check: build format unit arch contract check-docs secrets fictitious-msisdn named-params eval-tests
+check: build format unit arch contract mobile check-docs secrets fictitious-msisdn named-params eval-tests
 	@echo "make check : VERT"
 
 build:
@@ -80,6 +80,26 @@ contract:
 	@echo ">>> contract : redocly evaluate.yaml + mobile-api.yaml"
 	@npx --yes @redocly/cli@2.14.5 lint contracts/evaluate.yaml contracts/mobile-api.yaml
 
+# Porte mobile (M-05, ADR-037) : lint, tests unitaires (dont le test d'interface Compose sur la JVM)
+# et assemblage de l'APK debug. SDK Android cherché dans ANDROID_HOME, ANDROID_SDK_ROOT,
+# %LOCALAPPDATA%/Android/Sdk (Windows) puis ~/Android/Sdk. SDK absent : la porte le DIT
+# (« SAUTÉE — rien n'a été vérifié ») sans faire échouer make check, comme la console sans tests ;
+# ISC_REQUIRE_MOBILE=1 (VM/CI équipée du SDK) transforme cette absence en ÉCHEC.
+.PHONY: mobile
+mobile:
+	@echo ">>> mobile : lint, tests unitaires, APK debug (mobile/)"
+	@sdk="$${ANDROID_HOME:-$${ANDROID_SDK_ROOT:-}}"; \
+	if [ -z "$$sdk" ] && [ -n "$$LOCALAPPDATA" ] && [ -d "$$LOCALAPPDATA/Android/Sdk" ]; then sdk="$$LOCALAPPDATA/Android/Sdk"; fi; \
+	if [ -z "$$sdk" ] && [ -d "$$HOME/Android/Sdk" ]; then sdk="$$HOME/Android/Sdk"; fi; \
+	if [ -z "$$sdk" ] || [ ! -d "$$sdk/platforms" ]; then \
+	  if [ -n "$(ISC_REQUIRE_MOBILE)" ]; then \
+	    echo "mobile : ÉCHEC — SDK Android introuvable (ANDROID_HOME, ANDROID_SDK_ROOT, ~/Android/Sdk) et ISC_REQUIRE_MOBILE=1"; exit 1; \
+	  fi; \
+	  echo "mobile : SAUTÉE — SDK Android introuvable (ANDROID_HOME, ANDROID_SDK_ROOT, ~/Android/Sdk) : RIEN n'a été vérifié pour mobile/ (installer le SDK, voir mobile/README.md)"; \
+	  exit 0; \
+	fi; \
+	cd mobile && ANDROID_HOME="$$sdk" ./gradlew --quiet lint testDebugUnitTest assembleDebug && echo "mobile : VERT (SDK : $$sdk)"
+
 check-docs:
 	@echo ">>> check-docs"
 	@$(PY) tools/check_docs.py
@@ -112,10 +132,21 @@ eval-tests:
 
 ## ---- autres cibles ----------------------------------------------------------
 # Faux serveur de l'API mobile (M-03) pour développer l'application : NE VÉRIFIE NI la signature
-# NI l'attestation (voir tools/mobile-mock/README.md). `make mobile-mock MOBILE_MOCK_DEMO=1` expose
-# l'OTP de test dans la réponse.
+# NI l'attestation (voir tools/mobile-mock/README.md). HTTPS obligatoire (ADR-038) avec la CA de
+# DÉVELOPPEMENT de tools/mobile-mock/.tls/ (git-ignoré), générée par `make mobile-mock-tls`
+# (SAN supplémentaires : MOBILE_MOCK_SAN="IP:192.168.1.20"). `MOBILE_MOCK_DEMO=1` expose l'OTP de test.
+.PHONY: mobile-mock-tls
+mobile-mock-tls:
+	@bash tools/mobile-mock/gen-dev-tls.sh $(MOBILE_MOCK_SAN)
+
 mobile-mock:
-	@cd tools/mobile-mock && uv run --quiet isc-mobile-mock --port $(MOBILE_MOCK_PORT) 	  --ruleset ../../config/ruleset.yaml --contract ../../contracts/mobile-api.yaml 	  --fixtures fixtures.json $(if $(MOBILE_MOCK_DEMO),--demo,)
+	@if [ ! -f tools/mobile-mock/.tls/mock.crt ] || [ ! -f tools/mobile-mock/.tls/mock.key ]; then \
+	  echo "mobile-mock : certificat HTTPS absent (ADR-038) -- lancer d'abord : make mobile-mock-tls"; exit 1; \
+	fi
+	@cd tools/mobile-mock && uv run --quiet isc-mobile-mock --port $(MOBILE_MOCK_PORT) \
+	  --ruleset ../../config/ruleset.yaml --contract ../../contracts/mobile-api.yaml \
+	  --fixtures fixtures.json --cert .tls/mock.crt --key .tls/mock.key \
+	  $(if $(MOBILE_MOCK_HOST),--host $(MOBILE_MOCK_HOST),) $(if $(MOBILE_MOCK_DEMO),--demo,)
 
 test: unit
 

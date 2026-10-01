@@ -29,7 +29,7 @@ class RuleSetTest {
   @Test
   void loadsVersionAndNamedParametersFromVersionedConfig() throws IOException {
     RuleSet rs = load();
-    assertEquals("rs-0.3.0", rs.version()); // bump AMD-02 v1.1 (ré-enrôlement, mobile)
+    assertEquals("rs-0.5.0", rs.version()); // bump correctif M-06 (APP_NETWORK_TIMEOUT)
     assertTrue(rs.parameters().containsKey("CAR_IMSI"), "les parametres nommes sont charges");
     assertEquals("PT72H", rs.parameters().get("CAR_IMSI"));
   }

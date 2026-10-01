@@ -9,7 +9,8 @@ LIMITES — À LIRE AVANT TOUT USAGE
   du PDP : STEP_UP si montant >= CAP_PROB.dailyXaf ou nouveau bénéficiaire ; FREEZE vers le numéro
   de test des fixtures ; REJECTED si signature absente ou nonce inconnu / déjà utilisé.
 - État en mémoire, volatile, rechargé depuis les fixtures à chaque démarrage. Données fictives.
-- HTTP en clair, écoute sur 127.0.0.1 par défaut. Pas de TLS épinglé (MOB-S-08) : hors mock.
+- HTTPS OBLIGATOIRE, sans repli en clair (ADR-038) : certificat émis par une CA de DÉVELOPPEMENT
+  distincte (gen-dev-tls.sh), jamais la CA du bac à sable. Écoute sur 127.0.0.1 par défaut.
 - Les réponses ne sont pas uniformes EN TEMPS (ES-22 exige contenu, code ET temps) ; seuls le
   contenu et le code le sont.
 
@@ -24,6 +25,7 @@ import hmac
 import json
 import re
 import secrets
+import ssl
 import threading
 from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -660,6 +662,40 @@ def build(ruleset: Path, contract: Path, fixtures: Path, clock, demo=False) -> M
     return MockApp(state, miniyaml.load(contract))
 
 
+# Délai de la poignée de main TLS d'une connexion : un client muet libère son fil sans jamais
+# bloquer les autres (transport de l'outil de développement, pas un paramètre du jeu de règles).
+HANDSHAKE_TIMEOUT_SECONDS = 5
+
+
+class TLSThreadingHTTPServer(ThreadingHTTPServer):
+    """HTTPS uniquement (ADR-038). La poignée de main TLS se fait dans le fil de CHAQUE connexion,
+    jamais dans la boucle d'acceptation : un client qui se connecte sans parler ne bloque que son
+    propre fil. Un client en clair échoue à la poignée de main ; il n'existe aucun mode HTTP."""
+
+    daemon_threads = True
+
+    def __init__(self, address, handler, context: ssl.SSLContext):
+        self.tls_context = context
+        super().__init__(address, handler)
+
+    def finish_request(self, request, client_address):
+        request.settimeout(HANDSHAKE_TIMEOUT_SECONDS)
+        try:
+            tls = self.tls_context.wrap_socket(request, server_side=True)
+        except (ssl.SSLError, OSError):
+            return  # poignée de main refusée (clair, CA non reconnue, client muet) ; socket fermée
+        tls.settimeout(None)
+        self.RequestHandlerClass(tls, client_address, self)
+
+
+def serve(app: MockApp, host: str, port: int, certfile: Path, keyfile: Path) -> ThreadingHTTPServer:
+    """Serveur HTTPS uniquement (ADR-038), TLS 1.2 minimum."""
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_cert_chain(certfile=str(certfile), keyfile=str(keyfile))
+    return TLSThreadingHTTPServer((host, port), make_handler(app), context)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="isc-mobile-mock",
@@ -672,10 +708,14 @@ def main(argv=None) -> int:
     parser.add_argument("--contract", type=Path, required=True, help="contracts/mobile-api.yaml")
     parser.add_argument("--fixtures", type=Path, required=True, help="fixtures fictives (JSON)")
     parser.add_argument("--demo", action="store_true", help="expose l'OTP de test (demoOtp)")
+    parser.add_argument(
+        "--cert", type=Path, required=True, help="certificat HTTPS (gen-dev-tls.sh)"
+    )
+    parser.add_argument("--key", type=Path, required=True, help="clé du certificat HTTPS")
     args = parser.parse_args(argv)
     app = build(args.ruleset, args.contract, args.fixtures, lambda: datetime.now(UTC), args.demo)
-    server = ThreadingHTTPServer((args.host, args.port), make_handler(app))
-    print(f"isc-mobile-mock : http://{args.host}:{args.port}{PREFIX} (mode démo : {args.demo})")
+    server = serve(app, args.host, args.port, args.cert, args.key)
+    print(f"isc-mobile-mock : https://{args.host}:{args.port}{PREFIX} (mode démo : {args.demo})")
     print("RAPPEL : faux serveur ; ni signature ni attestation ne sont vérifiées.")
     try:
         server.serve_forever()

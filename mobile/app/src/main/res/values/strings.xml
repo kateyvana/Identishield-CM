@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IdentiShield</string>
+    <string name="brand_identi">Identi</string>
+    <string name="brand_shield">Shield</string>
+    <string name="launch_tagline">Votre téléphone est votre clé</string>
+    <string name="launch_checking">Vérification de la clé de cet appareil…</string>
+    <string name="launch_logo_description">Logo IdentiShield : un bouclier protège un téléphone</string>
+
+    <!-- Communs -->
+    <string name="back">Retour</string>
+    <string name="action_continue">Continuer</string>
+    <string name="capture_blocked">🔒 capture bloquée</string>
+    <string name="error_unreachable">Connexion impossible. Vérifiez le réseau et réessayez.</string>
+    <string name="error_unexpected">Une erreur est survenue. Réessayez.</string>
+    <string name="error_session_expired">La session a expiré. Recommencez.</string>
+
+    <!-- E-02 Bienvenue -->
+    <string name="welcome_title">Cet appareil va devenir la clé de votre compte</string>
+    <string name="welcome_body">Après cette étape, envoyer de l\'argent depuis cette application ne demandera plus jamais de code par SMS : c\'est ce téléphone qui prouve que c\'est vous.</string>
+    <string name="welcome_warning_before">⚠️ Si vous désinstallez l\'application, vous devrez recommencer avec votre </string>
+    <string name="welcome_warning_key">clé de récupération</string>
+    <string name="welcome_warning_after">. Gardez-la sur papier.</string>
+    <string name="welcome_start">Commencer</string>
+    <string name="welcome_ussd">Continuer par USSD (*126#)</string>
+
+    <!-- E-03 Numéro -->
+    <string name="number_title">Votre numéro MoMo</string>
+    <string name="number_body">Entrez le numéro de téléphone lié à votre compte Mobile Money.</string>
+    <string name="number_label">NUMÉRO DE TÉLÉPHONE</string>
+    <string name="number_prefix">🇨🇲 +237</string>
+    <string name="number_hint">Ce numéro doit être celui de la carte SIM dans ce téléphone.</string>
+    <string name="error_number_invalid">Numéro invalide</string>
+
+    <!-- E-06 PIN -->
+    <string name="pin_title">Votre code PIN</string>
+    <string name="pin_account">Compte</string>
+    <string name="pin_body">Entrez le code PIN de votre compte MoMo.</string>
+    <string name="pin_note">Ne partagez jamais votre PIN. Personne chez l\'opérateur ne vous le demandera.</string>
+    <string name="error_credentials_invalid">Identifiants incorrects</string>
+    <string name="error_reenrolment_not_available">Ce compte est déjà protégé par un autre téléphone. Le réenrôlement avec la clé de récupération arrive dans une prochaine version.</string>
+    <string name="keypad_delete">Effacer</string>
+
+    <!-- E-04 Vérification -->
+    <string name="checking_title">Vérification…</string>
+    <string name="checking_body">Nous vérifions votre compte. Cela prend moins d\'une seconde.</string>
+
+    <!-- E-05 OTP -->
+    <string name="otp_title">Code reçu par SMS</string>
+    <string name="otp_body">Entrez le code envoyé par SMS au %1$s.</string>
+    <string name="otp_note">Ce code ne vous sera demandé qu\'une seule fois : pour lier ce téléphone. Ensuite, plus jamais de SMS.</string>
+    <string name="otp_resend_wait">Renvoyer le code (dans %1$d s)</string>
+    <string name="otp_resend">Renvoyer le code</string>
+    <string name="error_otp_invalid">Code incorrect</string>
+    <string name="error_otp_expired">Code expiré : demandez un nouveau code.</string>
+
+    <!-- E-07 Sécurisation -->
+    <string name="securing_title">Sécurisation de cet appareil…</string>
+    <string name="securing_body">Déverrouillez votre téléphone pour confirmer (empreinte, visage ou code).</string>
+    <string name="securing_step_key">Clé créée dans la puce du téléphone</string>
+    <string name="securing_step_unlock">Déverrouillage local</string>
+    <string name="securing_step_register">Enregistrement auprès du serveur</string>
+    <string name="securing_prompt_title">Sécuriser cet appareil</string>
+    <string name="securing_prompt_subtitle">Déverrouillez votre téléphone pour confirmer (empreinte, visage ou code).</string>
+    <string name="securing_retry">Réessayer</string>
+    <string name="error_device_refused">Ce téléphone ne peut pas protéger votre compte. Vous pouvez continuer à utiliser MoMo par USSD.</string>
+    <string name="error_unlock_cancelled">Déverrouillage annulé. Réessayez.</string>
+    <string name="error_connection_lost">Connexion perdue. Recommencez.</string>
+
+    <!-- E-08 Clé de récupération -->
+    <string name="recovery_title">Votre clé de récupération</string>
+    <string name="recovery_intro_bold">Écrivez-la sur papier, maintenant.</string>
+    <string name="recovery_intro_before"> Elle ne sera </string>
+    <string name="recovery_intro_never">jamais</string>
+    <string name="recovery_intro_after"> affichée à nouveau, ni par l\'application, ni par l\'opérateur.</string>
+    <string name="recovery_warning">Sans cette clé, vous ne pourrez pas lier un nouveau téléphone si celui-ci est perdu, volé ou cassé. Ne la photographiez pas. Ne l\'envoyez à personne.</string>
+    <string name="recovery_last_display">Dernier affichage : cette clé ne vous sera plus jamais montrée.</string>
+    <string name="recovery_written">Je l\'ai écrite sur papier</string>
+
+    <!-- E-09 Confirmation -->
+    <string name="confirm_title">Vérifions votre copie</string>
+    <string name="confirm_body">Pour vérifier que vous l\'avez bien notée, entrez les caractères demandés.</string>
+    <string name="confirm_row">Caractère n° %1$d</string>
+    <string name="confirm_note">En cas d\'erreur, la clé vous sera affichée une dernière fois.</string>
+    <string name="confirm_action">Confirmer</string>
+    <string name="error_confirm_mismatch">Caractères incorrects.</string>
+
+    <!-- E-11 Accueil -->
+    <string name="home_hello">Bonjour</string>
+    <string name="home_number">%1$s · MTN MoMo</string>
+    <string name="home_currency">FCFA</string>
+    <string name="home_balance">Solde disponible</string>
+    <string name="home_protected">🛡 Appareil protégé · %1$s</string>
+    <string name="home_send">Envoyer</string>
+    <string name="home_history">Historique</string>
+    <string name="home_alerts">Alertes</string>
+    <string name="home_security">Sécurité</string>
+</resources>
