@@ -8,8 +8,8 @@ import androidx.compose.ui.platform.LocalContext
 
 /**
  * MOB-S-05 : capture et enregistrement d'écran impossibles tant que l'écran sensible est affiché
- * (FLAG_SECURE masque aussi l'aperçu dans le sélecteur d'applications). Écrans concernés en M-06 :
- * E-06 (PIN), E-08 (clé de récupération), E-09 (confirmation).
+ * (FLAG_SECURE masque aussi l'aperçu dans le sélecteur d'applications). Posé par Page(secure = true),
+ * qui affiche aussi la pastille « capture bloquée » des maquettes.
  */
 @Composable
 fun SecureScreen() {

@@ -26,6 +26,7 @@ Le SDK est trouvé par `ANDROID_HOME`, `ANDROID_SDK_ROOT` ou `local.properties` 
 | MOB-S-09 : pas de sauvegarde | `allowBackup="false"`, `fullBackupContent="false"`, `data_extraction_rules.xml` qui exclut tout (sauvegarde en ligne et transfert d'appareil à appareil) |
 | MOB-S-08 : TLS, CA du bac à sable épinglée, pas de trafic en clair | `network_security_config.xml` **généré à la construction** (tâche `SandboxTrustTask`, voir le détail ci-dessous) |
 | MOB-S-14 : build de démonstration non débogable, minifié | `release` : `isDebuggable = false`, optimisation R8 activée |
+| MOB-NF-02 : APK de démonstration de moins de 15 Mo | Mesuré le 30/09/2026 (correctif M-06) : `app-release-unsigned.apk` = 3 332 800 octets (3,2 Mio), construit avec une CA de test ordinaire. L'APK debug (non minifié, environ 36 Mo) n'est pas l'APK de démonstration. |
 | MOB-F-01 : vérification locale de la clé | `AndroidKeystoreKeyChecker` : la présence de l'alias dans l'Android Keystore est la seule chose que l'application sait |
 
 **Détail de `SandboxTrustTask`.** Le trafic en clair est interdit dans tous les cas, et aucune autorité système ni utilisateur n'est acceptée.
@@ -68,10 +69,10 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
   - la clé de récupération n'est jamais persistée ;
   - une clé locale est détruite si le déverrouillage est annulé, si l'enregistrement échoue, ou si le Keystore lève une erreur (panne, clé invalidée). Il n'y a jamais de plantage ni de clé orpheline qu'E-01 prendrait pour un appareil lié.
 - **Un seul appel serveur à la fois :** un double appui n'envoie qu'une requête. Un OTP à usage unique ne peut donc pas être rejoué pour ramener E-07 à E-05.
-- **MOB-S-05 :** capture d'écran bloquée (`FLAG_SECURE`) sur E-06, E-08 et E-09.
+- **MOB-S-05 :** capture d'écran bloquée (`FLAG_SECURE`) sur E-06, E-08 et E-09, avec la pastille « 🔒 capture bloquée » des maquettes. `Page(secure = true)` pose les deux ensemble, jamais l'un sans l'autre.
 - **MOB-S-06 :** ni copier ni coller. Le PIN et l'OTP passent par un pavé numérique (aucun champ texte) ; la clé est affichée en texte non sélectionnable ; sur E-09, la barre de texte est neutralisée.
 - **MOB-S-07 :** les touches sont filtrées quand une autre fenêtre recouvre l'application.
-- **Paramètres nommés :** `OTP_RESEND_DELAY` est lu dans `config/ruleset.yaml` **à la construction** (BuildConfig). Il n'y a jamais de « 60 » dans le code.
+- **Paramètres nommés :** `OTP_RESEND_DELAY` et `APP_NETWORK_TIMEOUT` (MOB-NF-03) sont lus dans `config/ruleset.yaml` **à la construction** (BuildConfig). Aucune de ces valeurs n'est écrite dans le code.
 
 ## Maquettes de référence
 
@@ -96,6 +97,8 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 | E-08 | La clé est groupée par 4 sur autant de lignes que nécessaire : 20 caractères (`CODE_LENGTH`), là où la maquette en montre 12 | `CODE_LENGTH` vient du jeu de règles |
 | E-09 | Après une seconde erreur, l'application reste sur E-09 avec « Caractères incorrects » | La maquette dit « affichée une dernière fois » ; la suite n'est pas spécifiée (rotation : E-25, M-08) |
 | E-11 | Tuiles affichées sans action ; pas de bandeau d'alerte ni de dernières opérations | Envoyer et Historique : M-07 ; Alertes et Sécurité : M-08 |
+| E-11 | Pas de barre de navigation du bas (Accueil, Envoyer, Historique, Alertes, Sécurité) | Ses destinations arrivent avec M-07 et M-08 ; écart omis du rapport M-06, documenté par le correctif du 30/09 |
+| E-06, E-08, E-09 | La pastille « 🔒 capture bloquée » est affichée en haut de la page, sous la barre d'état ; la maquette la dessine DANS la barre d'état | L'application ne dessine pas dans la barre d'état du système ; pastille omise en M-06, restaurée par le correctif du 30/09 |
 | Tous | Symboles Unicode (‹, ⟳, 🛡, ↗, ≡, 🔔) à la place d'icônes | Aucune bibliothèque d'icônes dans ADR-037 |
 | Tous | Mise en page vérifiée sur la taille des maquettes (360 × 760 dp) | Sur un écran nettement plus petit, le pavé numérique peut repousser le bouton hors de l'écran : limite déclarée |
 

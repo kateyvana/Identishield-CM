@@ -51,7 +51,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cm.identishield.mobile.R
 import cm.identishield.mobile.data.Account
-import cm.identishield.mobile.security.SecureScreen
 import cm.identishield.mobile.ui.theme.Amber
 import cm.identishield.mobile.ui.theme.Ink
 import cm.identishield.mobile.ui.theme.Navy
@@ -194,9 +193,8 @@ fun PinScreen(
     onSubmit: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    SecureScreen() // MOB-S-05 : capture bloquée
     var pin by remember(step) { mutableStateOf("") }
-    Page(EnrolTags.PIN) {
+    Page(EnrolTags.PIN, secure = true) {
         BackHeader(stringResource(R.string.pin_title), onBack)
         VerticalGap(16)
         Text(
@@ -398,8 +396,8 @@ fun RecoveryKeyScreen(
     step: EnrolStep.RecoveryKey,
     onWritten: () -> Unit,
 ) {
-    SecureScreen() // MOB-S-05 : capture bloquée ; texte non sélectionnable (MOB-S-06)
-    Page(EnrolTags.RECOVERY) {
+    // Texte non sélectionnable (MOB-S-06).
+    Page(EnrolTags.RECOVERY, secure = true) {
         BackHeader(stringResource(R.string.recovery_title), onBack = null)
         VerticalGap(16)
         Text(
@@ -467,9 +465,8 @@ fun ConfirmKeyScreen(
     step: EnrolStep.Confirm,
     onConfirm: (Map<Int, String>) -> Unit,
 ) {
-    SecureScreen() // MOB-S-05
     val typed = remember(step.positions) { mutableStateMapOf<Int, String>() }
-    Page(EnrolTags.CONFIRM) {
+    Page(EnrolTags.CONFIRM, secure = true) {
         BackHeader(stringResource(R.string.confirm_title), onBack = null)
         VerticalGap(16)
         BodyText(stringResource(R.string.confirm_body))

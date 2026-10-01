@@ -2,6 +2,9 @@ package cm.identishield.mobile.enrolment
 
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -176,6 +179,37 @@ class EnrolmentScreensTest {
         compose.onNodeWithText("677 000 123 · MTN MoMo").assertIsDisplayed()
         compose.onNodeWithText("152 300").assertIsDisplayed()
         compose.onNodeWithText("🛡 Appareil protégé · Samsung A15").assertIsDisplayed()
+        assertFalse(secureFlagSet())
+    }
+
+    @Test
+    fun secureScreens_showTheCaptureBlockedBadge_likeTheMockups() {
+        show { PinScreen(EnrolStep.Pin("677000200"), onSubmit = {}, onBack = {}) }
+        compose.onNodeWithTag("capture-blocked").assertIsDisplayed()
+        compose.onNodeWithText("🔒 capture bloquée").assertIsDisplayed()
+        assertTrue("pastille et FLAG_SECURE vont ensemble", secureFlagSet())
+    }
+
+    @Test
+    fun recoveryAndConfirmScreens_showTheBadge() {
+        var confirm by mutableStateOf(false)
+        show {
+            if (confirm) {
+                ConfirmKeyScreen(EnrolStep.Confirm(listOf(1, 2, 3, 4)), onConfirm = {})
+            } else {
+                RecoveryKeyScreen(EnrolStep.RecoveryKey("K7M2QX9RT4WZ8HNB3CFV", lastDisplay = false), onWritten = {})
+            }
+        }
+        compose.onNodeWithTag("capture-blocked").assertIsDisplayed()
+        confirm = true
+        compose.onNodeWithTag("capture-blocked").assertIsDisplayed()
+        assertTrue(secureFlagSet())
+    }
+
+    @Test
+    fun ordinaryScreens_haveNeitherBadgeNorSecureFlag() {
+        show { WelcomeScreen(onStart = {}) }
+        compose.onNodeWithTag("capture-blocked").assertDoesNotExist()
         assertFalse(secureFlagSet())
     }
 

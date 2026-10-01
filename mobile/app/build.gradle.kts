@@ -44,6 +44,7 @@ android {
         }
         buildConfigField("String", "API_BASE_URL", "\"$baseUrl\"")
         buildConfigField("int", "OTP_RESEND_DELAY_SECONDS", rulesetSeconds("OTP_RESEND_DELAY").toString())
+        buildConfigField("long", "NETWORK_TIMEOUT_SECONDS", "${rulesetSeconds("APP_NETWORK_TIMEOUT")}L")
     }
 
     buildTypes {

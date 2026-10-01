@@ -1,5 +1,6 @@
 package cm.identishield.mobile.data
 
+import cm.identishield.mobile.BuildConfig
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -50,17 +51,15 @@ val ContractJson =
         explicitNulls = false
     }
 
-/** MOB-NF-03 : délai d'expiration réseau côté application de 10 secondes. */
-const val NETWORK_TIMEOUT_SECONDS = 10L
-
 fun buildMobileApi(
     baseUrl: String,
     client: OkHttpClient =
         OkHttpClient
             .Builder()
-            .connectTimeout(NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .readTimeout(NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .callTimeout(NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            // MOB-NF-03 : APP_NETWORK_TIMEOUT du jeu de règles, lu à la construction.
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .callTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build(),
 ): MobileApi =
     Retrofit

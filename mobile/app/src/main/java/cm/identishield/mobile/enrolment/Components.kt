@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cm.identishield.mobile.R
+import cm.identishield.mobile.security.SecureScreen
 import cm.identishield.mobile.ui.theme.Amber
 import cm.identishield.mobile.ui.theme.Background
 import cm.identishield.mobile.ui.theme.Danger
@@ -47,13 +48,18 @@ import cm.identishield.mobile.ui.theme.Navy
 val Secondary = Ink.copy(alpha = 0.65f)
 val Hairline = Ink.copy(alpha = 0.12f)
 
-/** Page standard : fond, marges, barre système respectée. */
+/**
+ * Page standard : fond, marges, barre système respectée. [secure] = écran 🔒 des maquettes :
+ * capture bloquée (FLAG_SECURE, MOB-S-05) ET pastille « capture bloquée », toujours ensemble.
+ */
 @Composable
 fun Page(
     tag: String,
     modifier: Modifier = Modifier,
+    secure: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    if (secure) SecureScreen()
     Column(
         modifier =
             modifier
@@ -62,7 +68,25 @@ fun Page(
                 .systemBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
                 .testTag(tag),
-        content = content,
+    ) {
+        if (secure) CaptureBlockedBadge(Modifier.align(Alignment.CenterHorizontally))
+        content()
+    }
+}
+
+/** Pastille des écrans 🔒 (maquettes E-06, E-08, E-09, E-14, E-15). */
+@Composable
+fun CaptureBlockedBadge(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(R.string.capture_blocked),
+        color = Color.White,
+        fontSize = 14.sp,
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(50))
+                .background(Ink)
+                .padding(horizontal = 14.dp, vertical = 4.dp)
+                .testTag("capture-blocked"),
     )
 }
 
