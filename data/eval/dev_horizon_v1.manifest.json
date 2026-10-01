@@ -1,0 +1,64 @@
+{
+  "nom": "dev horizon v1",
+  "version": "v1",
+  "personas": "PERSONAS v2.1 (docs/03-donnees/PERSONAS_v1.md)",
+  "date_gel": "2026-09-30",
+  "statut": "FIGÉ (T3-05) — jeu non versionné, régénérable à l'octet ; ce manifeste l'épingle",
+  "generateur": {
+    "module": "isc_simulator.generator",
+    "seed": 20260925,
+    "users": 2480,
+    "days": 182,
+    "start": "2026-10-01",
+    "commit_code": "680d2a1587974f1c3856aab5a64f044a61a9382b",
+    "branche": "t3-05a"
+  },
+  "configuration": {
+    "fichier": "config/synthese.yaml",
+    "version": "syn-1.0.0",
+    "sha256": "5b697d6d99abb3d2e58e6e1f373822f51e92d9521cafb4aaa59b42d6b3901688"
+  },
+  "etalon": {
+    "fichier": "docs/03-donnees/profil_reel_v1.1.json",
+    "sha256": "0273636f1af0fbf97d49732bed1b50a0b2ecd795feeff670270c9c4e484c0508"
+  },
+  "horizon_hashes_attendus": {
+    "vue_detecteur": {
+      "fichier": "<out>.csv",
+      "sha256": "c165d55bed40c441c16e2f7d5e987b8a67cceb71eb71e470cbc2309d18ac8adc"
+    },
+    "sidecar_labels": {
+      "fichier": "<out>.labels.csv",
+      "sha256": "6bc9ecbc6387e678fa6bb374f7ae20a125a8d43db162268ef26ad443fb4e2998"
+    },
+    "hlr_events": {
+      "fichier": "<out>.hlr_events.csv",
+      "sha256": "12fb1a9121de3ce6ba80f6828465ec2b245b2a5afbde232300155cb55a93c36f"
+    }
+  },
+  "comptes": {
+    "transactions": 624645,
+    "sorties_sautees_solde_insuffisant": 6082,
+    "usagers_par_archetype": {
+      "ordinaire": 1292,
+      "salarie": 646,
+      "victime": 129,
+      "marchand": 388,
+      "agent": 25
+    },
+    "evenements_sim_verite_terrain": {
+      "a": 77,
+      "b": 64,
+      "c": 219,
+      "total": 360
+    }
+  },
+  "recette_de_regeneration": {
+    "depuis": "la racine du dépôt, au commit 680d2a1587974f1c3856aab5a64f044a61a9382b",
+    "commande": "uv run --project simulator python -m isc_simulator.generator --seed 20260925 --users 2480 --days 182 --start 2026-10-01 --out <out>.csv",
+    "verification": "les trois fichiers <out>.csv, <out>.labels.csv, <out>.hlr_events.csv doivent avoir exactement les sha256 de horizon_hashes_attendus ; le nom <out> est libre, il n'entre pas dans le contenu",
+    "verifie_le": "2026-09-30 : régénéré une fois, les trois sha256 correspondent"
+  },
+  "separation_des_vues": "Le PDP ne consomme que la vue détecteur et la vue HLR ; le sidecar (vérité-terrain) sert l'évaluation seulement (PERSONAS §1.11).",
+  "plan_ac02": "data/eval/ac02_plan.csv n'est PAS encore tiré : le harnais (tools/eval_harness/ac02_plan.py) est sur t3-04b ; le plan se tire sur ce jeu APRÈS la fusion des deux branches sur main."
+}

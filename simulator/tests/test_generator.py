@@ -14,11 +14,11 @@ from isc_simulator.generator import (
     FIELDS,
     HLR_EVENT_FIELDS,
     LABEL_FIELDS,
+    amount_law,
     generate,
     write_csv,
 )
 from isc_simulator.personas import (
-    AGENT_AMOUNT_KNOTS,
     BASE_HOUR_WEIGHTS,
     MSISDN_HIGH,
     MSISDN_LOW,
@@ -27,6 +27,7 @@ from isc_simulator.stats import ruleset_windows
 
 ROOT = Path(__file__).resolve().parents[2]
 ETALON = ROOT / "docs" / "03-donnees" / "profil_reel_v1.json"
+ETALON_V11 = ROOT / "docs" / "03-donnees" / "profil_reel_v1.1.json"
 RULESET = ROOT / "config" / "ruleset.yaml"
 
 # Small but complete: every archetype present, and days 28-30 (salary + bill burst) covered.
@@ -103,14 +104,19 @@ def test_everything_is_labelled_legit(sample):
     assert {r["label"] for r in sample[0]} == {"LEGIT"}
 
 
+# v2.0 (T3-05a): the amount law is no longer embedded constants but the reference profile v1.1
+# itself (D1); the anti-drift check now compares the generator's law with that profile.
 def test_calibrated_constants_match_the_reference_profile():
     ref = json.loads(ETALON.read_text(encoding="utf-8"))
-    pos = ref["a_montant"]["montants_strictement_positifs"]
-    expected = [pos["min"]] + [
-        pos["quantiles"][k] for k in ("p10", "p25", "p50", "p75", "p90", "p95", "p99")
-    ]
-    expected.append(pos["max"])
-    assert [a for _, a in AGENT_AMOUNT_KNOTS] == expected
+    ref11 = json.loads(ETALON_V11.read_text(encoding="utf-8"))["f_v1_1"]
+    m = ref11["montants_masses_ponctuelles"]
+    p_mass, values, cum, knots = amount_law()
+    assert p_mass == m["part_totale"]
+    assert values == [round(x["montant"]) for x in m["masses"]]
+    assert knots == [(k["p"], k["montant"]) for k in m["noeuds_du_reste"]]
+    # each of the K parts is rounded to 4 decimals in the profile: the relative weights only
+    # choose among the masses, so the gap is bounded by the rounding, not a bias
+    assert abs(cum[-1] - m["part_totale"]) <= m["k"] * 0.00005
     hours = sorted(ref["b_heure_du_jour"]["par_heure"], key=lambda h: h["heure"])
     assert list(BASE_HOUR_WEIGHTS) == [h["compte"] for h in hours]
 
@@ -346,3 +352,89 @@ def test_the_three_files_are_byte_identical_for_the_same_seed(tmp_path):
         assert a.read_bytes() == b.read_bytes(), a.name
     manifest = json.loads(first[0].with_suffix(".manifest.json").read_text(encoding="utf-8"))
     assert {f["file"] for f in manifest["files"].values()} == {p.name for p in first}
+
+
+# --- PERSONAS v2.0 (T3-05a): config/synthese.yaml, per-user rates, amount mixture, sessions ------
+
+
+def test_synthese_reader_refuses_unsupported_yaml():
+    from isc_simulator import synthese
+
+    for bad in (
+        "synthese:\n  mix: [1, 2]\n",
+        "synthese:\n   x: 1\n",
+        "synthese:\n  a: 1\n  a: 2\n",
+    ):
+        with pytest.raises(ValueError):
+            synthese.parse(bad)
+
+
+def test_synthese_mix_must_sum_to_one(tmp_path):
+    from isc_simulator import synthese
+
+    text = synthese.CONFIG.read_text(encoding="utf-8").replace("agent: 0.010000", "agent: 0.020000")
+    bad = tmp_path / "synthese.yaml"
+    bad.write_text(text, encoding="utf-8")
+    with pytest.raises(ValueError, match="sum"):
+        synthese.load(bad)
+
+
+def test_agents_are_one_percent_of_the_users():
+    from isc_simulator.generator import archetype_counts
+    from isc_simulator.personas import ARCHETYPES
+
+    counts = dict(zip([a.name for a in ARCHETYPES], archetype_counts(2480), strict=True))
+    assert sum(counts.values()) == 2480
+    assert counts["agent"] == round(0.01 * 2480)
+
+
+def test_rates_follow_the_bands_order(dense):
+    per_user = {}
+    for r in dense[0]:
+        per_user.setdefault((r["archetype"], r["user"]), 0)
+        per_user[(r["archetype"], r["user"])] += 1
+    mean = {}
+    for (arch, _), n in per_user.items():
+        mean.setdefault(arch, []).append(n)
+    mean = {a: sum(v) / len(v) for a, v in mean.items()}
+    assert mean["ordinaire"] < mean["salarie"] < mean["marchand"]
+
+
+def test_amounts_follow_the_reference_mixture(dense):
+    p_mass, values, _, _ = amount_law()
+    amounts = [r["amount"] for r in dense[0]]
+    assert min(amounts) >= 1
+    share = sum(1 for a in amounts if a in set(values)) / len(amounts)
+    assert abs(share - p_mass) < 0.05, share  # salaries (own law) aside, the masses carry p_mass
+
+
+def test_the_public_groups_its_transactions_into_sessions(dense):
+    from isc_simulator import synthese
+
+    span = synthese.load()["sessions"]["span_s"]
+    times = {}
+    for r in dense[0]:
+        if r["archetype"] in ("ordinaire", "victime", "salarie"):
+            times.setdefault(r["user"], []).append(epoch_of(r["timestamp"]))
+    gaps = [
+        b - a for ts in times.values() for a, b in zip(sorted(ts), sorted(ts)[1:], strict=False)
+    ]
+    assert sum(1 for g in gaps if g <= span) / len(gaps) > 0.05
+
+
+def test_session_directions_large_is_one_direction_and_regular_alternates():
+    import dataclasses
+    import random
+
+    from isc_simulator.generator import session_directions
+    from isc_simulator.personas import ARCHETYPES
+
+    base = next(a for a in ARCHETYPES if a.name == "ordinaire")
+    rng = random.Random(1)
+    for _ in range(200):
+        d = session_directions(rng, base, 5, True)
+        assert len(set(d)) == 1  # a large session takes ONE direction
+    alt = dataclasses.replace(base, burst_alternate=1.0)
+    for _ in range(200):
+        d = session_directions(rng, alt, 3, False)
+        assert d[0] != d[1] and d[1] != d[2]  # a regular session alternates
