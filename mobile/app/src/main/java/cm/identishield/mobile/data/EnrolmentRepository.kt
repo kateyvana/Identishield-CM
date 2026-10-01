@@ -20,6 +20,7 @@ sealed interface ApiResult<out T> {
     data class Refused(
         val status: Int,
         val reason: String,
+        val retryAfterSeconds: Long? = null, // THROTTLED : en-tête Retry-After (ES-21)
     ) : ApiResult<Nothing>
 
     data object Unreachable : ApiResult<Nothing>
@@ -60,6 +61,10 @@ fun buildMobileApi(
             .connectTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .callTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            // SPEC §7.4 : jamais de renvoi automatique. Par défaut, OkHttp rejoue une requête
+            // coupée sur une connexion réutilisée, ce qui rejouerait un envoi d'argent déjà reçu.
+            // Amendement d'ADR-037 (M-07).
+            .retryOnConnectionFailure(false)
             .build(),
 ): MobileApi =
     Retrofit
@@ -89,33 +94,36 @@ class RetrofitEnrolmentRepository(
 
     override suspend fun account(sessionToken: String) = call { api.account("Bearer $sessionToken") }
 
-    private suspend fun <T> call(block: suspend () -> Response<T>): ApiResult<T> =
-        try {
-            val response = block()
-            val body = response.body()
-            if (response.isSuccessful && body != null) {
-                ApiResult.Ok(body)
-            } else {
-                ApiResult.Refused(response.code(), reasonOf(response))
-            }
-        } catch (e: IOException) {
-            ApiResult.Unreachable
-        } catch (e: SerializationException) {
-            ApiResult.Refused(0, CONTRACT_VIOLATION)
-        }
-
-    private fun reasonOf(response: Response<*>): String =
-        try {
-            response.errorBody()?.string()?.let { ContractJson.decodeFromString<ErrorBody>(it).reason }
-                ?: CONTRACT_VIOLATION
-        } catch (e: SerializationException) {
-            CONTRACT_VIOLATION
-        } catch (e: IllegalArgumentException) {
-            CONTRACT_VIOLATION
-        }
+    private suspend fun <T> call(block: suspend () -> Response<T>): ApiResult<T> = apiCall(block)
 
     companion object {
         /** Réponse hors contrat reçue par l'application (jamais émise par le serveur). */
         const val CONTRACT_VIOLATION = "CONTRACT_VIOLATION"
     }
 }
+
+/** Un appel du contrat : succès, refus avec code de raison (et Retry-After), ou panne réseau. */
+internal suspend fun <T> apiCall(block: suspend () -> Response<T>): ApiResult<T> =
+    try {
+        val response = block()
+        val body = response.body()
+        if (response.isSuccessful && body != null) {
+            ApiResult.Ok(body)
+        } else {
+            ApiResult.Refused(response.code(), reasonOf(response), response.headers()["Retry-After"]?.toLongOrNull())
+        }
+    } catch (e: IOException) {
+        ApiResult.Unreachable
+    } catch (e: SerializationException) {
+        ApiResult.Refused(0, RetrofitEnrolmentRepository.CONTRACT_VIOLATION)
+    }
+
+private fun reasonOf(response: Response<*>): String =
+    try {
+        response.errorBody()?.string()?.let { ContractJson.decodeFromString<ErrorBody>(it).reason }
+            ?: RetrofitEnrolmentRepository.CONTRACT_VIOLATION
+    } catch (e: SerializationException) {
+        RetrofitEnrolmentRepository.CONTRACT_VIOLATION
+    } catch (e: IllegalArgumentException) {
+        RetrofitEnrolmentRepository.CONTRACT_VIOLATION
+    }

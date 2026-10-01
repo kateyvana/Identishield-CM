@@ -3,6 +3,7 @@ package cm.identishield.mobile.security
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import cm.identishield.mobile.launch.AndroidKeystoreKeyChecker
@@ -25,6 +26,14 @@ data class GeneratedKey(
 class InsecureKeyStorageException : Exception("clé non matérielle : refusée (MOB-S-02)")
 
 /**
+ * La clé a été invalidée par la puce : nouvelle biométrie enregistrée sur le téléphone (MOB-S-03).
+ * Il faut sécuriser à nouveau cet appareil (flux D, carte M-08).
+ */
+class DeviceKeyInvalidatedException(
+    cause: Throwable,
+) : Exception("clé de l'appareil invalidée (MOB-S-03)", cause)
+
+/**
  * Clé de l'appareil dans l'Android Keystore. L'application ne garde qu'un alias ; la clé privée
  * ne sort jamais de la puce (P-9). Création UNIQUEMENT après validation de l'OTP par le serveur
  * (ES-25) : c'est le ViewModel qui garantit cet ordre.
@@ -33,7 +42,10 @@ interface DeviceKeyManager : DeviceKeyChecker {
     /** Crée la paire EC P-256 avec le défi d'attestation du serveur (MOB-S-04). */
     fun generate(attestationChallenge: ByteArray): GeneratedKey
 
-    /** Signature prête à l'emploi ; son usage exige le déverrouillage local (MOB-S-03). */
+    /**
+     * Signature prête à l'emploi ; son usage exige le déverrouillage local (MOB-S-03).
+     * @throws DeviceKeyInvalidatedException si la puce a invalidé la clé (nouvelle biométrie).
+     */
     fun newSigner(): Signature
 
     fun delete()
@@ -65,8 +77,12 @@ class AndroidKeystoreDeviceKeyManager(
     }
 
     override fun newSigner(): Signature =
-        Signature.getInstance(SIGNATURE_ALGORITHM).apply {
-            initSign(keyStore().getKey(alias, null) as PrivateKey)
+        try {
+            Signature.getInstance(SIGNATURE_ALGORITHM).apply {
+                initSign(keyStore().getKey(alias, null) as PrivateKey)
+            }
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            throw DeviceKeyInvalidatedException(e)
         }
 
     override fun delete() {

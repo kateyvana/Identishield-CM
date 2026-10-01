@@ -95,4 +95,101 @@
     <string name="home_history">Historique</string>
     <string name="home_alerts">Alertes</string>
     <string name="home_security">Sécurité</string>
+    <string name="home_home">Accueil</string>
+    <string name="home_recent">Dernières opérations</string>
+    <string name="home_deferred">Envois programmés</string>
+    <string name="home_deferred_item">%1$s FCFA → %2$s</string>
+
+    <!-- E-10 Déverrouillage (flux B) -->
+    <string name="unlock_pin">Votre code PIN</string>
+    <string name="unlock_then">puis déverrouillez votre téléphone pour confirmer (empreinte, visage ou code)</string>
+    <string name="unlock_prompt_title">Ouvrir votre compte</string>
+    <string name="unlock_prompt_subtitle">Déverrouillez votre téléphone pour confirmer (empreinte, visage ou code).</string>
+
+    <!-- Erreurs des flux B et C -->
+    <string name="error_pin_incorrect">Code PIN incorrect</string>
+    <string name="error_throttled">Trop d\'essais. Réessayez dans %1$s.</string>
+    <string name="error_throttled_later">Trop d\'essais. Réessayez plus tard.</string>
+    <string name="duration_seconds">%1$d s</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="error_key_revoked">Cet appareil n\'est plus la clé de votre compte.</string>
+    <string name="error_key_invalidated">La biométrie de votre téléphone a changé ; il faut sécuriser à nouveau cet appareil.</string>
+    <string name="error_account_frozen">Votre compte est gelé pour votre sécurité. Rendez-vous chez un agent avec votre pièce d\'identité.</string>
+    <string name="error_session_ended">Votre session a expiré. Déverrouillez à nouveau.</string>
+    <string name="error_insufficient_funds">Solde insuffisant</string>
+    <string name="error_beneficiary_unknown">Aucun compte MoMo pour ce numéro.</string>
+    <string name="error_cancel_unavailable">Cet envoi ne peut plus être annulé.</string>
+    <string name="error_cancel_unconfirmed">Impossible de confirmer l\'annulation. Vérifiez votre historique.</string>
+
+    <!-- E-12 Bénéficiaire -->
+    <string name="send_title">Envoyer de l\'argent</string>
+    <string name="beneficiary_label">NUMÉRO DU BÉNÉFICIAIRE</string>
+    <string name="beneficiary_prefix">🇨🇲 +237</string>
+    <string name="recents_label">RÉCENTS</string>
+    <string name="recent_known">connu</string>
+
+    <!-- E-13 Montant -->
+    <string name="amount_title">Montant</string>
+    <string name="amount_to">À </string>
+    <string name="amount_after">Solde après envoi : %1$s FCFA</string>
+
+    <!-- E-14 Confirmation -->
+    <string name="review_title">Vérifiez avant d\'envoyer</string>
+    <string name="review_beneficiary">BÉNÉFICIAIRE</string>
+    <string name="review_amount">MONTANT</string>
+    <string name="review_amount_value">%1$s FCFA</string>
+    <string name="review_new">● Nouveau bénéficiaire</string>
+    <string name="review_new_warning_before">Vous n\'avez jamais envoyé d\'argent à ce numéro. Vérifiez le </string>
+    <string name="review_new_warning_key">nom du titulaire</string>
+    <string name="review_new_warning_after"> avant de confirmer.</string>
+    <string name="action_confirm">Confirmer</string>
+    <string name="action_cancel">Annuler</string>
+
+    <!-- E-15 Autorisation -->
+    <string name="authorize_title">Autoriser l\'envoi</string>
+    <string name="authorize_summary">%1$s FCFA → %2$s</string>
+    <string name="authorize_step_pin">1. Votre code PIN</string>
+    <string name="authorize_step_unlock">2. Déverrouillez votre téléphone pour confirmer</string>
+    <string name="authorize_step_unlock_body">(empreinte, visage ou code). Cette étape autorise ce téléphone à signer l\'envoi.</string>
+    <string name="authorize_prompt_subtitle">Cette étape autorise ce téléphone à signer l\'envoi.</string>
+
+    <!-- E-16 Succès -->
+    <string name="sent_title">Envoyé</string>
+    <string name="sent_to">à %1$s · %2$s</string>
+    <string name="receipt_reference">Référence</string>
+    <string name="receipt_signed_by">Signé par</string>
+    <string name="receipt_this_phone">ce téléphone (%1$s)</string>
+    <string name="action_home">Retour à l\'accueil</string>
+
+    <!-- E-17 Exécution différée -->
+    <string name="deferred_title">Envoi programmé</string>
+    <string name="deferred_body">Cette opération est inhabituelle. Par sécurité, elle sera exécutée le %1$s.</string>
+    <string name="deferred_body_unknown_time">Cette opération est inhabituelle. Par sécurité, son exécution est différée.</string>
+    <string name="deferred_can_cancel">Vous pouvez l\'annuler jusque-là depuis l\'accueil.</string>
+    <string name="deferred_pending">en attente</string>
+    <string name="deferred_cancel">Annuler cet envoi</string>
+    <string name="deferred_cancelled">Envoi annulé.</string>
+    <string name="cancel_prompt_title">Annuler l\'envoi</string>
+
+    <!-- E-18 Bloquée / Rejetée -->
+    <string name="frozen_title">Opération bloquée</string>
+    <string name="frozen_body">Pour votre sécurité, cet envoi n\'a pas été exécuté. Votre argent est toujours sur votre compte.</string>
+    <string name="frozen_what">Que faire ? </string>
+    <string name="frozen_what_body">Si vous êtes bien à l\'origine de cette opération, rendez-vous chez un agent avec votre pièce d\'identité. Aucun code ne vous sera demandé par téléphone.</string>
+    <string name="rejected_title">Opération rejetée</string>
+    <string name="rejected_body">Réessayez.</string>
+    <string name="rejected_key_body">Réessayez depuis votre téléphone lié.</string>
+    <string name="unknown_title">Envoi non confirmé</string>
+    <string name="unknown_body">Impossible de confirmer l\'envoi. Vérifiez votre historique.</string>
+    <string name="action_history">Voir l\'historique</string>
+
+    <!-- E-19 Historique -->
+    <string name="history_title">Historique</string>
+    <string name="history_out">Envoi</string>
+    <string name="history_in">Réception</string>
+    <string name="history_empty">Aucune opération.</string>
+    <string name="status_deferred">en attente</string>
+    <string name="status_cancelled">annulé</string>
+    <string name="status_frozen">bloqué</string>
+    <string name="status_rejected">rejeté</string>
 </resources>

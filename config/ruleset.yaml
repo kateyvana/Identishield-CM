@@ -10,7 +10,7 @@
 # La version DOIT figurer dans chaque décision /evaluate (EF-11 ruleSetVersion,
 # EF-17). Toute modification d'un paramètre s'accompagne d'un incrément de version.
 ruleset:
-  version: rs-0.5.0 # bump : APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
+  version: rs-0.6.0 # bump : QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
   parameters:
     CAR_IMSI: PT72H # carence post-changement d'IMSI (72 h, état PROBATION)
     # CAR_ENROL (PT48H, carence post-ré-enrôlement) : RETIRÉ — SRS v1.3, ISC-TM v1.2 §7, ES-03c ; retiré ici par ISC-AMD-02 v1.1
@@ -51,3 +51,8 @@ ruleset:
     POLL_FOREGROUND: PT30S # interrogation des alertes, application au premier plan (proposé)
     POLL_BACKGROUND: PT15M # arrière-plan : minimum des tâches périodiques Android (ISC-MOB-SPEC §9.4)
     APP_NETWORK_TIMEOUT: PT10S # délai d'expiration réseau de l'application (MOB-NF-03) ; lu à la construction
+    QUICK_AMOUNTS: # montants rapides de l'écran Montant (E-13), en FCFA ; décidé par le propriétaire (M-07) ; lu à la construction
+      - 5000
+      - 10000
+      - 25000
+      - 50000

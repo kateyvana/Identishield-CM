@@ -12,6 +12,14 @@ fun rulesetSeconds(name: String): Int {
     return match.groupValues[1].toInt()
 }
 
+/** Séquence en bloc d'entiers (« NAME: » puis des lignes « - n »), seule forme lue par tous les lecteurs. */
+fun rulesetLongs(name: String): List<Long> {
+    val block =
+        Regex("^( *)$name:[^\\n]*\\n((?:\\1 +- \\d+[^\\n]*(?:\\n|$))+)", RegexOption.MULTILINE).find(rulesetText.get())
+            ?: throw GradleException("$name absent de config/ruleset.yaml (forme attendue : séquence « - <entier> »)")
+    return Regex("- (\\d+)").findAll(block.groupValues[2]).map { it.groupValues[1].toLong() }.toList()
+}
+
 // URL de base de l'API mobile (HTTPS obligatoire, ADR-038). Défaut : faux serveur vu depuis
 // l'émulateur (10.0.2.2, port MOBILE_MOCK_PORT du Makefile). Téléphone : -Pisc.apiBaseUrl=...
 val apiBaseUrl = providers.gradleProperty("isc.apiBaseUrl").orElse("https://10.0.2.2:8089/mobile/v1/")
@@ -45,6 +53,8 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"$baseUrl\"")
         buildConfigField("int", "OTP_RESEND_DELAY_SECONDS", rulesetSeconds("OTP_RESEND_DELAY").toString())
         buildConfigField("long", "NETWORK_TIMEOUT_SECONDS", "${rulesetSeconds("APP_NETWORK_TIMEOUT")}L")
+        val quickAmounts = rulesetLongs("QUICK_AMOUNTS")
+        buildConfigField("long[]", "QUICK_AMOUNTS_XAF", quickAmounts.joinToString(", ", "{", "}") { "${it}L" })
     }
 
     buildTypes {

@@ -9,6 +9,9 @@ import cm.identishield.mobile.data.CompleteRequest
 import cm.identishield.mobile.data.ConfirmCharacter
 import cm.identishield.mobile.data.ConfirmRequest
 import cm.identishield.mobile.data.EnrolmentRepository
+import cm.identishield.mobile.data.SessionHolder
+import cm.identishield.mobile.security.BoundDevice
+import cm.identishield.mobile.security.BoundDeviceStore
 import cm.identishield.mobile.security.DeviceKeyManager
 import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.InsecureKeyStorageException
@@ -91,6 +94,8 @@ class EnrolmentViewModel(
     private val repository: EnrolmentRepository,
     private val keys: DeviceKeyManager,
     scope: CoroutineScope? = null,
+    private val boundDevice: BoundDeviceStore? = null, // numéro + device_id pour le flux B (M-07)
+    private val session: SessionHolder? = null, // jeton ouvert en E-09, repris par le flux B (M-07)
 ) : ViewModel() {
     private val scope: CoroutineScope = scope ?: viewModelScope
     private val _step = MutableStateFlow<EnrolStep>(EnrolStep.Welcome)
@@ -253,6 +258,10 @@ class EnrolmentViewModel(
                 )
             when (val r = repository.complete(request)) {
                 is ApiResult.Ok -> {
+                    // L'appareil est lié dès cette réponse : on mémorise ce que le flux B exige.
+                    val number = msisdn
+                    val deviceId = r.value.deviceId
+                    if (number != null && deviceId != null) boundDevice?.save(BoundDevice(number, deviceId))
                     recovery = IssuedCode(r.value.enrolmentId, r.value.recoveryCode, r.value.confirmPositions)
                     _step.value = EnrolStep.RecoveryKey(r.value.recoveryCode, lastDisplay = false)
                 }
@@ -327,6 +336,7 @@ class EnrolmentViewModel(
         recovery = null
         attestationChallenge = null
         enrolmentId = null
+        session?.token = sessionToken // mémoire vive seulement (MOB-S-10)
         when (val r = repository.account(sessionToken)) {
             is ApiResult.Ok -> _step.value = EnrolStep.Home(r.value)
             else -> _step.value = EnrolStep.Number(EnrolError.UNEXPECTED)
@@ -352,9 +362,12 @@ class EnrolmentViewModel(
     class Factory(
         private val repository: EnrolmentRepository,
         private val keys: DeviceKeyManager,
+        private val boundDevice: BoundDeviceStore,
+        private val session: SessionHolder,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = EnrolmentViewModel(repository, keys) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            EnrolmentViewModel(repository, keys, boundDevice = boundDevice, session = session) as T
     }
 
     companion object {
