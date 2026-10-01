@@ -1,0 +1,344 @@
+{
+  "a_montant": {
+    "population": {
+      "cible_l1": 0.1,
+      "distance_l1_histogramme": 0.0218,
+      "histogramme": [
+        {
+          "part_reel": 20.25,
+          "part_synth": 20.82,
+          "tranche": "1–500"
+        },
+        {
+          "part_reel": 14.38,
+          "part_synth": 14.36,
+          "tranche": "500–1k"
+        },
+        {
+          "part_reel": 39.85,
+          "part_synth": 39.63,
+          "tranche": "1k–5k"
+        },
+        {
+          "part_reel": 9.87,
+          "part_synth": 9.44,
+          "tranche": "5k–10k"
+        },
+        {
+          "part_reel": 8.23,
+          "part_synth": 8.52,
+          "tranche": "10k–25k"
+        },
+        {
+          "part_reel": 1.9,
+          "part_synth": 1.82,
+          "tranche": "25k–50k"
+        },
+        {
+          "part_reel": 1.95,
+          "part_synth": 2.19,
+          "tranche": "50k–100k"
+        },
+        {
+          "part_reel": 2.47,
+          "part_synth": 2.17,
+          "tranche": "100k–500k"
+        },
+        {
+          "part_reel": 1.08,
+          "part_synth": 1.05,
+          "tranche": "500k+"
+        }
+      ],
+      "n": 624645,
+      "parts_multiples": {
+        "100": {
+          "pas_plus_rond_que_le_reel": true,
+          "reel_pct": 81.56,
+          "synthetique_pct": 67.64
+        },
+        "1000": {
+          "pas_plus_rond_que_le_reel": true,
+          "reel_pct": 46.82,
+          "synthetique_pct": 41.15
+        },
+        "500": {
+          "pas_plus_rond_que_le_reel": true,
+          "reel_pct": 61.28,
+          "synthetique_pct": 53.65
+        },
+        "5000": {
+          "pas_plus_rond_que_le_reel": true,
+          "reel_pct": 15.77,
+          "synthetique_pct": 13.03
+        }
+      },
+      "quantiles": {
+        "p10": {
+          "dans_tolerance": true,
+          "ecart_relatif_pct": -2.5,
+          "reel": 128.2,
+          "synthetique": 125.0,
+          "tolerance_pct": 15
+        },
+        "p25": {
+          "dans_tolerance": true,
+          "ecart_relatif_pct": 0.0,
+          "reel": 500.0,
+          "synthetique": 500.0,
+          "tolerance_pct": 15
+        },
+        "p50": {
+          "dans_tolerance": true,
+          "ecart_relatif_pct": -6.58,
+          "reel": 1854.0,
+          "synthetique": 1732.0,
+          "tolerance_pct": 15
+        },
+        "p75": {
+          "dans_tolerance": true,
+          "ecart_relatif_pct": 0.0,
+          "reel": 5000.0,
+          "synthetique": 5000.0,
+          "tolerance_pct": 15
+        },
+        "p90": {
+          "dans_tolerance": true,
+          "ecart_relatif_pct": 12.33,
+          "reel": 15340.0,
+          "synthetique": 17232.0,
+          "tolerance_pct": 15
+        },
+        "p95": {
+          "dans_tolerance": true,
+          "ecart_relatif_pct": 13.21,
+          "reel": 50750.0,
+          "synthetique": 57456.0,
+          "tolerance_pct": 25
+        },
+        "p99": {
+          "dans_tolerance": true,
+          "ecart_relatif_pct": 0.0,
+          "reel": 500000.0,
+          "synthetique": 500000.0,
+          "tolerance_pct": 25
+        }
+      }
+    }
+  },
+  "b_heure": {
+    "cible_l1": 0.08,
+    "distance_l1": 0.0473,
+    "heures_nuit": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      23
+    ],
+    "part_nuit_pct": 5.87,
+    "part_nuit_reel_pct": 6.51
+  },
+  "c_archetypes": {
+    "agent": {
+      "part_nouveau_parmi_sorties_pct": 15.47,
+      "part_sorties_pct": 49.83,
+      "part_volume_pct": 15.81,
+      "transactions": 98756,
+      "usagers": 25
+    },
+    "marchand": {
+      "part_nouveau_parmi_sorties_pct": 10.12,
+      "part_sorties_pct": 14.92,
+      "part_volume_pct": 29.93,
+      "transactions": 186942,
+      "usagers": 388
+    },
+    "ordinaire": {
+      "part_nouveau_parmi_sorties_pct": 4.87,
+      "part_sorties_pct": 48.36,
+      "part_volume_pct": 21.73,
+      "transactions": 135733,
+      "usagers": 1292
+    },
+    "salarie": {
+      "part_nouveau_parmi_sorties_pct": 3.03,
+      "part_sorties_pct": 44.39,
+      "part_volume_pct": 30.29,
+      "transactions": 189234,
+      "usagers": 646
+    },
+    "victime": {
+      "part_nouveau_parmi_sorties_pct": 4.9,
+      "part_sorties_pct": 48.32,
+      "part_volume_pct": 2.24,
+      "transactions": 13980,
+      "usagers": 129
+    }
+  },
+  "c_nouveau_beneficiaire": {
+    "part_nouveau_parmi_sorties_pct": 7.07,
+    "part_nouveau_parmi_toutes_pct": 2.64
+  },
+  "c_sorties": {
+    "part_sorties_pct": 37.38,
+    "part_sorties_reel_in_out_pct": 49.58,
+    "sorties_sautees_solde_insuffisant": 6082,
+    "taux_saut_pct": 2.54
+  },
+  "d_soldes": {
+    "incoherences_arithmetiques": 0,
+    "ruptures_de_chaine": 0,
+    "solde_min": 0,
+    "soldes_negatifs": 0
+  },
+  "e_controles": {
+    "auto_transferts": 0,
+    "labels": [
+      "LEGIT"
+    ],
+    "msisdn_hors_plage": 0
+  },
+  "echantillon": {
+    "debut": "2026-10-01",
+    "fichier": "dev_horizon_v1.csv",
+    "isc_seed": 20260925,
+    "jours": 182,
+    "personas_version": "v2.1",
+    "sha256": "c165d55bed40c441c16e2f7d5e987b8a67cceb71eb71e470cbc2309d18ac8adc",
+    "sha256_manifeste_identique": true,
+    "transactions": 624645,
+    "usagers": 2480
+  },
+  "etalon": {
+    "fichier": "profil_reel_v1.1.json",
+    "source_sha256": "84cd01ae42d0fde10292b2df7e16302cf8dee3cd1359107328529a2e83401fb1"
+  },
+  "f_velocite": {
+    "activite_mediane_reel_jours": 322,
+    "fenetre_jours": 182,
+    "monetaire_pct": 31.08,
+    "monetaire_reel_pct": 26.92,
+    "monetaire_usagers": [
+      763,
+      2455
+    ],
+    "monetaire_usagers_reel": [
+      14,
+      52
+    ],
+    "perimetre": "population hors agents",
+    "regle": ">3 transactions en 10 min (glissant)",
+    "sorties_pct": 7.97,
+    "sorties_reel_pct": 10.2,
+    "sorties_usagers": [
+      195,
+      2447
+    ],
+    "sorties_usagers_reel": [
+      5,
+      49
+    ]
+  },
+  "g_canal_appareil": {
+    "app_sans_appareil_lie": 0,
+    "par_archetype": {
+      "agent": {
+        "part_app_pct": 13.25,
+        "part_appareil_lie_pct": 52.0,
+        "part_ussd_pct": 86.75,
+        "usagers_actifs": 25
+      },
+      "marchand": {
+        "part_app_pct": 22.96,
+        "part_appareil_lie_pct": 59.79,
+        "part_ussd_pct": 77.04,
+        "usagers_actifs": 388
+      },
+      "ordinaire": {
+        "part_app_pct": 26.7,
+        "part_appareil_lie_pct": 45.36,
+        "part_ussd_pct": 73.3,
+        "usagers_actifs": 1292
+      },
+      "salarie": {
+        "part_app_pct": 68.04,
+        "part_appareil_lie_pct": 85.14,
+        "part_ussd_pct": 31.96,
+        "usagers_actifs": 646
+      },
+      "victime": {
+        "part_app_pct": 21.65,
+        "part_appareil_lie_pct": 42.64,
+        "part_ussd_pct": 78.35,
+        "usagers_actifs": 129
+      }
+    }
+  },
+  "h_rythme": {
+    "max_reel": 4.7264,
+    "max_synthetique": 5.074,
+    "n_usagers": 2455,
+    "quantiles": {
+      "p10": {
+        "dans_tolerance": true,
+        "ecart_relatif_pct": -5.88,
+        "reel": 0.1793,
+        "synthetique": 0.169,
+        "tolerance_pct": 25
+      },
+      "p25": {
+        "dans_tolerance": true,
+        "ecart_relatif_pct": -0.73,
+        "reel": 0.543,
+        "synthetique": 0.539,
+        "tolerance_pct": 15
+      },
+      "p50": {
+        "dans_tolerance": true,
+        "ecart_relatif_pct": -2.3,
+        "reel": 1.071,
+        "synthetique": 1.046,
+        "tolerance_pct": 15
+      },
+      "p75": {
+        "dans_tolerance": true,
+        "ecart_relatif_pct": 8.49,
+        "reel": 1.5671,
+        "synthetique": 1.7,
+        "tolerance_pct": 15
+      },
+      "p90": {
+        "dans_tolerance": true,
+        "ecart_relatif_pct": 3.64,
+        "reel": 2.1816,
+        "synthetique": 2.261,
+        "tolerance_pct": 15
+      },
+      "p95": {
+        "dans_tolerance": true,
+        "ecart_relatif_pct": 4.39,
+        "reel": 2.6332,
+        "synthetique": 2.749,
+        "tolerance_pct": 25
+      }
+    }
+  },
+  "i_sessions": {
+    "dans_tolerance": true,
+    "ecart_relatif_pct": 3.44,
+    "n_ecarts": 523434,
+    "part_ecarts_lt_600s_pct": 13.49,
+    "part_ecarts_lt_60s_pct": 5.29,
+    "reel_lt_600s_pct": 13.04,
+    "reel_lt_60s_pct": 5.38,
+    "sorties_dans_tolerance": true,
+    "sorties_ecart_relatif_pct": -3.4,
+    "sorties_lt_600s_pct": 4.88,
+    "sorties_lt_60s_pct": 1.38,
+    "sorties_reel_lt_600s_pct": 5.05,
+    "sorties_reel_lt_60s_pct": 1.49,
+    "tolerance_pct": 25
+  }
+}

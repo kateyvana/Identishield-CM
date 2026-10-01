@@ -291,6 +291,16 @@ def compute(sample: Path, manifest: Path, etalon: Path, ruleset: Path) -> dict:
         "monetaire_reel_pct": vel_ref["montants_positifs"]["part"],
         "sorties_pct": r2(100 * out_flag / out_n) if out_n else 0.0,
         "sorties_reel_pct": vel_ref["sorties_positives"]["part"],
+        "monetaire_usagers": [mon_flag, mon_n],
+        "monetaire_usagers_reel": [
+            vel_ref["montants_positifs"]["usagers_depassant"],
+            vel_ref["montants_positifs"]["nb_usagers"],
+        ],
+        "sorties_usagers": [out_flag, out_n],
+        "sorties_usagers_reel": [
+            vel_ref["sorties_positives"]["usagers_depassant"],
+            vel_ref["sorties_positives"]["nb_usagers"],
+        ],
     }
 
     # h. Per-user monetary rate — population without agents (PERSONAS v2.0 §5.2): transactions /
@@ -519,9 +529,16 @@ def render_md(s: dict) -> str:
         ),
         (
             f"- Transactions monétaires : **{v['monetaire_pct']} %** des usagers "
-            f"(réel {v['monetaire_reel_pct']} %)."
+            f"({v['monetaire_usagers'][0]}/{v['monetaire_usagers'][1]} ; "
+            f"réel {v['monetaire_reel_pct']} %, "
+            f"{v['monetaire_usagers_reel'][0]}/{v['monetaire_usagers_reel'][1]})."
         ),
-        f"- Sorties seules : **{v['sorties_pct']} %** (réel {v['sorties_reel_pct']} %).",
+        (
+            f"- Sorties seules : **{v['sorties_pct']} %** "
+            f"({v['sorties_usagers'][0]}/{v['sorties_usagers'][1]} ; "
+            f"réel {v['sorties_reel_pct']} %, "
+            f"{v['sorties_usagers_reel'][0]}/{v['sorties_usagers_reel'][1]})."
+        ),
         "",
         "## g. Canal et liaison d'appareil (PERSONAS v1.2, hypothèses déclarées)",
         "",
