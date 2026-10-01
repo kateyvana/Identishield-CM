@@ -14,7 +14,8 @@ MOBILE_MOCK_PORT ?= 8089
 MOBILE_MOCK_DEMO ?=
 
 .PHONY: help up down reset check test abuse evaluate diagrams check-docs check-stack \
-        build format unit arch contract secrets fictitious-msisdn named-params traceability \n        mobile-mock
+        build format unit arch contract secrets fictitious-msisdn named-params traceability \
+        mobile-mock eval-tests
 
 help:
 	@echo "Cibles : up down reset check test abuse evaluate diagrams check-docs check-stack mobile-mock"
@@ -34,7 +35,7 @@ check-stack:
 	@bash tools/check_stack.sh
 
 ## ---- portes legeres (ISC-DEV §4) -------------------------------------------
-check: build format unit arch contract check-docs secrets fictitious-msisdn named-params
+check: build format unit arch contract check-docs secrets fictitious-msisdn named-params eval-tests
 	@echo "make check : VERT"
 
 build:
@@ -103,6 +104,11 @@ fictitious-msisdn:
 named-params:
 	@echo ">>> named-params"
 	@$(PY) tools/check_named_params.py
+
+# T3-04b : tests du harnais d'evaluation AC-02, en --dry-run (sans pile, sans Docker, n'execute rien).
+eval-tests:
+	@echo ">>> eval-tests"
+	@uv run --quiet --project simulator python -m pytest tests/test_ac02_eval.py -q -p no:cacheprovider
 
 ## ---- autres cibles ----------------------------------------------------------
 # Faux serveur de l'API mobile (M-03) pour développer l'application : NE VÉRIFIE NI la signature
