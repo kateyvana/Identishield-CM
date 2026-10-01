@@ -7,7 +7,6 @@ import ModeBanner from './ModeBanner';
 // l'interface, IBM Plex Mono pour les données techniques (IMSI, MSISDN, horodatages, codes).
 const sora = Sora({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
   variable: '--font-sans',
   display: 'swap',
 });
