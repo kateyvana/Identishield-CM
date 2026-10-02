@@ -1,0 +1,34 @@
+@startuml mois2-cas-utilisation
+' Diagramme de cas d'utilisation — squelette marchant du mois 2 (ISC-SKEL).
+' Reflète le code des branches T2-01..T2-09 au 2026-09-07.
+left to right direction
+skinparam actorStyle awesome
+
+actor "Usager\n(téléphone, USSD)" as Usager
+actor "Propriétaire /\nObservateur (console)" as Observateur
+actor "Administrateur\n(opérationnel, hors rôle applicatif)" as Admin
+
+rectangle "IdentiShield-CM — squelette mois 2" {
+  usecase "Composer le code USSD\n(session à états, TTL 5 min)" as UC_USSD
+  usecase "Effectuer un transfert P2P\n(EF-04)" as UC_P2P
+  usecase "Évaluer la sortie sensible\nPOST /evaluate — EF-10/EF-11" as UC_EVAL
+  usecase "Journaliser la décision\n(audit chaîné in-lock, ED-06)" as UC_AUDIT
+  usecase "Appliquer le fail-closed\n(PDP indisponible, ES-11)" as UC_FC
+  usecase "Consulter le flux récent\n(console, T2-09)" as UC_FLUX
+  usecase "Vérifier le journal d'audit\n(audit_verify + ancre, ES-09)" as UC_VERIF
+}
+
+Usager --> UC_USSD
+UC_USSD ..> UC_P2P : «include»\n(branche unique du mois 2)
+UC_P2P ..> UC_EVAL : «include»\nAVANT commit (EF-05)
+UC_EVAL ..> UC_AUDIT : «include»\nexactement une entrée / décision
+UC_P2P ..> UC_FC : «extend»\nsi PDP injoignable
+Observateur --> UC_FLUX
+Admin --> UC_VERIF
+
+note bottom of UC_EVAL
+  Mois 2 : décision ALLOW sans règle,
+  idempotente par decisionId (ENF-03).
+  Règles, vetos et STEP_UP/FREEZE : mois 4.
+end note
+@enduml

@@ -1,0 +1,48 @@
+@startuml mois2-seq-transfert-ussd
+' Diagramme de séquence — le fil du squelette (ISC-SKEL §2) :
+' USSD -> transfert P2P -> /evaluate AVANT commit -> EXECUTED.
+' Fidèle à UssdService.onConfirm / TransferService.transferP2P / EvaluateController.
+skinparam sequenceMessageAlign center
+
+actor Usager
+participant "UssdService\n(core)" as USSD
+participant "TransferService\n(core)" as TS
+participant "TransactionRepository /\nAccountRepository" as Repo
+participant "PdpClient\n(core)" as PC
+participant "EvaluateController\n(pdp)" as EC
+participant "AuditLog +\ntrigger audit_chain\n(PostgreSQL, schéma pdp)" as AU
+
+Usager -> USSD : confirme "1"\n(session au pas CONFIRM)
+USSD -> TS : transferP2P(msisdn, bénéficiaire,\nmontant, "USSD")
+TS -> Repo : findByMsisdn(from)
+TS -> Repo : createPending(...)\nétat PENDING_DECISION,\n**decisionId = gen_random_uuid() en base**
+TS -> PC : evaluate(requête JSON)
+note over PC, EC : HTTPS **mTLS mutuel** — chaîne + nom,\nconnexion persistante, délai 800 ms,\ndisjoncteur devant l'appel (ADR-021)
+PC -> EC : POST /evaluate
+EC -> AU : findByDecisionId\n(idempotence ENF-03 : rejeu =>\nmême décision, aucune 2e entrée)
+EC -> AU : append(payload, written_at)
+note right of AU : trigger BEFORE INSERT :\nchain_index assigné DANS le verrou,\nprev_hash + hash posés en base\n(SPIKE-3 / ADR-020, OB-2)
+EC --> PC : 200 {decision: ALLOW, decisionId,\nruleSetVersion, evaluatedAt}
+PC --> TS : EvaluateOutcome(available, ALLOW)
+
+alt décision ALLOW
+  TS -> Repo : debit(from) puis credit(bénéficiaire)
+  TS -> Repo : markExecuted(tx)
+  TS --> USSD : TransferResult(EXECUTED, decisionId)
+else décision ≠ ALLOW
+  TS -> Repo : markRejected(tx)
+  TS --> USSD : TransferResult(REJECTED)
+else PDP indisponible — fail-closed (ES-11)
+  TS -> TS : FailClosedPolicy.onPdpUnavailable(montant)
+  alt montant > CAP_PROB
+    TS -> Repo : markRejected(tx)
+    TS --> USSD : REJECTED (fail-closed)
+  else montant ≤ CAP_PROB
+    TS -> Repo : debit / credit / markExecuted
+    TS --> USSD : EXECUTED_DEGRADED
+  end
+end
+
+USSD -> USSD : delete(session)
+USSD --> Usager : "Transfert <état>. Référence <decisionId>"
+@enduml

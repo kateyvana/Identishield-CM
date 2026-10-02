@@ -1,0 +1,153 @@
+@startuml mois2-classes-core
+' Diagramme de classes — service core (cm.identishield.core), fidèle au code
+' des branches T2-02..T2-08. Membres relevés dans les sources, pas inventés.
+skinparam classAttributeIconSize 0
+hide empty members
+
+package ussd {
+  class UssdService {
+    -SESSION_TTL : Duration = 5 min
+    +dial(msisdn) : Interaction
+    +input(sessionId, text) : UssdResponse
+  }
+  class UssdRepository {
+    +create(msisdn, step, expiresAt) : UUID
+    +findActive(id, now) : Optional<UssdSession>
+    +update(session)
+    +delete(id)
+  }
+  class UssdSession <<record>> {
+    +id : UUID
+    +msisdn : String
+    +step : Step
+    +amountXaf : Long
+    +beneficiary : String
+  }
+  enum Step {
+    AMOUNT
+    BENEFICIARY
+    CONFIRM
+  }
+  class UssdResponse <<record>>
+}
+
+package transfer {
+  class TransferService {
+    +transferP2P(fromMsisdn, beneficiaryMsisdn, amountXaf, channel) : TransferResult
+    -execute(tx, from, beneficiary, amount, state) : TransferResult
+    -buildRequest(...) : String
+  }
+  class TransferResult <<record>> {
+    +state : State
+    +decisionId : String
+    +detail : String
+  }
+  enum TState as "State" {
+    EXECUTED
+    EXECUTED_DEGRADED
+    REJECTED
+  }
+}
+
+package account {
+  class Account <<record>> {
+    +id : UUID
+    +msisdn : String
+    +balanceXaf : long
+  }
+  class AccountRepository {
+    +findByMsisdn(msisdn) : Optional<Account>
+    +debit(accountId, amountXaf) : boolean
+    +credit(accountId, amountXaf)
+    +insertIfAbsent(msisdn, balanceXaf, createdAt)
+  }
+}
+
+package transaction {
+  class PendingTransaction <<record>> {
+    +id : UUID
+    +decisionId : String
+  }
+  class TransactionRepository {
+    +createPending(...) : PendingTransaction
+    +markExecuted(id)
+    +markRejected(id)
+  }
+  note bottom of TransactionRepository
+    decisionId généré EN BASE
+    (gen_random_uuid), jamais
+    UUID.randomUUID (T2-07).
+  end note
+}
+
+package pdp {
+  class PdpClient {
+    -http : HttpClient «persistant, mTLS»
+    +pdpReachable() : boolean
+    +gate(amountXaf) : Outcome
+    +evaluate(requestJson) : EvaluateOutcome
+    +warmup()
+    +probe(target) : ProbeResult
+  }
+  class CircuitBreaker {
+    -failureThreshold : int
+    -cooldownMillis : long
+    +allowRequest() : boolean
+    +recordSuccess()
+    +recordFailure()
+    +state() : State
+  }
+  enum CBState as "State" {
+    CLOSED
+    OPEN
+    HALF_OPEN
+  }
+  class FailClosedPolicy {
+    -capProbXaf : long
+    +onPdpUnavailable(amountXaf) : Outcome
+  }
+  enum Outcome {
+    PDP_AVAILABLE
+    ALLOWED_DEGRADED
+    REFUSED_FAIL_CLOSED
+  }
+  class EvaluateOutcome <<record>> {
+    +available : boolean
+    +decision : String
+    +decisionId : String
+    +isAllow() : boolean
+  }
+}
+
+package config {
+  class RuleSet <<record>> {
+    +version : String
+    +parameters : Map<String,Object>
+    +capProbDailyXaf() : long
+  }
+}
+
+package time {
+  interface "java.time.Clock" as Clock
+  class VirtualClock
+}
+
+UssdService --> UssdRepository
+UssdService --> TransferService
+UssdRepository ..> UssdSession
+UssdSession +-- Step
+TransferService --> AccountRepository
+TransferService --> TransactionRepository
+TransferService --> PdpClient
+TransferService --> FailClosedPolicy : fail-closed (ES-11)
+TransferService --> RuleSet : CAP_PROB
+TransferService --> Clock
+TransferResult +-- TState
+PdpClient --> CircuitBreaker
+PdpClient --> FailClosedPolicy
+PdpClient ..> EvaluateOutcome
+CircuitBreaker +-- CBState
+FailClosedPolicy ..> Outcome
+VirtualClock ..|> Clock
+UssdService --> Clock
+@enduml

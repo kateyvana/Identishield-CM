@@ -1,0 +1,81 @@
+@startuml mois2-donnees
+' Vue données — schémas PostgreSQL de production (T2-01, infra/init/init.sql).
+' Un schéma par service ; aucune table partagée, aucune FK inter-schémas (ED-01).
+skinparam classAttributeIconSize 0
+hide methods
+hide stereotypes
+
+package "schéma core (rôle isc_core_app)" {
+  class "core.account" as account {
+    id : uuid «PK»
+    msisdn : msisdn_fictif «UNIQUE»
+    balance_xaf : bigint ≥ 0
+    created_at : timestamptz
+  }
+  class "core.transaction" as tx {
+    id : uuid «PK»
+    account_id : uuid «FK account»
+    type, channel, state : text
+    amount_xaf : bigint > 0
+    beneficiary_id : text
+    decision_id : uuid
+    created_at : timestamptz
+  }
+  class "core.ussd_session" as ussd {
+    id : uuid «PK»
+    msisdn : msisdn_fictif
+    step : text
+    payload : jsonb
+    expires_at : timestamptz
+  }
+  class "core.hlr_subscriber" as hlr {
+    msisdn : msisdn_fictif «PK»
+    current_imsi : text
+    updated_at : timestamptz
+  }
+  class "core.hlr_reassignment" as hlrr {
+    id : uuid «PK»
+    msisdn, old_imsi, new_imsi
+    agent_id, reason : text
+    occurred_at : timestamptz
+  }
+  class "core.otp" as otp {
+    id : uuid «PK»
+    msisdn, target_imsi : text
+    code_hash : text «jamais l'OTP en clair»
+    expires_at, consumed_at : timestamptz
+  }
+  class "core.notification" as notif {
+    id : uuid «PK»
+    recipient_ref, channel, type, body
+    sent_at : timestamptz
+  }
+}
+
+package "schéma pdp (rôle isc_pdp_app : SELECT + INSERT sur audit_entry SEUL)" {
+  class "pdp.audit_entry" as audit {
+    seq : bigint «IDENTITY, PK» (OB-4)
+    chain_index : bigint «assigné in-lock» (OB-2)
+    payload : jsonb «decisionId UNIQUE» (ENF-03)
+    prev_hash, hash : text «posés par le trigger»
+    written_at : timestamptz «fourni par l'app» (ED-04)
+  }
+  class "pdp.chain_head" as head {
+    id : boolean «singleton»
+    last_seq : bigint
+    head_hash : text
+    entry_count : bigint
+  }
+}
+
+tx "0..*" --> "1" account : account_id
+tx ..> audit : decision_id ==\npayload->>'decisionId'\n**PAS de FK inter-schéma** (ED-01)
+audit --> audit : prev_hash = hash\nde l'entrée chain_index-1
+head ..> audit : ancre — maintenue par\nle trigger SECURITY DEFINER seul ;\ndétecte la suppression du dernier\nenregistrement (SPIKE-3)
+
+note bottom of hlr
+  hlr_subscriber / hlr_reassignment / otp /
+  notification : tables créées en T2-01,
+  alimentées à partir de T2-10+ (HLR, OTP).
+end note
+@enduml

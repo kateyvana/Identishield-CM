@@ -1,0 +1,62 @@
+@startuml mois2-composants
+' Diagramme de composants — les deux services applicatifs (ISC-SAD §3),
+' tel que construit aux branches T2-01..T2-09.
+skinparam componentStyle rectangle
+
+package "core — opérateur simulé (Spring Boot)" {
+  [UssdService\nmachine à états de session (EF-06)] as Ussd
+  [TransferService\ntransfert P2P, /evaluate avant commit\n(EF-04, EF-05)] as Transfer
+  [PdpClient\nmTLS, connexion persistante (ADR-021)] as Client
+  [CircuitBreaker] as CB
+  [FailClosedPolicy\nCAP_PROB (ES-11)] as FCP
+  [AccountRepository /\nTransactionRepository /\nUssdRepository] as CoreRepos
+  [FluxController\nlecture seule pour la console] as Flux
+  [RuleSet (core)\nlecture de config/ruleset.yaml] as RSCore
+  [Clock injectée\n(ADR-019, T2-02)] as ClockCore
+}
+
+package "pdp — point de décision (Spring Boot)" {
+  [EvaluateController\nPOST /evaluate, idempotence decisionId\n(EF-10, EF-11, ENF-03)] as Eval
+  [AuditLog\nINSERT seul (ED-06)] as Audit
+  [HealthController] as Health
+  [RuleSet (pdp)] as RSPdp
+  [Clock injectée] as ClockPdp
+}
+
+database "PostgreSQL" {
+  frame "schéma core" as SchCore
+  frame "schéma pdp" as SchPdp {
+    [audit_entry + chain_head\ntrigger audit_chain (in-lock)\nSECURITY DEFINER — ADR-020] as Chain
+  }
+}
+
+node "console (Next.js, T2-09 en cours)" as Console
+
+file "config/ruleset.yaml\nsource unique des paramètres nommés\n(EF-17, T2-03)" as Yaml
+
+Ussd --> Transfer
+Transfer --> Client
+Transfer --> FCP
+Transfer --> CoreRepos
+Client --> CB
+Client --> FCP
+Client -(0- Eval : HTTPS **mTLS mutuel**\nchaîne + nom (OB-5/OB-6, ADR-021)
+Client ..> Health : sonde de santé
+Eval --> Audit
+Eval --> RSPdp
+CoreRepos --> SchCore : rôle isc_core_app
+Audit --> Chain : rôle isc_pdp_app\n(aucun accès à chain_head)
+Flux --> SchCore
+Console --> Flux : HTTP (lecture)
+RSCore ..> Yaml
+RSPdp ..> Yaml
+Transfer ..> ClockCore
+Eval ..> ClockPdp
+
+note bottom of Chain
+  Un schéma par service, aucune table
+  partagée ni FK inter-schémas (ED-01).
+  Le chaînage est hors de portée
+  du rôle applicatif (OB-2/OB-3).
+end note
+@enduml

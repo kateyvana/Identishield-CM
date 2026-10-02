@@ -1,0 +1,74 @@
+@startuml mois2-classes-pdp
+' Diagramme de classes — service pdp (cm.identishield.pdp), fidèle au code
+' des branches T2-02..T2-05. Membres relevés dans les sources.
+skinparam classAttributeIconSize 0
+hide empty members
+
+package web {
+  class EvaluateController {
+    +evaluate(req : EvaluateRequest) : EvaluateResponse
+    -decisionPayload(req, at) : Map
+    -fromPayload(p, latencyMs) : EvaluateResponse
+  }
+  class EvaluateRequest <<record>> {
+    +decisionId, accountId, msisdn
+    +currentImsi, channel, type
+    +amountXaf, beneficiaryId
+    +serverTimestamp, proofType
+  }
+  class EvaluateResponse <<record>> {
+    +decision, score, requiredAction
+    +triggeredRules : List<TriggeredRule>
+    +vetoApplied, decisionId
+    +ruleSetVersion, evaluatedAt, latencyMs
+  }
+  class TriggeredRule <<record>> {
+    +ruleId : String
+    +contribution : int
+    +explanation : String
+  }
+  class HealthController
+  class GlobalExceptionHandler
+  class ApiError <<record>>
+}
+
+package audit {
+  class AuditLog {
+    +findByDecisionId(decisionId) : Optional<Map>
+    +append(payload, writtenAt)
+  }
+  note bottom of AuditLog
+    INSERT(payload, written_at) seulement (ED-06).
+    Le chaînage (chain_index, prev_hash, hash)
+    est fait EN BASE par le trigger audit_chain,
+    dans le verrou chain_head (ADR-020, OB-2).
+    Index unique sur decisionId => idempotence
+    atomique (ENF-03).
+  end note
+}
+
+package config {
+  class RuleSet <<record>> {
+    +version : String
+    +parameters : Map<String,Object>
+  }
+}
+
+package time {
+  interface "java.time.Clock" as Clock
+  class VirtualClock
+  class MonotonicTimer {
+    {static} +nanos() : long
+  }
+}
+
+EvaluateController --> AuditLog
+EvaluateController --> RuleSet : ruleSetVersion
+EvaluateController --> Clock : evaluatedAt (ADR-019)
+EvaluateController ..> EvaluateRequest
+EvaluateController ..> EvaluateResponse
+EvaluateController ..> MonotonicTimer : latence
+EvaluateResponse o-- TriggeredRule : vide au mois 2
+GlobalExceptionHandler ..> ApiError
+VirtualClock ..|> Clock
+@enduml

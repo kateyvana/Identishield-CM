@@ -1,0 +1,22 @@
+@startuml mois2-etats-ussd
+' Machine à états de la session USSD (EF-06, T2-08) — une branche au mois 2 :
+' le transfert P2P. Fidèle à UssdService / UssdSession.Step.
+
+[*] --> AMOUNT : dial(msisdn)\nsession créée, TTL 5 min
+
+AMOUNT --> BENEFICIARY : montant valide (≥ 1)
+AMOUNT --> AMOUNT : montant invalide\n(redemande)
+BENEFICIARY --> CONFIRM : MSISDN bénéficiaire saisi
+CONFIRM --> [*] : "1" => transferP2P(...)\npuis session supprimée
+CONFIRM --> [*] : autre saisie => annulé,\nsession supprimée
+
+AMOUNT --> [*] : TTL expiré
+BENEFICIARY --> [*] : TTL expiré
+CONFIRM --> [*] : TTL expiré
+
+note right of CONFIRM
+  findActive(id, now) ignore toute session
+  expirée : l'expiration est vérifiée à
+  chaque saisie contre l'horloge injectée.
+end note
+@enduml
