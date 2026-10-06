@@ -28,7 +28,7 @@ class RuleSetTest {
   @Test
   void loadsVersionAndCapProbFromVersionedConfig() throws IOException {
     RuleSet rs = load();
-    assertEquals("rs-0.6.0", rs.version()); // bump M-07 (QUICK_AMOUNTS)
+    assertEquals("rs-0.7.0", rs.version()); // bump M-09 (NONCE_TTL)
     assertEquals(25000L, rs.capProbDailyXaf(), "CAP_PROB.dailyXaf = valeur v1 d'ISC-TM §7");
   }
 }

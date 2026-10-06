@@ -60,4 +60,16 @@ class SignedPayloadTest {
         assertThrows(UnsignableFieldException::class.java) { SignedPayload.transfer("a", "P2P", 1, "b", nonce.drop(1)) }
         assertThrows(UnsignableFieldException::class.java) { SignedPayload.cancel("a", "tr-1", "$nonce|") }
     }
+
+    /** Même vecteur et même empreinte dans CanonicalPayloadTest (serveur, M-09) : mêmes octets des deux côtés. */
+    @Test
+    fun transfer_isByteIdenticalToTheServerCanonical() {
+        val bytes = SignedPayload.transfer("acc-000123", "P2P", 25000, "bén-0045é", nonce)
+        val sha256 =
+            java.security.MessageDigest
+                .getInstance("SHA-256")
+                .digest(bytes)
+                .joinToString("") { "%02x".format(it) }
+        assertEquals("a24d5dd54b7423e70e23105c15a2bed33b07d640c37951f867a19457f5f2aafd", sha256)
+    }
 }

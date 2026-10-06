@@ -10,7 +10,7 @@
 # La version DOIT figurer dans chaque décision /evaluate (EF-11 ruleSetVersion,
 # EF-17). Toute modification d'un paramètre s'accompagne d'un incrément de version.
 ruleset:
-  version: rs-0.6.0 # bump : QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
+  version: rs-0.7.0 # bump : NONCE_TTL (M-09) ; rs-0.6.0 = QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
   parameters:
     CAR_IMSI: PT72H # carence post-changement d'IMSI (72 h, état PROBATION)
     # CAR_ENROL (PT48H, carence post-ré-enrôlement) : RETIRÉ — SRS v1.3, ISC-TM v1.2 §7, ES-03c ; retiré ici par ISC-AMD-02 v1.1
@@ -30,6 +30,7 @@ ruleset:
       newBeneficiaries: 3
       beneficiaryWindow: PT24H
     DEFER: PT4H # temporisation STEP_UP sur USSD
+    NONCE_TTL: PT120S # validité d'un nonce de signature (ES-10 : 120 s) ; nommé par M-09 (ISC-MOB-SPEC §14 « à nommer »)
     OTP: # OTP à usage unique (EF-03) : forme et durée sont des PARAMÈTRES, pas des constantes
       length: 6 # chiffres décimaux
       ttl: PT5M # durée de validité ; OTP_TTL (SRS v1.4 §0) est un alias de OTP.ttl

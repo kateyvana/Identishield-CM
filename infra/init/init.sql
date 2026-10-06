@@ -85,9 +85,9 @@ CREATE TABLE core.notification (
     sent_at       timestamptz NOT NULL
 );
 
--- ================= SCHEMA pdp : audit seul au mois 2 (T2-01) =================
--- Le reste des entites du PDP (device, trust_state, decision, freeze, nonce...)
--- vient au mois 4 : ne PAS les creer ici. Table d'audit reprise de SPIKE-3.
+-- ================= SCHEMA pdp : audit (T2-01), device et nonce (M-09) =================
+-- Les autres entites du PDP (trust_state, decision, freeze...) viennent au mois 4 : ne PAS
+-- les creer ici. Table d'audit reprise de SPIKE-3.
 CREATE TABLE pdp.audit_entry (
     seq         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,   -- OB-4 : insertion « entre deux » impossible
     chain_index bigint      NOT NULL,   -- OB-2 : assigne DANS le verrou par T2-06 ; cree des maintenant (forme finale)
@@ -109,6 +109,28 @@ CREATE TABLE pdp.chain_head (
 INSERT INTO pdp.chain_head (id, last_seq, head_hash, entry_count)
 VALUES (true, 0, repeat('0', 64), 0);   -- genese
 
+-- M-09 : cles d'appareil (ISC-SAD §9.2 device). Une seule cle ACTIVE par compte (ES-20),
+-- garantie PAR LA BASE ; la precedente est revoquee a l'enregistrement d'une nouvelle (ES-14b).
+CREATE TABLE pdp.device (
+    id          text PRIMARY KEY,
+    account_id  text        NOT NULL,
+    public_key  text        NOT NULL,   -- SubjectPublicKeyInfo DER en base64, EC P-256 (ADR-018)
+    state       text        NOT NULL CHECK (state IN ('ACTIVE', 'REVOKED')),
+    enrolled_at timestamptz NOT NULL,   -- fourni par l'app (ED-04) ; aucun DEFAULT d'horloge
+    revoked_at  timestamptz
+);
+CREATE UNIQUE INDEX device_one_active_per_account ON pdp.device (account_id) WHERE state = 'ACTIVE';
+
+-- M-09 : nonces (ISC-SAD §9.2 nonce ; ES-10). Usage unique garanti par un UPDATE conditionnel
+-- atomique (consumed_at IS NULL) : de deux presentations concurrentes, une seule consomme.
+CREATE TABLE pdp.nonce (
+    value       text PRIMARY KEY CHECK (value ~ '^[0-9a-f]{32}$'),
+    account_id  text        NOT NULL,
+    issued_at   timestamptz NOT NULL,
+    expires_at  timestamptz NOT NULL,   -- issued_at + NONCE_TTL (config/ruleset.yaml)
+    consumed_at timestamptz
+);
+
 -- ======================= Privileges (ISC-SAD §10.1) =======================
 -- core : le service coeur gere ses propres entites.
 GRANT USAGE ON SCHEMA core TO isc_core_app;
@@ -120,9 +142,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA core TO isc_core_ap
 -- seule discipline applicative. account/transaction/hlr_subscriber gardent leurs droits.
 REVOKE UPDATE, DELETE ON core.hlr_reassignment FROM isc_core_app;
 
--- pdp : le role applicatif ne touche QUE l'audit, en SELECT + INSERT (ED-06).
+-- pdp : l'audit en SELECT + INSERT seulement (ED-06) ; device et nonce en SELECT, INSERT,
+-- UPDATE (revocation, consommation), jamais DELETE (M-09).
 GRANT USAGE ON SCHEMA pdp TO isc_pdp_app;
 GRANT SELECT, INSERT ON pdp.audit_entry TO isc_pdp_app;
+GRANT SELECT, INSERT, UPDATE ON pdp.device, pdp.nonce TO isc_pdp_app;
 GRANT USAGE ON SEQUENCE pdp.audit_entry_seq_seq TO isc_pdp_app;  -- USAGE sans UPDATE => setval refuse
 -- Aucun GRANT sur pdp.chain_head : le role applicatif n'y accede pas.
 

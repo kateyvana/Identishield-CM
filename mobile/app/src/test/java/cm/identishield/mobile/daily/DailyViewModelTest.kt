@@ -41,6 +41,7 @@ private const val PIN = "1234"
 private const val CHALLENGE = "défi_é-AAEC" // non ASCII et « base64 » d'apparence : signé tel quel
 private const val NONCE_1 = "0123456789abcdef0123456789abcdef"
 private const val NONCE_2 = "fedcba9876543210fedcba9876543210"
+private const val SESSION_FROM_E09 = "jeton-e09" // jeton fictif ouvert en fin de flux A (E-09)
 private val ACCOUNT = Account("acc-000123", ME, "Amina NDONGO ÉLOMO", 152300, "TRUSTED", emptyList())
 private val JEAN = Holder("677000456", "acc-000456", "Jean-Paul NKOA", newBeneficiary = true)
 private val TXS =
@@ -252,7 +253,7 @@ class DailyViewModelTest {
 
     @Test
     fun sessionOpenedByEnrolment_goesStraightHome_withoutAChallenge() {
-        session.token = "jeton-e09"
+        session.token = SESSION_FROM_E09
         val vm = vm().apply { start() }
         assertEquals(DailyStep.Home(ACCOUNT, TXS), vm.step.value)
         assertEquals(listOf("account", "transactions"), repo.calls)
