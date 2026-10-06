@@ -1,0 +1,2575 @@
+{
+ "integrite": {
+  "vue_detecteur": {
+   "sha256": "c165d55bed40c441c16e2f7d5e987b8a67cceb71eb71e470cbc2309d18ac8adc",
+   "identique_au_gel": true
+  },
+  "sidecar_labels": {
+   "sha256": "6bc9ecbc6387e678fa6bb374f7ae20a125a8d43db162268ef26ad443fb4e2998",
+   "identique_au_gel": true
+  },
+  "hlr_events": {
+   "sha256": "12fb1a9121de3ce6ba80f6828465ec2b245b2a5afbde232300155cb55a93c36f",
+   "identique_au_gel": true
+  }
+ },
+ "fenetre_jours": 182,
+ "denominateurs": {
+  "ordinaire": {
+   "usagers": 1292,
+   "tx": 135733,
+   "sorties": 65636
+  },
+  "salarie": {
+   "usagers": 646,
+   "tx": 189234,
+   "sorties": 84010
+  },
+  "victime": {
+   "usagers": 129,
+   "tx": 13980,
+   "sorties": 6755
+  },
+  "marchand": {
+   "usagers": 388,
+   "tx": 186942,
+   "sorties": 27896
+  },
+  "agent": {
+   "usagers": 25,
+   "tx": 98756,
+   "sorties": 49215
+  }
+ },
+ "A_vel_sorties": {
+  ">3 sorties / 5 min": {
+   "ordinaire": {
+    "tx_declenchees": 41,
+    "fpr_tx_pct": 0.03,
+    "usagers_touches": 36,
+    "part_usagers_pct": 2.786
+   },
+   "salarie": {
+    "tx_declenchees": 237,
+    "fpr_tx_pct": 0.125,
+    "usagers_touches": 155,
+    "part_usagers_pct": 23.994
+   },
+   "victime": {
+    "tx_declenchees": 3,
+    "fpr_tx_pct": 0.021,
+    "usagers_touches": 3,
+    "part_usagers_pct": 2.326
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 16,
+    "fpr_tx_pct": 0.016,
+    "usagers_touches": 1,
+    "part_usagers_pct": 4.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 281,
+    "fpr_tx_pct": 0.053,
+    "usagers_touches": 194,
+    "part_usagers_pct": 7.902
+   },
+   "pire_persona_hors_agents": [
+    0.125,
+    "salarie"
+   ]
+  },
+  ">4 sorties / 5 min": {
+   "ordinaire": {
+    "tx_declenchees": 5,
+    "fpr_tx_pct": 0.004,
+    "usagers_touches": 4,
+    "part_usagers_pct": 0.31
+   },
+   "salarie": {
+    "tx_declenchees": 48,
+    "fpr_tx_pct": 0.025,
+    "usagers_touches": 39,
+    "part_usagers_pct": 6.037
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 53,
+    "fpr_tx_pct": 0.01,
+    "usagers_touches": 43,
+    "part_usagers_pct": 1.752
+   },
+   "pire_persona_hors_agents": [
+    0.025,
+    "salarie"
+   ]
+  },
+  ">5 sorties / 5 min": {
+   "ordinaire": {
+    "tx_declenchees": 1,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 1,
+    "part_usagers_pct": 0.077
+   },
+   "salarie": {
+    "tx_declenchees": 8,
+    "fpr_tx_pct": 0.004,
+    "usagers_touches": 7,
+    "part_usagers_pct": 1.084
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 9,
+    "fpr_tx_pct": 0.002,
+    "usagers_touches": 8,
+    "part_usagers_pct": 0.326
+   },
+   "pire_persona_hors_agents": [
+    0.004,
+    "salarie"
+   ]
+  },
+  ">6 sorties / 5 min": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  ">8 sorties / 5 min": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  ">3 sorties / 10 min": {
+   "ordinaire": {
+    "tx_declenchees": 41,
+    "fpr_tx_pct": 0.03,
+    "usagers_touches": 36,
+    "part_usagers_pct": 2.786
+   },
+   "salarie": {
+    "tx_declenchees": 239,
+    "fpr_tx_pct": 0.126,
+    "usagers_touches": 156,
+    "part_usagers_pct": 24.149
+   },
+   "victime": {
+    "tx_declenchees": 3,
+    "fpr_tx_pct": 0.021,
+    "usagers_touches": 3,
+    "part_usagers_pct": 2.326
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 195,
+    "fpr_tx_pct": 0.197,
+    "usagers_touches": 5,
+    "part_usagers_pct": 20.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 283,
+    "fpr_tx_pct": 0.054,
+    "usagers_touches": 195,
+    "part_usagers_pct": 7.943
+   },
+   "pire_persona_hors_agents": [
+    0.126,
+    "salarie"
+   ]
+  },
+  ">4 sorties / 10 min": {
+   "ordinaire": {
+    "tx_declenchees": 5,
+    "fpr_tx_pct": 0.004,
+    "usagers_touches": 4,
+    "part_usagers_pct": 0.31
+   },
+   "salarie": {
+    "tx_declenchees": 48,
+    "fpr_tx_pct": 0.025,
+    "usagers_touches": 39,
+    "part_usagers_pct": 6.037
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 22,
+    "fpr_tx_pct": 0.022,
+    "usagers_touches": 1,
+    "part_usagers_pct": 4.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 53,
+    "fpr_tx_pct": 0.01,
+    "usagers_touches": 43,
+    "part_usagers_pct": 1.752
+   },
+   "pire_persona_hors_agents": [
+    0.025,
+    "salarie"
+   ]
+  },
+  ">5 sorties / 10 min": {
+   "ordinaire": {
+    "tx_declenchees": 1,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 1,
+    "part_usagers_pct": 0.077
+   },
+   "salarie": {
+    "tx_declenchees": 8,
+    "fpr_tx_pct": 0.004,
+    "usagers_touches": 7,
+    "part_usagers_pct": 1.084
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 3,
+    "fpr_tx_pct": 0.003,
+    "usagers_touches": 1,
+    "part_usagers_pct": 4.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 9,
+    "fpr_tx_pct": 0.002,
+    "usagers_touches": 8,
+    "part_usagers_pct": 0.326
+   },
+   "pire_persona_hors_agents": [
+    0.004,
+    "salarie"
+   ]
+  },
+  ">6 sorties / 10 min": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  ">8 sorties / 10 min": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  ">3 sorties / 15 min": {
+   "ordinaire": {
+    "tx_declenchees": 42,
+    "fpr_tx_pct": 0.031,
+    "usagers_touches": 37,
+    "part_usagers_pct": 2.864
+   },
+   "salarie": {
+    "tx_declenchees": 239,
+    "fpr_tx_pct": 0.126,
+    "usagers_touches": 156,
+    "part_usagers_pct": 24.149
+   },
+   "victime": {
+    "tx_declenchees": 3,
+    "fpr_tx_pct": 0.021,
+    "usagers_touches": 3,
+    "part_usagers_pct": 2.326
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 543,
+    "fpr_tx_pct": 0.55,
+    "usagers_touches": 10,
+    "part_usagers_pct": 40.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 284,
+    "fpr_tx_pct": 0.054,
+    "usagers_touches": 196,
+    "part_usagers_pct": 7.984
+   },
+   "pire_persona_hors_agents": [
+    0.126,
+    "salarie"
+   ]
+  },
+  ">4 sorties / 15 min": {
+   "ordinaire": {
+    "tx_declenchees": 5,
+    "fpr_tx_pct": 0.004,
+    "usagers_touches": 4,
+    "part_usagers_pct": 0.31
+   },
+   "salarie": {
+    "tx_declenchees": 48,
+    "fpr_tx_pct": 0.025,
+    "usagers_touches": 39,
+    "part_usagers_pct": 6.037
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 101,
+    "fpr_tx_pct": 0.102,
+    "usagers_touches": 3,
+    "part_usagers_pct": 12.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 53,
+    "fpr_tx_pct": 0.01,
+    "usagers_touches": 43,
+    "part_usagers_pct": 1.752
+   },
+   "pire_persona_hors_agents": [
+    0.025,
+    "salarie"
+   ]
+  },
+  ">5 sorties / 15 min": {
+   "ordinaire": {
+    "tx_declenchees": 1,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 1,
+    "part_usagers_pct": 0.077
+   },
+   "salarie": {
+    "tx_declenchees": 8,
+    "fpr_tx_pct": 0.004,
+    "usagers_touches": 7,
+    "part_usagers_pct": 1.084
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 21,
+    "fpr_tx_pct": 0.021,
+    "usagers_touches": 2,
+    "part_usagers_pct": 8.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 9,
+    "fpr_tx_pct": 0.002,
+    "usagers_touches": 8,
+    "part_usagers_pct": 0.326
+   },
+   "pire_persona_hors_agents": [
+    0.004,
+    "salarie"
+   ]
+  },
+  ">6 sorties / 15 min": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 2,
+    "fpr_tx_pct": 0.002,
+    "usagers_touches": 1,
+    "part_usagers_pct": 4.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  ">8 sorties / 15 min": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  ">3 sorties / 30 min": {
+   "ordinaire": {
+    "tx_declenchees": 42,
+    "fpr_tx_pct": 0.031,
+    "usagers_touches": 37,
+    "part_usagers_pct": 2.864
+   },
+   "salarie": {
+    "tx_declenchees": 244,
+    "fpr_tx_pct": 0.129,
+    "usagers_touches": 159,
+    "part_usagers_pct": 24.613
+   },
+   "victime": {
+    "tx_declenchees": 3,
+    "fpr_tx_pct": 0.021,
+    "usagers_touches": 3,
+    "part_usagers_pct": 2.326
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 2684,
+    "fpr_tx_pct": 2.718,
+    "usagers_touches": 14,
+    "part_usagers_pct": 56.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 289,
+    "fpr_tx_pct": 0.055,
+    "usagers_touches": 199,
+    "part_usagers_pct": 8.106
+   },
+   "pire_persona_hors_agents": [
+    0.129,
+    "salarie"
+   ]
+  },
+  ">4 sorties / 30 min": {
+   "ordinaire": {
+    "tx_declenchees": 5,
+    "fpr_tx_pct": 0.004,
+    "usagers_touches": 4,
+    "part_usagers_pct": 0.31
+   },
+   "salarie": {
+    "tx_declenchees": 49,
+    "fpr_tx_pct": 0.026,
+    "usagers_touches": 40,
+    "part_usagers_pct": 6.192
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 967,
+    "fpr_tx_pct": 0.979,
+    "usagers_touches": 9,
+    "part_usagers_pct": 36.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 54,
+    "fpr_tx_pct": 0.01,
+    "usagers_touches": 44,
+    "part_usagers_pct": 1.792
+   },
+   "pire_persona_hors_agents": [
+    0.026,
+    "salarie"
+   ]
+  },
+  ">5 sorties / 30 min": {
+   "ordinaire": {
+    "tx_declenchees": 1,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 1,
+    "part_usagers_pct": 0.077
+   },
+   "salarie": {
+    "tx_declenchees": 8,
+    "fpr_tx_pct": 0.004,
+    "usagers_touches": 7,
+    "part_usagers_pct": 1.084
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 282,
+    "fpr_tx_pct": 0.286,
+    "usagers_touches": 3,
+    "part_usagers_pct": 12.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 9,
+    "fpr_tx_pct": 0.002,
+    "usagers_touches": 8,
+    "part_usagers_pct": 0.326
+   },
+   "pire_persona_hors_agents": [
+    0.004,
+    "salarie"
+   ]
+  },
+  ">6 sorties / 30 min": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 69,
+    "fpr_tx_pct": 0.07,
+    "usagers_touches": 2,
+    "part_usagers_pct": 8.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  ">8 sorties / 30 min": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 6,
+    "fpr_tx_pct": 0.006,
+    "usagers_touches": 1,
+    "part_usagers_pct": 4.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  }
+ },
+ "B_vel_beneficiaires": {
+  "sidecar : > 2 nouveaux / 24 h": {
+   "ordinaire": {
+    "tx_declenchees": 1,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 1,
+    "part_usagers_pct": 0.077
+   },
+   "salarie": {
+    "tx_declenchees": 2,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 2,
+    "part_usagers_pct": 0.31
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 1,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 1,
+    "part_usagers_pct": 0.258
+   },
+   "agent": {
+    "tx_declenchees": 4836,
+    "fpr_tx_pct": 4.897,
+    "usagers_touches": 24,
+    "part_usagers_pct": 96.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 4,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 4,
+    "part_usagers_pct": 0.163
+   },
+   "pire_persona_hors_agents": [
+    0.001,
+    "salarie"
+   ]
+  },
+  "sidecar : > 3 nouveaux / 24 h": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 3660,
+    "fpr_tx_pct": 3.706,
+    "usagers_touches": 20,
+    "part_usagers_pct": 80.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  "sidecar : > 4 nouveaux / 24 h": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 2823,
+    "fpr_tx_pct": 2.859,
+    "usagers_touches": 18,
+    "part_usagers_pct": 72.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  "sidecar : > 5 nouveaux / 24 h": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 2248,
+    "fpr_tx_pct": 2.276,
+    "usagers_touches": 13,
+    "part_usagers_pct": 52.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  "flux_observe_rodage_30j : > 2 nouveaux / 24 h": {
+   "ordinaire": {
+    "tx_declenchees": 1,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 1,
+    "part_usagers_pct": 0.077
+   },
+   "salarie": {
+    "tx_declenchees": 2,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 2,
+    "part_usagers_pct": 0.31
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 4050,
+    "fpr_tx_pct": 4.101,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 3,
+    "fpr_tx_pct": 0.001,
+    "usagers_touches": 3,
+    "part_usagers_pct": 0.122
+   },
+   "pire_persona_hors_agents": [
+    0.001,
+    "salarie"
+   ]
+  },
+  "flux_observe_rodage_30j : > 3 nouveaux / 24 h": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 3018,
+    "fpr_tx_pct": 3.056,
+    "usagers_touches": 23,
+    "part_usagers_pct": 92.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  "flux_observe_rodage_30j : > 4 nouveaux / 24 h": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 2303,
+    "fpr_tx_pct": 2.332,
+    "usagers_touches": 18,
+    "part_usagers_pct": 72.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  },
+  "flux_observe_rodage_30j : > 5 nouveaux / 24 h": {
+   "ordinaire": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "salarie": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "victime": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "marchand": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "agent": {
+    "tx_declenchees": 1826,
+    "fpr_tx_pct": 1.849,
+    "usagers_touches": 13,
+    "part_usagers_pct": 52.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 0,
+    "fpr_tx_pct": 0.0,
+    "usagers_touches": 0,
+    "part_usagers_pct": 0.0
+   },
+   "pire_persona_hors_agents": [
+    0.0,
+    "victime"
+   ]
+  }
+ },
+ "B_nouveaute_comparee_hors_agents_apres_rodage": {
+  "sorties": 155128,
+  "nouveau_sidecar_pct": 4.884,
+  "nouveau_flux_observe_pct": 5.055
+ },
+ "C_night_exposition": {
+  "H0_reel_en_UTC : 23h-05h": {
+   "ordinaire": {
+    "tx_declenchees": 4225,
+    "fpr_tx_pct": 3.113,
+    "usagers_touches": 1055,
+    "part_usagers_pct": 81.656
+   },
+   "salarie": {
+    "tx_declenchees": 5062,
+    "fpr_tx_pct": 2.675,
+    "usagers_touches": 646,
+    "part_usagers_pct": 100.0
+   },
+   "victime": {
+    "tx_declenchees": 449,
+    "fpr_tx_pct": 3.212,
+    "usagers_touches": 103,
+    "part_usagers_pct": 79.845
+   },
+   "marchand": {
+    "tx_declenchees": 1369,
+    "fpr_tx_pct": 0.732,
+    "usagers_touches": 374,
+    "part_usagers_pct": 96.392
+   },
+   "agent": {
+    "tx_declenchees": 3191,
+    "fpr_tx_pct": 3.231,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 11105,
+    "fpr_tx_pct": 2.112,
+    "usagers_touches": 2178,
+    "part_usagers_pct": 88.717
+   },
+   "pire_persona_hors_agents": [
+    3.212,
+    "victime"
+   ],
+   "NIGHT_et_nouveau_beneficiaire_fpr_tx_pct": {
+    "ordinaire": 0.158,
+    "salarie": 0.083,
+    "victime": 0.143,
+    "marchand": 0.071,
+    "agent": 0.492
+   }
+  },
+  "H0_reel_en_UTC : 00h-05h": {
+   "ordinaire": {
+    "tx_declenchees": 3343,
+    "fpr_tx_pct": 2.463,
+    "usagers_touches": 1009,
+    "part_usagers_pct": 78.096
+   },
+   "salarie": {
+    "tx_declenchees": 3997,
+    "fpr_tx_pct": 2.112,
+    "usagers_touches": 646,
+    "part_usagers_pct": 100.0
+   },
+   "victime": {
+    "tx_declenchees": 356,
+    "fpr_tx_pct": 2.546,
+    "usagers_touches": 98,
+    "part_usagers_pct": 75.969
+   },
+   "marchand": {
+    "tx_declenchees": 1091,
+    "fpr_tx_pct": 0.584,
+    "usagers_touches": 364,
+    "part_usagers_pct": 93.814
+   },
+   "agent": {
+    "tx_declenchees": 2523,
+    "fpr_tx_pct": 2.555,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 8787,
+    "fpr_tx_pct": 1.671,
+    "usagers_touches": 2117,
+    "part_usagers_pct": 86.232
+   },
+   "pire_persona_hors_agents": [
+    2.546,
+    "victime"
+   ],
+   "NIGHT_et_nouveau_beneficiaire_fpr_tx_pct": {
+    "ordinaire": 0.13,
+    "salarie": 0.066,
+    "victime": 0.107,
+    "marchand": 0.058,
+    "agent": 0.39
+   }
+  },
+  "H0_reel_en_UTC : 00h-04h": {
+   "ordinaire": {
+    "tx_declenchees": 3039,
+    "fpr_tx_pct": 2.239,
+    "usagers_touches": 988,
+    "part_usagers_pct": 76.471
+   },
+   "salarie": {
+    "tx_declenchees": 3645,
+    "fpr_tx_pct": 1.926,
+    "usagers_touches": 644,
+    "part_usagers_pct": 99.69
+   },
+   "victime": {
+    "tx_declenchees": 316,
+    "fpr_tx_pct": 2.26,
+    "usagers_touches": 98,
+    "part_usagers_pct": 75.969
+   },
+   "marchand": {
+    "tx_declenchees": 994,
+    "fpr_tx_pct": 0.532,
+    "usagers_touches": 353,
+    "part_usagers_pct": 90.979
+   },
+   "agent": {
+    "tx_declenchees": 2290,
+    "fpr_tx_pct": 2.319,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 7994,
+    "fpr_tx_pct": 1.52,
+    "usagers_touches": 2083,
+    "part_usagers_pct": 84.847
+   },
+   "pire_persona_hors_agents": [
+    2.26,
+    "victime"
+   ],
+   "NIGHT_et_nouveau_beneficiaire_fpr_tx_pct": {
+    "ordinaire": 0.119,
+    "salarie": 0.06,
+    "victime": 0.107,
+    "marchand": 0.053,
+    "agent": 0.366
+   }
+  },
+  "H0_reel_en_UTC : 01h-05h": {
+   "ordinaire": {
+    "tx_declenchees": 1503,
+    "fpr_tx_pct": 1.107,
+    "usagers_touches": 765,
+    "part_usagers_pct": 59.211
+   },
+   "salarie": {
+    "tx_declenchees": 1781,
+    "fpr_tx_pct": 0.941,
+    "usagers_touches": 598,
+    "part_usagers_pct": 92.57
+   },
+   "victime": {
+    "tx_declenchees": 175,
+    "fpr_tx_pct": 1.252,
+    "usagers_touches": 82,
+    "part_usagers_pct": 63.566
+   },
+   "marchand": {
+    "tx_declenchees": 507,
+    "fpr_tx_pct": 0.271,
+    "usagers_touches": 277,
+    "part_usagers_pct": 71.392
+   },
+   "agent": {
+    "tx_declenchees": 1138,
+    "fpr_tx_pct": 1.152,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 3966,
+    "fpr_tx_pct": 0.754,
+    "usagers_touches": 1722,
+    "part_usagers_pct": 70.143
+   },
+   "pire_persona_hors_agents": [
+    1.252,
+    "victime"
+   ],
+   "NIGHT_et_nouveau_beneficiaire_fpr_tx_pct": {
+    "ordinaire": 0.052,
+    "salarie": 0.037,
+    "victime": 0.043,
+    "marchand": 0.027,
+    "agent": 0.149
+   }
+  },
+  "H1_reel_en_WAT : 23h-05h": {
+   "ordinaire": {
+    "tx_declenchees": 3922,
+    "fpr_tx_pct": 2.889,
+    "usagers_touches": 1054,
+    "part_usagers_pct": 81.579
+   },
+   "salarie": {
+    "tx_declenchees": 4615,
+    "fpr_tx_pct": 2.439,
+    "usagers_touches": 646,
+    "part_usagers_pct": 100.0
+   },
+   "victime": {
+    "tx_declenchees": 415,
+    "fpr_tx_pct": 2.969,
+    "usagers_touches": 100,
+    "part_usagers_pct": 77.519
+   },
+   "marchand": {
+    "tx_declenchees": 1256,
+    "fpr_tx_pct": 0.672,
+    "usagers_touches": 370,
+    "part_usagers_pct": 95.361
+   },
+   "agent": {
+    "tx_declenchees": 2934,
+    "fpr_tx_pct": 2.971,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 10208,
+    "fpr_tx_pct": 1.941,
+    "usagers_touches": 2170,
+    "part_usagers_pct": 88.391
+   },
+   "pire_persona_hors_agents": [
+    2.969,
+    "victime"
+   ],
+   "NIGHT_et_nouveau_beneficiaire_fpr_tx_pct": {
+    "ordinaire": 0.153,
+    "salarie": 0.075,
+    "victime": 0.136,
+    "marchand": 0.07,
+    "agent": 0.464
+   }
+  },
+  "H1_reel_en_WAT : 00h-05h": {
+   "ordinaire": {
+    "tx_declenchees": 2082,
+    "fpr_tx_pct": 1.534,
+    "usagers_touches": 887,
+    "part_usagers_pct": 68.653
+   },
+   "salarie": {
+    "tx_declenchees": 2399,
+    "fpr_tx_pct": 1.268,
+    "usagers_touches": 625,
+    "part_usagers_pct": 96.749
+   },
+   "victime": {
+    "tx_declenchees": 234,
+    "fpr_tx_pct": 1.674,
+    "usagers_touches": 88,
+    "part_usagers_pct": 68.217
+   },
+   "marchand": {
+    "tx_declenchees": 672,
+    "fpr_tx_pct": 0.359,
+    "usagers_touches": 319,
+    "part_usagers_pct": 82.216
+   },
+   "agent": {
+    "tx_declenchees": 1549,
+    "fpr_tx_pct": 1.569,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 5387,
+    "fpr_tx_pct": 1.024,
+    "usagers_touches": 1919,
+    "part_usagers_pct": 78.167
+   },
+   "pire_persona_hors_agents": [
+    1.674,
+    "victime"
+   ],
+   "NIGHT_et_nouveau_beneficiaire_fpr_tx_pct": {
+    "ordinaire": 0.074,
+    "salarie": 0.047,
+    "victime": 0.072,
+    "marchand": 0.039,
+    "agent": 0.223
+   }
+  },
+  "H1_reel_en_WAT : 00h-04h": {
+   "ordinaire": {
+    "tx_declenchees": 1503,
+    "fpr_tx_pct": 1.107,
+    "usagers_touches": 765,
+    "part_usagers_pct": 59.211
+   },
+   "salarie": {
+    "tx_declenchees": 1781,
+    "fpr_tx_pct": 0.941,
+    "usagers_touches": 598,
+    "part_usagers_pct": 92.57
+   },
+   "victime": {
+    "tx_declenchees": 175,
+    "fpr_tx_pct": 1.252,
+    "usagers_touches": 82,
+    "part_usagers_pct": 63.566
+   },
+   "marchand": {
+    "tx_declenchees": 507,
+    "fpr_tx_pct": 0.271,
+    "usagers_touches": 277,
+    "part_usagers_pct": 71.392
+   },
+   "agent": {
+    "tx_declenchees": 1138,
+    "fpr_tx_pct": 1.152,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 3966,
+    "fpr_tx_pct": 0.754,
+    "usagers_touches": 1722,
+    "part_usagers_pct": 70.143
+   },
+   "pire_persona_hors_agents": [
+    1.252,
+    "victime"
+   ],
+   "NIGHT_et_nouveau_beneficiaire_fpr_tx_pct": {
+    "ordinaire": 0.052,
+    "salarie": 0.037,
+    "victime": 0.043,
+    "marchand": 0.027,
+    "agent": 0.149
+   }
+  },
+  "H1_reel_en_WAT : 01h-05h": {
+   "ordinaire": {
+    "tx_declenchees": 1529,
+    "fpr_tx_pct": 1.126,
+    "usagers_touches": 772,
+    "part_usagers_pct": 59.752
+   },
+   "salarie": {
+    "tx_declenchees": 1742,
+    "fpr_tx_pct": 0.921,
+    "usagers_touches": 586,
+    "part_usagers_pct": 90.712
+   },
+   "victime": {
+    "tx_declenchees": 176,
+    "fpr_tx_pct": 1.259,
+    "usagers_touches": 79,
+    "part_usagers_pct": 61.24
+   },
+   "marchand": {
+    "tx_declenchees": 498,
+    "fpr_tx_pct": 0.266,
+    "usagers_touches": 277,
+    "part_usagers_pct": 71.392
+   },
+   "agent": {
+    "tx_declenchees": 1155,
+    "fpr_tx_pct": 1.17,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 3945,
+    "fpr_tx_pct": 0.75,
+    "usagers_touches": 1714,
+    "part_usagers_pct": 69.817
+   },
+   "pire_persona_hors_agents": [
+    1.259,
+    "victime"
+   ],
+   "NIGHT_et_nouveau_beneficiaire_fpr_tx_pct": {
+    "ordinaire": 0.047,
+    "salarie": 0.032,
+    "victime": 0.05,
+    "marchand": 0.026,
+    "agent": 0.164
+   }
+  }
+ },
+ "D1_cap_prob_probation": {
+  "evenements_hlr": 141,
+  "car_imsi_h": 72,
+  "tx_en_probation_par_persona": {
+   "marchand": 245,
+   "salarie": 253,
+   "ordinaire": 111,
+   "victime": 12
+  },
+  "grille": {
+   "min(10000 ; 10 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 15,
+     "fpr_tx_pct": 0.011,
+     "usagers_touches": 13,
+     "part_usagers_pct": 1.006
+    },
+    "salarie": {
+     "tx_declenchees": 20,
+     "fpr_tx_pct": 0.011,
+     "usagers_touches": 16,
+     "part_usagers_pct": 2.477
+    },
+    "victime": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.775
+    },
+    "marchand": {
+     "tx_declenchees": 12,
+     "fpr_tx_pct": 0.006,
+     "usagers_touches": 7,
+     "part_usagers_pct": 1.804
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 48,
+     "fpr_tx_pct": 0.009,
+     "usagers_touches": 37,
+     "part_usagers_pct": 1.507
+    },
+    "pire_persona_hors_agents": [
+     0.011,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 10,
+     "salarie": 18,
+     "ordinaire": 14,
+     "victime": 1
+    }
+   },
+   "min(10000 ; 25 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 13,
+     "fpr_tx_pct": 0.01,
+     "usagers_touches": 12,
+     "part_usagers_pct": 0.929
+    },
+    "salarie": {
+     "tx_declenchees": 20,
+     "fpr_tx_pct": 0.011,
+     "usagers_touches": 16,
+     "part_usagers_pct": 2.477
+    },
+    "victime": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.775
+    },
+    "marchand": {
+     "tx_declenchees": 12,
+     "fpr_tx_pct": 0.006,
+     "usagers_touches": 7,
+     "part_usagers_pct": 1.804
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 46,
+     "fpr_tx_pct": 0.009,
+     "usagers_touches": 36,
+     "part_usagers_pct": 1.466
+    },
+    "pire_persona_hors_agents": [
+     0.011,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 10,
+     "salarie": 18,
+     "ordinaire": 12,
+     "victime": 1
+    }
+   },
+   "min(10000 ; 50 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 9,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 8,
+     "part_usagers_pct": 0.619
+    },
+    "salarie": {
+     "tx_declenchees": 20,
+     "fpr_tx_pct": 0.011,
+     "usagers_touches": 16,
+     "part_usagers_pct": 2.477
+    },
+    "victime": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "marchand": {
+     "tx_declenchees": 12,
+     "fpr_tx_pct": 0.006,
+     "usagers_touches": 7,
+     "part_usagers_pct": 1.804
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 41,
+     "fpr_tx_pct": 0.008,
+     "usagers_touches": 31,
+     "part_usagers_pct": 1.263
+    },
+    "pire_persona_hors_agents": [
+     0.011,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 10,
+     "salarie": 18,
+     "ordinaire": 8
+    }
+   },
+   "10000 seul": {
+    "ordinaire": {
+     "tx_declenchees": 7,
+     "fpr_tx_pct": 0.005,
+     "usagers_touches": 7,
+     "part_usagers_pct": 0.542
+    },
+    "salarie": {
+     "tx_declenchees": 20,
+     "fpr_tx_pct": 0.011,
+     "usagers_touches": 16,
+     "part_usagers_pct": 2.477
+    },
+    "victime": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "marchand": {
+     "tx_declenchees": 12,
+     "fpr_tx_pct": 0.006,
+     "usagers_touches": 7,
+     "part_usagers_pct": 1.804
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 39,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 30,
+     "part_usagers_pct": 1.222
+    },
+    "pire_persona_hors_agents": [
+     0.011,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 10,
+     "salarie": 18,
+     "ordinaire": 6
+    }
+   },
+   "min(25000 ; 10 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 14,
+     "fpr_tx_pct": 0.01,
+     "usagers_touches": 12,
+     "part_usagers_pct": 0.929
+    },
+    "salarie": {
+     "tx_declenchees": 13,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 10,
+     "part_usagers_pct": 1.548
+    },
+    "victime": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.775
+    },
+    "marchand": {
+     "tx_declenchees": 8,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 6,
+     "part_usagers_pct": 1.546
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 36,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 29,
+     "part_usagers_pct": 1.181
+    },
+    "pire_persona_hors_agents": [
+     0.01,
+     "ordinaire"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 6,
+     "salarie": 11,
+     "ordinaire": 13,
+     "victime": 1
+    }
+   },
+   "min(25000 ; 25 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 10,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 9,
+     "part_usagers_pct": 0.697
+    },
+    "salarie": {
+     "tx_declenchees": 12,
+     "fpr_tx_pct": 0.006,
+     "usagers_touches": 10,
+     "part_usagers_pct": 1.548
+    },
+    "victime": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.775
+    },
+    "marchand": {
+     "tx_declenchees": 6,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 6,
+     "part_usagers_pct": 1.546
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 29,
+     "fpr_tx_pct": 0.006,
+     "usagers_touches": 26,
+     "part_usagers_pct": 1.059
+    },
+    "pire_persona_hors_agents": [
+     0.007,
+     "victime"
+    ],
+    "dont_plafond_seul_tx": {
+     "salarie": 10,
+     "ordinaire": 9,
+     "marchand": 4,
+     "victime": 1
+    }
+   },
+   "min(25000 ; 50 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 5,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 5,
+     "part_usagers_pct": 0.387
+    },
+    "salarie": {
+     "tx_declenchees": 10,
+     "fpr_tx_pct": 0.005,
+     "usagers_touches": 8,
+     "part_usagers_pct": 1.238
+    },
+    "victime": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "marchand": {
+     "tx_declenchees": 6,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 6,
+     "part_usagers_pct": 1.546
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 21,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 19,
+     "part_usagers_pct": 0.774
+    },
+    "pire_persona_hors_agents": [
+     0.005,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "ordinaire": 4,
+     "marchand": 4,
+     "salarie": 8
+    }
+   },
+   "25000 seul": {
+    "ordinaire": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.001,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.077
+    },
+    "salarie": {
+     "tx_declenchees": 10,
+     "fpr_tx_pct": 0.005,
+     "usagers_touches": 8,
+     "part_usagers_pct": 1.238
+    },
+    "victime": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "marchand": {
+     "tx_declenchees": 6,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 6,
+     "part_usagers_pct": 1.546
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 17,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 15,
+     "part_usagers_pct": 0.611
+    },
+    "pire_persona_hors_agents": [
+     0.005,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 4,
+     "salarie": 8
+    }
+   },
+   "min(50000 ; 10 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 14,
+     "fpr_tx_pct": 0.01,
+     "usagers_touches": 12,
+     "part_usagers_pct": 0.929
+    },
+    "salarie": {
+     "tx_declenchees": 13,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 10,
+     "part_usagers_pct": 1.548
+    },
+    "victime": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.775
+    },
+    "marchand": {
+     "tx_declenchees": 7,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 5,
+     "part_usagers_pct": 1.289
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 35,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 28,
+     "part_usagers_pct": 1.141
+    },
+    "pire_persona_hors_agents": [
+     0.01,
+     "ordinaire"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 5,
+     "salarie": 11,
+     "ordinaire": 13,
+     "victime": 1
+    }
+   },
+   "min(50000 ; 25 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 10,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 9,
+     "part_usagers_pct": 0.697
+    },
+    "salarie": {
+     "tx_declenchees": 11,
+     "fpr_tx_pct": 0.006,
+     "usagers_touches": 10,
+     "part_usagers_pct": 1.548
+    },
+    "victime": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.775
+    },
+    "marchand": {
+     "tx_declenchees": 5,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 5,
+     "part_usagers_pct": 1.289
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 27,
+     "fpr_tx_pct": 0.005,
+     "usagers_touches": 25,
+     "part_usagers_pct": 1.018
+    },
+    "pire_persona_hors_agents": [
+     0.007,
+     "victime"
+    ],
+    "dont_plafond_seul_tx": {
+     "salarie": 9,
+     "ordinaire": 9,
+     "marchand": 3,
+     "victime": 1
+    }
+   },
+   "min(50000 ; 50 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 5,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 5,
+     "part_usagers_pct": 0.387
+    },
+    "salarie": {
+     "tx_declenchees": 9,
+     "fpr_tx_pct": 0.005,
+     "usagers_touches": 8,
+     "part_usagers_pct": 1.238
+    },
+    "victime": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "marchand": {
+     "tx_declenchees": 5,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 5,
+     "part_usagers_pct": 1.289
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 19,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 18,
+     "part_usagers_pct": 0.733
+    },
+    "pire_persona_hors_agents": [
+     0.005,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "ordinaire": 4,
+     "marchand": 3,
+     "salarie": 7
+    }
+   },
+   "50000 seul": {
+    "ordinaire": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.001,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.077
+    },
+    "salarie": {
+     "tx_declenchees": 9,
+     "fpr_tx_pct": 0.005,
+     "usagers_touches": 8,
+     "part_usagers_pct": 1.238
+    },
+    "victime": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "marchand": {
+     "tx_declenchees": 5,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 5,
+     "part_usagers_pct": 1.289
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 15,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 14,
+     "part_usagers_pct": 0.57
+    },
+    "pire_persona_hors_agents": [
+     0.005,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 3,
+     "salarie": 7
+    }
+   },
+   "min(100000 ; 10 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 14,
+     "fpr_tx_pct": 0.01,
+     "usagers_touches": 12,
+     "part_usagers_pct": 0.929
+    },
+    "salarie": {
+     "tx_declenchees": 10,
+     "fpr_tx_pct": 0.005,
+     "usagers_touches": 7,
+     "part_usagers_pct": 1.084
+    },
+    "victime": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.775
+    },
+    "marchand": {
+     "tx_declenchees": 6,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 4,
+     "part_usagers_pct": 1.031
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 31,
+     "fpr_tx_pct": 0.006,
+     "usagers_touches": 24,
+     "part_usagers_pct": 0.978
+    },
+    "pire_persona_hors_agents": [
+     0.01,
+     "ordinaire"
+    ],
+    "dont_plafond_seul_tx": {
+     "marchand": 4,
+     "salarie": 8,
+     "ordinaire": 13,
+     "victime": 1
+    }
+   },
+   "min(100000 ; 25 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 10,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 9,
+     "part_usagers_pct": 0.697
+    },
+    "salarie": {
+     "tx_declenchees": 8,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 7,
+     "part_usagers_pct": 1.084
+    },
+    "victime": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.007,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.775
+    },
+    "marchand": {
+     "tx_declenchees": 3,
+     "fpr_tx_pct": 0.002,
+     "usagers_touches": 3,
+     "part_usagers_pct": 0.773
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 22,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 20,
+     "part_usagers_pct": 0.815
+    },
+    "pire_persona_hors_agents": [
+     0.007,
+     "victime"
+    ],
+    "dont_plafond_seul_tx": {
+     "salarie": 6,
+     "ordinaire": 9,
+     "marchand": 1,
+     "victime": 1
+    }
+   },
+   "min(100000 ; 50 % du solde)": {
+    "ordinaire": {
+     "tx_declenchees": 5,
+     "fpr_tx_pct": 0.004,
+     "usagers_touches": 5,
+     "part_usagers_pct": 0.387
+    },
+    "salarie": {
+     "tx_declenchees": 6,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 5,
+     "part_usagers_pct": 0.774
+    },
+    "victime": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "marchand": {
+     "tx_declenchees": 3,
+     "fpr_tx_pct": 0.002,
+     "usagers_touches": 3,
+     "part_usagers_pct": 0.773
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 14,
+     "fpr_tx_pct": 0.003,
+     "usagers_touches": 13,
+     "part_usagers_pct": 0.53
+    },
+    "pire_persona_hors_agents": [
+     0.004,
+     "ordinaire"
+    ],
+    "dont_plafond_seul_tx": {
+     "ordinaire": 4,
+     "salarie": 4,
+     "marchand": 1
+    }
+   },
+   "100000 seul": {
+    "ordinaire": {
+     "tx_declenchees": 1,
+     "fpr_tx_pct": 0.001,
+     "usagers_touches": 1,
+     "part_usagers_pct": 0.077
+    },
+    "salarie": {
+     "tx_declenchees": 4,
+     "fpr_tx_pct": 0.002,
+     "usagers_touches": 4,
+     "part_usagers_pct": 0.619
+    },
+    "victime": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "marchand": {
+     "tx_declenchees": 3,
+     "fpr_tx_pct": 0.002,
+     "usagers_touches": 3,
+     "part_usagers_pct": 0.773
+    },
+    "agent": {
+     "tx_declenchees": 0,
+     "fpr_tx_pct": 0.0,
+     "usagers_touches": 0,
+     "part_usagers_pct": 0.0
+    },
+    "HORS_AGENTS": {
+     "tx_declenchees": 8,
+     "fpr_tx_pct": 0.002,
+     "usagers_touches": 8,
+     "part_usagers_pct": 0.326
+    },
+    "pire_persona_hors_agents": [
+     0.002,
+     "salarie"
+    ],
+    "dont_plafond_seul_tx": {
+     "salarie": 2,
+     "marchand": 1
+    }
+   }
+  }
+ },
+ "D2_fail_closed_h5": {
+  "> 10000": {
+   "ordinaire": {
+    "tx_declenchees": 6139,
+    "fpr_tx_pct": 4.523,
+    "usagers_touches": 1046,
+    "part_usagers_pct": 80.96
+   },
+   "salarie": {
+    "tx_declenchees": 9944,
+    "fpr_tx_pct": 5.255,
+    "usagers_touches": 646,
+    "part_usagers_pct": 100.0
+   },
+   "victime": {
+    "tx_declenchees": 630,
+    "fpr_tx_pct": 4.506,
+    "usagers_touches": 100,
+    "part_usagers_pct": 77.519
+   },
+   "marchand": {
+    "tx_declenchees": 3582,
+    "fpr_tx_pct": 1.916,
+    "usagers_touches": 388,
+    "part_usagers_pct": 100.0
+   },
+   "agent": {
+    "tx_declenchees": 6214,
+    "fpr_tx_pct": 6.292,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 20295,
+    "fpr_tx_pct": 3.859,
+    "usagers_touches": 2180,
+    "part_usagers_pct": 88.798
+   },
+   "pire_persona_hors_agents": [
+    5.255,
+    "salarie"
+   ]
+  },
+  "> 25000": {
+   "ordinaire": {
+    "tx_declenchees": 2826,
+    "fpr_tx_pct": 2.082,
+    "usagers_touches": 903,
+    "part_usagers_pct": 69.892
+   },
+   "salarie": {
+    "tx_declenchees": 5054,
+    "fpr_tx_pct": 2.671,
+    "usagers_touches": 646,
+    "part_usagers_pct": 100.0
+   },
+   "victime": {
+    "tx_declenchees": 282,
+    "fpr_tx_pct": 2.017,
+    "usagers_touches": 87,
+    "part_usagers_pct": 67.442
+   },
+   "marchand": {
+    "tx_declenchees": 1980,
+    "fpr_tx_pct": 1.059,
+    "usagers_touches": 382,
+    "part_usagers_pct": 98.454
+   },
+   "agent": {
+    "tx_declenchees": 3369,
+    "fpr_tx_pct": 3.411,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 10142,
+    "fpr_tx_pct": 1.929,
+    "usagers_touches": 2018,
+    "part_usagers_pct": 82.2
+   },
+   "pire_persona_hors_agents": [
+    2.671,
+    "salarie"
+   ]
+  },
+  "> 50000": {
+   "ordinaire": {
+    "tx_declenchees": 1798,
+    "fpr_tx_pct": 1.325,
+    "usagers_touches": 769,
+    "part_usagers_pct": 59.52
+   },
+   "salarie": {
+    "tx_declenchees": 3611,
+    "fpr_tx_pct": 1.908,
+    "usagers_touches": 643,
+    "part_usagers_pct": 99.536
+   },
+   "victime": {
+    "tx_declenchees": 187,
+    "fpr_tx_pct": 1.338,
+    "usagers_touches": 79,
+    "part_usagers_pct": 61.24
+   },
+   "marchand": {
+    "tx_declenchees": 1440,
+    "fpr_tx_pct": 0.77,
+    "usagers_touches": 376,
+    "part_usagers_pct": 96.907
+   },
+   "agent": {
+    "tx_declenchees": 2463,
+    "fpr_tx_pct": 2.494,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 7036,
+    "fpr_tx_pct": 1.338,
+    "usagers_touches": 1867,
+    "part_usagers_pct": 76.049
+   },
+   "pire_persona_hors_agents": [
+    1.908,
+    "salarie"
+   ]
+  },
+  "> 100000": {
+   "ordinaire": {
+    "tx_declenchees": 984,
+    "fpr_tx_pct": 0.725,
+    "usagers_touches": 576,
+    "part_usagers_pct": 44.582
+   },
+   "salarie": {
+    "tx_declenchees": 2122,
+    "fpr_tx_pct": 1.121,
+    "usagers_touches": 624,
+    "part_usagers_pct": 96.594
+   },
+   "victime": {
+    "tx_declenchees": 99,
+    "fpr_tx_pct": 0.708,
+    "usagers_touches": 57,
+    "part_usagers_pct": 44.186
+   },
+   "marchand": {
+    "tx_declenchees": 947,
+    "fpr_tx_pct": 0.507,
+    "usagers_touches": 343,
+    "part_usagers_pct": 88.402
+   },
+   "agent": {
+    "tx_declenchees": 1592,
+    "fpr_tx_pct": 1.612,
+    "usagers_touches": 25,
+    "part_usagers_pct": 100.0
+   },
+   "HORS_AGENTS": {
+    "tx_declenchees": 4152,
+    "fpr_tx_pct": 0.79,
+    "usagers_touches": 1600,
+    "part_usagers_pct": 65.173
+   },
+   "pire_persona_hors_agents": [
+    1.121,
+    "salarie"
+   ]
+  }
+ },
+ "E_signature_ac02": {
+  "cas": 300,
+  "solde_xaf": {
+   "min": 1000,
+   "p50": 13555.0,
+   "max": 50000,
+   "part_sup_25000_pct": 1.333
+  },
+  "instant_dans_NIGHT_23_05_utc_pct": 30.0,
+  "montant_ge_THR_HIGH_actuel_pct": 86.333,
+  "beneficiaire_nouveau_pct": 100.0,
+  "sorties_par_attaque": 1
+ }
+}

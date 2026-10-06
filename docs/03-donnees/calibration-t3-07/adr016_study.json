@@ -1,0 +1,2535 @@
+{
+ "fenetre_mesure": "jours 31 à 182 (rodage de 30 j exclu)",
+ "denominateurs": {
+  "ordinaire": {
+   "tx": 114204,
+   "usagers": 1292
+  },
+  "salarie": {
+   "tx": 158015,
+   "usagers": 646
+  },
+  "victime": {
+   "tx": 11774,
+   "usagers": 129
+  },
+  "marchand": {
+   "tx": 156133,
+   "usagers": 388
+  },
+  "agent": {
+   "tx": 82142,
+   "usagers": 25
+  }
+ },
+ "base": {
+  "AGG": "bounded_sum",
+  "SCORE": {
+   "stepUp": 40,
+   "freeze": 70,
+   "max": 100
+  },
+  "W": {
+   "newBeneficiary": 20,
+   "newBeneficiaryHigh": 45,
+   "vel": 70,
+   "night": 25
+  },
+  "THR_HIGH": {
+   "absoluteXaf": 50000,
+   "medianFactor": 3
+  },
+  "NIGHT_LOCAL": [
+   23,
+   5
+  ],
+  "CAP_PROB": {
+   "dailyXaf": 25000,
+   "balancePct": 10
+  },
+  "LIFT_A_BY_SIGNATURE": true
+ },
+ "1_base": {
+  "ordinaire": {
+   "freeze": 115,
+   "fpr_freeze_pct": 0.101,
+   "wilson95": [
+    0.08,
+    0.12
+   ],
+   "step_up": 819,
+   "step_up_pct": 0.717,
+   "step_up_ussd": 595,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.622,
+   "wilson95_sad": [
+    0.58,
+    0.67
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.196,
+   "usagers_freeze_pct": 8.05,
+   "usagers_step_up_pct": 43.421,
+   "levees_signature_cas_a": 3
+  },
+  "salarie": {
+   "freeze": 256,
+   "fpr_freeze_pct": 0.162,
+   "wilson95": [
+    0.14,
+    0.18
+   ],
+   "step_up": 654,
+   "step_up_pct": 0.414,
+   "step_up_ussd": 202,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.29,
+   "wilson95_sad": [
+    0.26,
+    0.32
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.286,
+   "usagers_freeze_pct": 27.554,
+   "usagers_step_up_pct": 62.229,
+   "levees_signature_cas_a": 4
+  },
+  "victime": {
+   "freeze": 9,
+   "fpr_freeze_pct": 0.076,
+   "wilson95": [
+    0.04,
+    0.15
+   ],
+   "step_up": 70,
+   "step_up_pct": 0.595,
+   "step_up_ussd": 59,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.578,
+   "wilson95_sad": [
+    0.46,
+    0.73
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.093,
+   "usagers_freeze_pct": 6.202,
+   "usagers_step_up_pct": 41.86,
+   "levees_signature_cas_a": 1
+  },
+  "marchand": {
+   "freeze": 47,
+   "fpr_freeze_pct": 0.03,
+   "wilson95": [
+    0.02,
+    0.04
+   ],
+   "step_up": 740,
+   "step_up_pct": 0.474,
+   "step_up_ussd": 563,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.391,
+   "wilson95_sad": [
+    0.36,
+    0.42
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.113,
+   "usagers_freeze_pct": 10.825,
+   "usagers_step_up_pct": 86.856,
+   "levees_signature_cas_a": 3
+  },
+  "agent": {
+   "freeze": 3211,
+   "fpr_freeze_pct": 3.909,
+   "wilson95": [
+    3.78,
+    4.04
+   ],
+   "step_up": 937,
+   "step_up_pct": 1.141,
+   "step_up_ussd": 837,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 4.928,
+   "wilson95_sad": [
+    4.78,
+    5.08
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.122,
+   "usagers_freeze_pct": 96.0,
+   "usagers_step_up_pct": 100.0,
+   "levees_signature_cas_a": 0
+  },
+  "_veto_probation": {
+   "a": {
+    "sorties_en_probation": 92,
+    "veto": 11,
+    "usagers": 49,
+    "usagers_veto": 11,
+    "part_sorties_pct": 11.957,
+    "part_usagers_pct": 22.449,
+    "wilson_usagers": [
+     13.02,
+     35.88
+    ]
+   },
+   "b": {
+    "sorties_en_probation": 79,
+    "veto": 8,
+    "usagers": 30,
+    "usagers_veto": 6,
+    "part_sorties_pct": 10.127,
+    "part_usagers_pct": 20.0,
+    "wilson_usagers": [
+     9.5,
+     37.31
+    ]
+   }
+  }
+ },
+ "1_base_sans_night": {
+  "ordinaire": {
+   "freeze": 39,
+   "fpr_freeze_pct": 0.034,
+   "wilson95": [
+    0.02,
+    0.05
+   ],
+   "step_up": 703,
+   "step_up_pct": 0.616,
+   "step_up_ussd": 507,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.478,
+   "wilson95_sad": [
+    0.44,
+    0.52
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.172,
+   "usagers_freeze_pct": 2.554,
+   "usagers_step_up_pct": 39.241,
+   "levees_signature_cas_a": 3
+  },
+  "salarie": {
+   "freeze": 208,
+   "fpr_freeze_pct": 0.132,
+   "wilson95": [
+    0.11,
+    0.15
+   ],
+   "step_up": 556,
+   "step_up_pct": 0.352,
+   "step_up_ussd": 169,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.239,
+   "wilson95_sad": [
+    0.22,
+    0.26
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.245,
+   "usagers_freeze_pct": 21.672,
+   "usagers_step_up_pct": 57.276,
+   "levees_signature_cas_a": 4
+  },
+  "victime": {
+   "freeze": 1,
+   "fpr_freeze_pct": 0.008,
+   "wilson95": [
+    0.0,
+    0.05
+   ],
+   "step_up": 58,
+   "step_up_pct": 0.493,
+   "step_up_ussd": 48,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.416,
+   "wilson95_sad": [
+    0.31,
+    0.55
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.085,
+   "usagers_freeze_pct": 0.775,
+   "usagers_step_up_pct": 34.884,
+   "levees_signature_cas_a": 1
+  },
+  "marchand": {
+   "freeze": 1,
+   "fpr_freeze_pct": 0.001,
+   "wilson95": [
+    0.0,
+    0.0
+   ],
+   "step_up": 652,
+   "step_up_pct": 0.418,
+   "step_up_ussd": 497,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.319,
+   "wilson95_sad": [
+    0.29,
+    0.35
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.099,
+   "usagers_freeze_pct": 0.258,
+   "usagers_step_up_pct": 82.216,
+   "levees_signature_cas_a": 3
+  },
+  "agent": {
+   "freeze": 3142,
+   "fpr_freeze_pct": 3.825,
+   "wilson95": [
+    3.7,
+    3.96
+   ],
+   "step_up": 738,
+   "step_up_pct": 0.898,
+   "step_up_ussd": 669,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 4.64,
+   "wilson95_sad": [
+    4.5,
+    4.79
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.084,
+   "usagers_freeze_pct": 92.0,
+   "usagers_step_up_pct": 100.0,
+   "levees_signature_cas_a": 0
+  },
+  "_veto_probation": {
+   "a": {
+    "sorties_en_probation": 92,
+    "veto": 11,
+    "usagers": 49,
+    "usagers_veto": 11,
+    "part_sorties_pct": 11.957,
+    "part_usagers_pct": 22.449,
+    "wilson_usagers": [
+     13.02,
+     35.88
+    ]
+   },
+   "b": {
+    "sorties_en_probation": 79,
+    "veto": 8,
+    "usagers": 30,
+    "usagers_veto": 6,
+    "part_sorties_pct": 10.127,
+    "part_usagers_pct": 20.0,
+    "wilson_usagers": [
+     9.5,
+     37.31
+    ]
+   }
+  }
+ },
+ "1_base_max": {
+  "ordinaire": {
+   "freeze": 39,
+   "fpr_freeze_pct": 0.034,
+   "wilson95": [
+    0.02,
+    0.05
+   ],
+   "step_up": 703,
+   "step_up_pct": 0.616,
+   "step_up_ussd": 507,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.478,
+   "wilson95_sad": [
+    0.44,
+    0.52
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.172,
+   "usagers_freeze_pct": 2.554,
+   "usagers_step_up_pct": 39.241,
+   "levees_signature_cas_a": 3
+  },
+  "salarie": {
+   "freeze": 208,
+   "fpr_freeze_pct": 0.132,
+   "wilson95": [
+    0.11,
+    0.15
+   ],
+   "step_up": 556,
+   "step_up_pct": 0.352,
+   "step_up_ussd": 169,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.239,
+   "wilson95_sad": [
+    0.22,
+    0.26
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.245,
+   "usagers_freeze_pct": 21.672,
+   "usagers_step_up_pct": 57.276,
+   "levees_signature_cas_a": 4
+  },
+  "victime": {
+   "freeze": 1,
+   "fpr_freeze_pct": 0.008,
+   "wilson95": [
+    0.0,
+    0.05
+   ],
+   "step_up": 58,
+   "step_up_pct": 0.493,
+   "step_up_ussd": 48,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.416,
+   "wilson95_sad": [
+    0.31,
+    0.55
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.085,
+   "usagers_freeze_pct": 0.775,
+   "usagers_step_up_pct": 34.884,
+   "levees_signature_cas_a": 1
+  },
+  "marchand": {
+   "freeze": 1,
+   "fpr_freeze_pct": 0.001,
+   "wilson95": [
+    0.0,
+    0.0
+   ],
+   "step_up": 652,
+   "step_up_pct": 0.418,
+   "step_up_ussd": 497,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.319,
+   "wilson95_sad": [
+    0.29,
+    0.35
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.099,
+   "usagers_freeze_pct": 0.258,
+   "usagers_step_up_pct": 82.216,
+   "levees_signature_cas_a": 3
+  },
+  "agent": {
+   "freeze": 3142,
+   "fpr_freeze_pct": 3.825,
+   "wilson95": [
+    3.7,
+    3.96
+   ],
+   "step_up": 738,
+   "step_up_pct": 0.898,
+   "step_up_ussd": 669,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 4.64,
+   "wilson95_sad": [
+    4.5,
+    4.79
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.084,
+   "usagers_freeze_pct": 92.0,
+   "usagers_step_up_pct": 100.0,
+   "levees_signature_cas_a": 0
+  },
+  "_veto_probation": {
+   "a": {
+    "sorties_en_probation": 92,
+    "veto": 11,
+    "usagers": 49,
+    "usagers_veto": 11,
+    "part_sorties_pct": 11.957,
+    "part_usagers_pct": 22.449,
+    "wilson_usagers": [
+     13.02,
+     35.88
+    ]
+   },
+   "b": {
+    "sorties_en_probation": 79,
+    "veto": 8,
+    "usagers": 30,
+    "usagers_veto": 6,
+    "part_sorties_pct": 10.127,
+    "part_usagers_pct": 20.0,
+    "wilson_usagers": [
+     9.5,
+     37.31
+    ]
+   }
+  }
+ },
+ "1_base_night_heure_ecrite": {
+  "ordinaire": {
+   "freeze": 97,
+   "fpr_freeze_pct": 0.085,
+   "wilson95": [
+    0.07,
+    0.1
+   ],
+   "step_up": 782,
+   "step_up_pct": 0.685,
+   "step_up_ussd": 574,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.588,
+   "wilson95_sad": [
+    0.54,
+    0.63
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.182,
+   "usagers_freeze_pct": 6.889,
+   "usagers_step_up_pct": 41.641,
+   "levees_signature_cas_a": 3
+  },
+  "salarie": {
+   "freeze": 243,
+   "fpr_freeze_pct": 0.154,
+   "wilson95": [
+    0.14,
+    0.17
+   ],
+   "step_up": 629,
+   "step_up_pct": 0.398,
+   "step_up_ussd": 190,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.274,
+   "wilson95_sad": [
+    0.25,
+    0.3
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.278,
+   "usagers_freeze_pct": 25.851,
+   "usagers_step_up_pct": 59.907,
+   "levees_signature_cas_a": 4
+  },
+  "victime": {
+   "freeze": 4,
+   "fpr_freeze_pct": 0.034,
+   "wilson95": [
+    0.01,
+    0.09
+   ],
+   "step_up": 71,
+   "step_up_pct": 0.603,
+   "step_up_ussd": 61,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.552,
+   "wilson95_sad": [
+    0.43,
+    0.7
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.085,
+   "usagers_freeze_pct": 3.101,
+   "usagers_step_up_pct": 41.86,
+   "levees_signature_cas_a": 1
+  },
+  "marchand": {
+   "freeze": 31,
+   "fpr_freeze_pct": 0.02,
+   "wilson95": [
+    0.01,
+    0.03
+   ],
+   "step_up": 701,
+   "step_up_pct": 0.449,
+   "step_up_ussd": 537,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 0.364,
+   "wilson95_sad": [
+    0.34,
+    0.39
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.105,
+   "usagers_freeze_pct": 7.474,
+   "usagers_step_up_pct": 84.278,
+   "levees_signature_cas_a": 3
+  },
+  "agent": {
+   "freeze": 3193,
+   "fpr_freeze_pct": 3.887,
+   "wilson95": [
+    3.76,
+    4.02
+   ],
+   "step_up": 852,
+   "step_up_pct": 1.037,
+   "step_up_ussd": 760,
+   "fpr_sad_pct (FREEZE + STEP_UP USSD expiré)": 4.812,
+   "wilson95_sad": [
+    4.67,
+    4.96
+   ],
+   "friction_app_pct (STEP_UP signé)": 0.112,
+   "usagers_freeze_pct": 96.0,
+   "usagers_step_up_pct": 100.0,
+   "levees_signature_cas_a": 0
+  },
+  "_veto_probation": {
+   "a": {
+    "sorties_en_probation": 92,
+    "veto": 11,
+    "usagers": 49,
+    "usagers_veto": 11,
+    "part_sorties_pct": 11.957,
+    "part_usagers_pct": 22.449,
+    "wilson_usagers": [
+     13.02,
+     35.88
+    ]
+   },
+   "b": {
+    "sorties_en_probation": 79,
+    "veto": 8,
+    "usagers": 30,
+    "usagers_veto": 6,
+    "part_sorties_pct": 10.127,
+    "part_usagers_pct": 20.0,
+    "wilson_usagers": [
+     9.5,
+     37.31
+    ]
+   }
+  }
+ },
+ "2_grille_poids": {
+  "bounded_sum nb=10 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "max nb=10 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=10 nbH=45": {
+   "ordinaire": [
+    0.101,
+    0.496,
+    0.153
+   ],
+   "salarie": [
+    0.162,
+    0.26,
+    0.223
+   ],
+   "victime": [
+    0.076,
+    0.425,
+    0.076
+   ],
+   "marchand": [
+    0.03,
+    0.328,
+    0.09
+   ],
+   "agent": [
+    3.909,
+    4.647,
+    0.077
+   ]
+  },
+  "max nb=10 nbH=45": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=10 nbH=50": {
+   "ordinaire": [
+    0.101,
+    0.496,
+    0.153
+   ],
+   "salarie": [
+    0.162,
+    0.26,
+    0.223
+   ],
+   "victime": [
+    0.076,
+    0.425,
+    0.076
+   ],
+   "marchand": [
+    0.03,
+    0.328,
+    0.09
+   ],
+   "agent": [
+    3.909,
+    4.647,
+    0.077
+   ]
+  },
+  "max nb=10 nbH=50": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=15 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.603,
+    0.215
+   ],
+   "salarie": [
+    0.132,
+    0.268,
+    0.308
+   ],
+   "victime": [
+    0.008,
+    0.569,
+    0.102
+   ],
+   "marchand": [
+    0.001,
+    0.382,
+    0.122
+   ],
+   "agent": [
+    3.825,
+    4.921,
+    0.129
+   ]
+  },
+  "max nb=15 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=15 nbH=45": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "max nb=15 nbH=45": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=15 nbH=50": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "max nb=15 nbH=50": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=20 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.603,
+    0.215
+   ],
+   "salarie": [
+    0.132,
+    0.268,
+    0.308
+   ],
+   "victime": [
+    0.008,
+    0.569,
+    0.102
+   ],
+   "marchand": [
+    0.001,
+    0.382,
+    0.122
+   ],
+   "agent": [
+    3.825,
+    4.921,
+    0.129
+   ]
+  },
+  "max nb=20 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=20 nbH=45": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "max nb=20 nbH=45": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=20 nbH=50": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "max nb=20 nbH=50": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=25 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.603,
+    0.215
+   ],
+   "salarie": [
+    0.132,
+    0.268,
+    0.308
+   ],
+   "victime": [
+    0.008,
+    0.569,
+    0.102
+   ],
+   "marchand": [
+    0.001,
+    0.382,
+    0.122
+   ],
+   "agent": [
+    3.825,
+    4.921,
+    0.129
+   ]
+  },
+  "max nb=25 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=25 nbH=45": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "max nb=25 nbH=45": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=25 nbH=50": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "max nb=25 nbH=50": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=30 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.603,
+    0.215
+   ],
+   "salarie": [
+    0.132,
+    0.268,
+    0.308
+   ],
+   "victime": [
+    0.008,
+    0.569,
+    0.102
+   ],
+   "marchand": [
+    0.001,
+    0.382,
+    0.122
+   ],
+   "agent": [
+    3.825,
+    4.921,
+    0.129
+   ]
+  },
+  "max nb=30 nbH=40": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=30 nbH=45": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "max nb=30 nbH=45": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "bounded_sum nb=30 nbH=50": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "max nb=30 nbH=50": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  }
+ },
+ "3_grille_thr_high": {
+  "abs=25000 x2": {
+   "ordinaire": [
+    0.126,
+    0.781,
+    0.258
+   ],
+   "salarie": [
+    0.173,
+    0.335,
+    0.37
+   ],
+   "victime": [
+    0.102,
+    0.73,
+    0.119
+   ],
+   "marchand": [
+    0.044,
+    0.487,
+    0.139
+   ],
+   "agent": [
+    3.941,
+    5.195,
+    0.152
+   ]
+  },
+  "abs=25000 x3": {
+   "ordinaire": [
+    0.101,
+    0.623,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "abs=25000 x5": {
+   "ordinaire": [
+    0.079,
+    0.507,
+    0.157
+   ],
+   "salarie": [
+    0.153,
+    0.266,
+    0.225
+   ],
+   "victime": [
+    0.068,
+    0.476,
+    0.093
+   ],
+   "marchand": [
+    0.02,
+    0.307,
+    0.097
+   ],
+   "agent": [
+    3.888,
+    4.772,
+    0.102
+   ]
+  },
+  "abs=50000 x2": {
+   "ordinaire": [
+    0.126,
+    0.78,
+    0.258
+   ],
+   "salarie": [
+    0.173,
+    0.335,
+    0.37
+   ],
+   "victime": [
+    0.102,
+    0.73,
+    0.119
+   ],
+   "marchand": [
+    0.044,
+    0.487,
+    0.139
+   ],
+   "agent": [
+    3.941,
+    5.195,
+    0.152
+   ]
+  },
+  "abs=50000 x3": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "abs=50000 x5": {
+   "ordinaire": [
+    0.079,
+    0.506,
+    0.157
+   ],
+   "salarie": [
+    0.153,
+    0.266,
+    0.225
+   ],
+   "victime": [
+    0.068,
+    0.476,
+    0.093
+   ],
+   "marchand": [
+    0.02,
+    0.307,
+    0.097
+   ],
+   "agent": [
+    3.888,
+    4.772,
+    0.102
+   ]
+  },
+  "abs=100000 x2": {
+   "ordinaire": [
+    0.126,
+    0.78,
+    0.258
+   ],
+   "salarie": [
+    0.173,
+    0.335,
+    0.37
+   ],
+   "victime": [
+    0.102,
+    0.73,
+    0.119
+   ],
+   "marchand": [
+    0.044,
+    0.487,
+    0.139
+   ],
+   "agent": [
+    3.941,
+    5.195,
+    0.152
+   ]
+  },
+  "abs=100000 x3": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "abs=100000 x5": {
+   "ordinaire": [
+    0.079,
+    0.506,
+    0.157
+   ],
+   "salarie": [
+    0.153,
+    0.266,
+    0.225
+   ],
+   "victime": [
+    0.068,
+    0.476,
+    0.093
+   ],
+   "marchand": [
+    0.02,
+    0.307,
+    0.097
+   ],
+   "agent": [
+    3.888,
+    4.772,
+    0.102
+   ]
+  }
+ },
+ "4_grille_night": {
+  "23h-05h w=15": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "23h-05h w=25": {
+   "ordinaire": [
+    0.101,
+    0.622,
+    0.196
+   ],
+   "salarie": [
+    0.162,
+    0.29,
+    0.286
+   ],
+   "victime": [
+    0.076,
+    0.578,
+    0.093
+   ],
+   "marchand": [
+    0.03,
+    0.391,
+    0.113
+   ],
+   "agent": [
+    3.909,
+    4.928,
+    0.122
+   ]
+  },
+  "00h-05h w=15": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "00h-05h w=25": {
+   "ordinaire": [
+    0.081,
+    0.579,
+    0.182
+   ],
+   "salarie": [
+    0.152,
+    0.272,
+    0.275
+   ],
+   "victime": [
+    0.034,
+    0.552,
+    0.085
+   ],
+   "marchand": [
+    0.019,
+    0.359,
+    0.106
+   ],
+   "agent": [
+    3.885,
+    4.808,
+    0.111
+   ]
+  },
+  "00h-04h w=15": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "00h-04h w=25": {
+   "ordinaire": [
+    0.078,
+    0.576,
+    0.179
+   ],
+   "salarie": [
+    0.15,
+    0.27,
+    0.273
+   ],
+   "victime": [
+    0.034,
+    0.544,
+    0.076
+   ],
+   "marchand": [
+    0.018,
+    0.357,
+    0.106
+   ],
+   "agent": [
+    3.88,
+    4.797,
+    0.111
+   ]
+  },
+  "22h-05h w=15": {
+   "ordinaire": [
+    0.034,
+    0.478,
+    0.172
+   ],
+   "salarie": [
+    0.132,
+    0.239,
+    0.245
+   ],
+   "victime": [
+    0.008,
+    0.416,
+    0.085
+   ],
+   "marchand": [
+    0.001,
+    0.319,
+    0.099
+   ],
+   "agent": [
+    3.825,
+    4.64,
+    0.084
+   ]
+  },
+  "22h-05h w=25": {
+   "ordinaire": [
+    0.121,
+    0.687,
+    0.216
+   ],
+   "salarie": [
+    0.182,
+    0.32,
+    0.294
+   ],
+   "victime": [
+    0.102,
+    0.679,
+    0.102
+   ],
+   "marchand": [
+    0.046,
+    0.428,
+    0.114
+   ],
+   "agent": [
+    3.949,
+    5.053,
+    0.135
+   ]
+  }
+ },
+ "5_cap_prob_courbe": {
+  "min(10000 ; 10 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 15,
+    "usagers": 30,
+    "usagers_veto": 10,
+    "part_sorties_pct": 18.987,
+    "part_usagers_pct": 33.333,
+    "wilson_usagers": [
+     19.23,
+     51.22
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 88,
+    "veto": 15,
+    "usagers": 49,
+    "usagers_veto": 15,
+    "part_sorties_pct": 17.045,
+    "part_usagers_pct": 30.612,
+    "wilson_usagers": [
+     19.52,
+     44.53
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 4107,
+   "perte_max_ac07_part_mediane_du_solde_pct": 30.0
+  },
+  "min(10000 ; 25 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 15,
+    "usagers": 30,
+    "usagers_veto": 10,
+    "part_sorties_pct": 18.987,
+    "part_usagers_pct": 33.333,
+    "wilson_usagers": [
+     19.23,
+     51.22
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 88,
+    "veto": 15,
+    "usagers": 49,
+    "usagers_veto": 15,
+    "part_sorties_pct": 17.045,
+    "part_usagers_pct": 30.612,
+    "wilson_usagers": [
+     19.52,
+     44.53
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 10266,
+   "perte_max_ac07_part_mediane_du_solde_pct": 75.0
+  },
+  "min(10000 ; 50 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 15,
+    "usagers": 30,
+    "usagers_veto": 10,
+    "part_sorties_pct": 18.987,
+    "part_usagers_pct": 33.333,
+    "wilson_usagers": [
+     19.23,
+     51.22
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 89,
+    "veto": 14,
+    "usagers": 49,
+    "usagers_veto": 14,
+    "part_sorties_pct": 15.73,
+    "part_usagers_pct": 28.571,
+    "wilson_usagers": [
+     17.85,
+     42.41
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 13690,
+   "perte_max_ac07_part_mediane_du_solde_pct": 100.0
+  },
+  "min(10000 ; 100 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 15,
+    "usagers": 30,
+    "usagers_veto": 10,
+    "part_sorties_pct": 18.987,
+    "part_usagers_pct": 33.333,
+    "wilson_usagers": [
+     19.23,
+     51.22
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 89,
+    "veto": 14,
+    "usagers": 49,
+    "usagers_veto": 14,
+    "part_sorties_pct": 15.73,
+    "part_usagers_pct": 28.571,
+    "wilson_usagers": [
+     17.85,
+     42.41
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 13690,
+   "perte_max_ac07_part_mediane_du_solde_pct": 100.0
+  },
+  "min(15000 ; 10 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 13,
+    "usagers": 30,
+    "usagers_veto": 8,
+    "part_sorties_pct": 16.456,
+    "part_usagers_pct": 26.667,
+    "wilson_usagers": [
+     14.18,
+     44.45
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 90,
+    "veto": 13,
+    "usagers": 49,
+    "usagers_veto": 13,
+    "part_sorties_pct": 14.444,
+    "part_usagers_pct": 26.531,
+    "wilson_usagers": [
+     16.21,
+     40.26
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 4107,
+   "perte_max_ac07_part_mediane_du_solde_pct": 30.0
+  },
+  "min(15000 ; 25 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 13,
+    "usagers": 30,
+    "usagers_veto": 8,
+    "part_sorties_pct": 16.456,
+    "part_usagers_pct": 26.667,
+    "wilson_usagers": [
+     14.18,
+     44.45
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 90,
+    "veto": 12,
+    "usagers": 49,
+    "usagers_veto": 12,
+    "part_sorties_pct": 13.333,
+    "part_usagers_pct": 24.49,
+    "wilson_usagers": [
+     14.6,
+     38.09
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 10266,
+   "perte_max_ac07_part_mediane_du_solde_pct": 75.0
+  },
+  "min(15000 ; 50 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 13,
+    "usagers": 30,
+    "usagers_veto": 8,
+    "part_sorties_pct": 16.456,
+    "part_usagers_pct": 26.667,
+    "wilson_usagers": [
+     14.18,
+     44.45
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 91,
+    "veto": 11,
+    "usagers": 49,
+    "usagers_veto": 11,
+    "part_sorties_pct": 12.088,
+    "part_usagers_pct": 22.449,
+    "wilson_usagers": [
+     13.02,
+     35.88
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 13690,
+   "perte_max_ac07_part_mediane_du_solde_pct": 100.0
+  },
+  "min(15000 ; 100 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 13,
+    "usagers": 30,
+    "usagers_veto": 8,
+    "part_sorties_pct": 16.456,
+    "part_usagers_pct": 26.667,
+    "wilson_usagers": [
+     14.18,
+     44.45
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 91,
+    "veto": 10,
+    "usagers": 49,
+    "usagers_veto": 10,
+    "part_sorties_pct": 10.989,
+    "part_usagers_pct": 20.408,
+    "wilson_usagers": [
+     11.48,
+     33.64
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 13690,
+   "perte_max_ac07_part_mediane_du_solde_pct": 100.0
+  },
+  "min(25000 ; 10 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 8,
+    "usagers": 30,
+    "usagers_veto": 6,
+    "part_sorties_pct": 10.127,
+    "part_usagers_pct": 20.0,
+    "wilson_usagers": [
+     9.5,
+     37.31
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 92,
+    "veto": 11,
+    "usagers": 49,
+    "usagers_veto": 11,
+    "part_sorties_pct": 11.957,
+    "part_usagers_pct": 22.449,
+    "wilson_usagers": [
+     13.02,
+     35.88
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 4107,
+   "perte_max_ac07_part_mediane_du_solde_pct": 30.0
+  },
+  "min(25000 ; 25 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 7,
+    "usagers": 30,
+    "usagers_veto": 5,
+    "part_sorties_pct": 8.861,
+    "part_usagers_pct": 16.667,
+    "wilson_usagers": [
+     7.34,
+     33.56
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 92,
+    "veto": 10,
+    "usagers": 49,
+    "usagers_veto": 10,
+    "part_sorties_pct": 10.87,
+    "part_usagers_pct": 20.408,
+    "wilson_usagers": [
+     11.48,
+     33.64
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 10266,
+   "perte_max_ac07_part_mediane_du_solde_pct": 75.0
+  },
+  "min(25000 ; 50 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 7,
+    "usagers": 30,
+    "usagers_veto": 5,
+    "part_sorties_pct": 8.861,
+    "part_usagers_pct": 16.667,
+    "wilson_usagers": [
+     7.34,
+     33.56
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 94,
+    "veto": 8,
+    "usagers": 49,
+    "usagers_veto": 8,
+    "part_sorties_pct": 8.511,
+    "part_usagers_pct": 16.327,
+    "wilson_usagers": [
+     8.51,
+     29.04
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 13690,
+   "perte_max_ac07_part_mediane_du_solde_pct": 100.0
+  },
+  "min(25000 ; 100 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 7,
+    "usagers": 30,
+    "usagers_veto": 5,
+    "part_sorties_pct": 8.861,
+    "part_usagers_pct": 16.667,
+    "wilson_usagers": [
+     7.34,
+     33.56
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 94,
+    "veto": 7,
+    "usagers": 49,
+    "usagers_veto": 7,
+    "part_sorties_pct": 7.447,
+    "part_usagers_pct": 14.286,
+    "wilson_usagers": [
+     7.1,
+     26.67
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 13690,
+   "perte_max_ac07_part_mediane_du_solde_pct": 100.0
+  },
+  "min(50000 ; 10 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 8,
+    "usagers": 30,
+    "usagers_veto": 6,
+    "part_sorties_pct": 10.127,
+    "part_usagers_pct": 20.0,
+    "wilson_usagers": [
+     9.5,
+     37.31
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 95,
+    "veto": 10,
+    "usagers": 49,
+    "usagers_veto": 10,
+    "part_sorties_pct": 10.526,
+    "part_usagers_pct": 20.408,
+    "wilson_usagers": [
+     11.48,
+     33.64
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 4107,
+   "perte_max_ac07_part_mediane_du_solde_pct": 30.0
+  },
+  "min(50000 ; 25 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 6,
+    "usagers": 30,
+    "usagers_veto": 5,
+    "part_sorties_pct": 7.595,
+    "part_usagers_pct": 16.667,
+    "wilson_usagers": [
+     7.34,
+     33.56
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 95,
+    "veto": 9,
+    "usagers": 49,
+    "usagers_veto": 9,
+    "part_sorties_pct": 9.474,
+    "part_usagers_pct": 18.367,
+    "wilson_usagers": [
+     9.98,
+     31.36
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 10266,
+   "perte_max_ac07_part_mediane_du_solde_pct": 75.0
+  },
+  "min(50000 ; 50 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 6,
+    "usagers": 30,
+    "usagers_veto": 5,
+    "part_sorties_pct": 7.595,
+    "part_usagers_pct": 16.667,
+    "wilson_usagers": [
+     7.34,
+     33.56
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 97,
+    "veto": 7,
+    "usagers": 49,
+    "usagers_veto": 7,
+    "part_sorties_pct": 7.216,
+    "part_usagers_pct": 14.286,
+    "wilson_usagers": [
+     7.1,
+     26.67
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 13690,
+   "perte_max_ac07_part_mediane_du_solde_pct": 100.0
+  },
+  "min(50000 ; 100 %)": {
+   "cas_b": {
+    "sorties_en_probation": 79,
+    "veto": 6,
+    "usagers": 30,
+    "usagers_veto": 5,
+    "part_sorties_pct": 7.595,
+    "part_usagers_pct": 16.667,
+    "wilson_usagers": [
+     7.34,
+     33.56
+    ]
+   },
+   "cas_a": {
+    "sorties_en_probation": 97,
+    "veto": 6,
+    "usagers": 49,
+    "usagers_veto": 6,
+    "part_sorties_pct": 6.186,
+    "part_usagers_pct": 12.245,
+    "wilson_usagers": [
+     5.73,
+     24.24
+    ]
+   },
+   "perte_max_ac07_mediane_xaf": 13690,
+   "perte_max_ac07_part_mediane_du_solde_pct": 100.0
+  }
+ },
+ "5_cap_prob_sans_levee_a": {
+  "a": {
+   "sorties_en_probation": 106,
+   "veto": 11,
+   "usagers": 49,
+   "usagers_veto": 11,
+   "part_sorties_pct": 10.377,
+   "part_usagers_pct": 22.449,
+   "wilson_usagers": [
+    13.02,
+    35.88
+   ]
+  },
+  "b": {
+   "sorties_en_probation": 79,
+   "veto": 8,
+   "usagers": 30,
+   "usagers_veto": 6,
+   "part_sorties_pct": 10.127,
+   "part_usagers_pct": 20.0,
+   "wilson_usagers": [
+    9.5,
+    37.31
+   ]
+  }
+ },
+ "6_fail_closed_es11": {
+  "20000": {
+   "ordinaire": 2.403,
+   "salarie": 3.009,
+   "victime": 2.361,
+   "marchand": 1.183,
+   "agent": 3.822,
+   "ac02_plan_passe_en_degrade_pct": 97.667
+  },
+  "25000": {
+   "ordinaire": 2.082,
+   "salarie": 2.671,
+   "victime": 2.017,
+   "marchand": 1.059,
+   "agent": 3.411,
+   "ac02_plan_passe_en_degrade_pct": 98.667
+  },
+  "30000": {
+   "ordinaire": 1.862,
+   "salarie": 2.468,
+   "victime": 1.845,
+   "marchand": 0.98,
+   "agent": 3.189,
+   "ac02_plan_passe_en_degrade_pct": 99.667
+  },
+  "35000": {
+   "ordinaire": 1.691,
+   "salarie": 2.312,
+   "victime": 1.688,
+   "marchand": 0.921,
+   "agent": 2.991,
+   "ac02_plan_passe_en_degrade_pct": 99.667
+  },
+  "40000": {
+   "ordinaire": 1.553,
+   "salarie": 2.168,
+   "victime": 1.574,
+   "marchand": 0.86,
+   "agent": 2.794,
+   "ac02_plan_passe_en_degrade_pct": 99.667
+  },
+  "45000": {
+   "ordinaire": 1.425,
+   "salarie": 2.027,
+   "victime": 1.423,
+   "marchand": 0.815,
+   "agent": 2.639,
+   "ac02_plan_passe_en_degrade_pct": 99.667
+  },
+  "50000": {
+   "ordinaire": 1.325,
+   "salarie": 1.908,
+   "victime": 1.338,
+   "marchand": 0.77,
+   "agent": 2.494,
+   "ac02_plan_passe_en_degrade_pct": 100.0
+  },
+  "55000": {
+   "ordinaire": 1.237,
+   "salarie": 1.796,
+   "victime": 1.23,
+   "marchand": 0.738,
+   "agent": 2.364,
+   "ac02_plan_passe_en_degrade_pct": 100.0
+  },
+  "60000": {
+   "ordinaire": 1.166,
+   "salarie": 1.695,
+   "victime": 1.123,
+   "marchand": 0.699,
+   "agent": 2.248,
+   "ac02_plan_passe_en_degrade_pct": 100.0
+  }
+ },
+ "7_tpr_ac02": {
+  "base": {
+   "avec_imsi_freeze_pct": 100.0,
+   "motif_avec_imsi": "veto ES-04 : nouveau bénéficiaire en PROBATION",
+   "sans_imsi": {
+    "STEP_UP": 66.333,
+    "FREEZE": 23.667,
+    "ALLOW": 10.0
+   },
+   "sans_imsi_borne_basse_tpr_pct (FREEZE seul)": 23.667,
+   "wilson_borne_basse": [
+    19.21,
+    28.79
+   ],
+   "sans_imsi_borne_haute_tpr_pct (FREEZE + STEP_UP non résoluble)": 90.0,
+   "wilson_borne_haute": [
+    86.08,
+    92.91
+   ],
+   "part_night_locale_pct": 27.333,
+   "part_ge_thr_high_pct": 86.333
+  },
+  "base_max": {
+   "avec_imsi_freeze_pct": 100.0,
+   "motif_avec_imsi": "veto ES-04 : nouveau bénéficiaire en PROBATION",
+   "sans_imsi": {
+    "STEP_UP": 86.333,
+    "ALLOW": 13.667
+   },
+   "sans_imsi_borne_basse_tpr_pct (FREEZE seul)": 0.0,
+   "wilson_borne_basse": [
+    0.0,
+    1.26
+   ],
+   "sans_imsi_borne_haute_tpr_pct (FREEZE + STEP_UP non résoluble)": 86.333,
+   "wilson_borne_haute": [
+    81.98,
+    89.76
+   ],
+   "part_night_locale_pct": 27.333,
+   "part_ge_thr_high_pct": 86.333
+  },
+  "base_sans_night": {
+   "avec_imsi_freeze_pct": 100.0,
+   "motif_avec_imsi": "veto ES-04 : nouveau bénéficiaire en PROBATION",
+   "sans_imsi": {
+    "STEP_UP": 86.333,
+    "ALLOW": 13.667
+   },
+   "sans_imsi_borne_basse_tpr_pct (FREEZE seul)": 0.0,
+   "wilson_borne_basse": [
+    0.0,
+    1.26
+   ],
+   "sans_imsi_borne_haute_tpr_pct (FREEZE + STEP_UP non résoluble)": 86.333,
+   "wilson_borne_haute": [
+    81.98,
+    89.76
+   ],
+   "part_night_locale_pct": 27.333,
+   "part_ge_thr_high_pct": 86.333
+  },
+  "nbH=40": {
+   "avec_imsi_freeze_pct": 100.0,
+   "motif_avec_imsi": "veto ES-04 : nouveau bénéficiaire en PROBATION",
+   "sans_imsi": {
+    "STEP_UP": 90.0,
+    "ALLOW": 10.0
+   },
+   "sans_imsi_borne_basse_tpr_pct (FREEZE seul)": 0.0,
+   "wilson_borne_basse": [
+    0.0,
+    1.26
+   ],
+   "sans_imsi_borne_haute_tpr_pct (FREEZE + STEP_UP non résoluble)": 90.0,
+   "wilson_borne_haute": [
+    86.08,
+    92.91
+   ],
+   "part_night_locale_pct": 27.333,
+   "part_ge_thr_high_pct": 86.333
+  },
+  "nbH=50": {
+   "avec_imsi_freeze_pct": 100.0,
+   "motif_avec_imsi": "veto ES-04 : nouveau bénéficiaire en PROBATION",
+   "sans_imsi": {
+    "STEP_UP": 66.333,
+    "FREEZE": 23.667,
+    "ALLOW": 10.0
+   },
+   "sans_imsi_borne_basse_tpr_pct (FREEZE seul)": 23.667,
+   "wilson_borne_basse": [
+    19.21,
+    28.79
+   ],
+   "sans_imsi_borne_haute_tpr_pct (FREEZE + STEP_UP non résoluble)": 90.0,
+   "wilson_borne_haute": [
+    86.08,
+    92.91
+   ],
+   "part_night_locale_pct": 27.333,
+   "part_ge_thr_high_pct": 86.333
+  },
+  "thr x2": {
+   "avec_imsi_freeze_pct": 100.0,
+   "motif_avec_imsi": "veto ES-04 : nouveau bénéficiaire en PROBATION",
+   "sans_imsi": {
+    "STEP_UP": 67.333,
+    "FREEZE": 24.0,
+    "ALLOW": 8.667
+   },
+   "sans_imsi_borne_basse_tpr_pct (FREEZE seul)": 24.0,
+   "wilson_borne_basse": [
+    19.52,
+    29.14
+   ],
+   "sans_imsi_borne_haute_tpr_pct (FREEZE + STEP_UP non résoluble)": 91.333,
+   "wilson_borne_haute": [
+    87.6,
+    94.02
+   ],
+   "part_night_locale_pct": 27.333,
+   "part_ge_thr_high_pct": 88.0
+  },
+  "thr x5": {
+   "avec_imsi_freeze_pct": 100.0,
+   "motif_avec_imsi": "veto ES-04 : nouveau bénéficiaire en PROBATION",
+   "sans_imsi": {
+    "STEP_UP": 65.0,
+    "FREEZE": 20.333,
+    "ALLOW": 14.667
+   },
+   "sans_imsi_borne_basse_tpr_pct (FREEZE seul)": 20.333,
+   "wilson_borne_basse": [
+    16.17,
+    25.25
+   ],
+   "sans_imsi_borne_haute_tpr_pct (FREEZE + STEP_UP non résoluble)": 85.333,
+   "wilson_borne_haute": [
+    80.88,
+    88.89
+   ],
+   "part_night_locale_pct": 27.333,
+   "part_ge_thr_high_pct": 78.333
+  }
+ }
+}
