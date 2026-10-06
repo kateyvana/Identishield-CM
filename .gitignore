@@ -38,3 +38,7 @@ data/real/
 mobile/local.properties
 mobile/.kotlin/
 tools/mobile-mock/.tls/
+
+# Sorties compilees IDE/Java
+core/bin/
+pdp/bin/
