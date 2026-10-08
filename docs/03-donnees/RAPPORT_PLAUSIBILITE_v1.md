@@ -1,7 +1,7 @@
 # Rapport de plausibilité — dev horizon v1 (gelé) contre l'étalon réel v1.1
 
-- **Version** : v1 — **BROUILLON, en relecture par le propriétaire (non figé)**
-- **Date** : 2026-10-01 (T3-06)
+- **Version** : v1 — **FIGÉE** le 2026-10-08, après relecture du propriétaire
+- **Date** : 2026-10-01 (T3-06) ; corrections de relecture du 2026-10-08 (§4.3 en deux lentilles, renvois de sensibilité, calcul de la limite n° 2)
 - **Jeu évalué** : dev horizon v1, figé en T3-05 (`data/eval/dev_horizon_v1.manifest.json`), PERSONAS v2.1
 - **Référence** : étalon réel v1.1 (`docs/03-donnees/profil_reel_v1.1.json`)
 - **Outil** : `python -m isc_simulator.stats` (déterministe, bibliothèque standard seule) ; tolérances de PERSONAS §5 (v2.0/v2.1)
@@ -46,7 +46,7 @@ L'étalon est un ensemble d'**agrégats** tirés d'un CSV réel confidentiel de 
 | Statut | Dimensions | Ce que le rapport affirme |
 |---|---|---|
 | **CALIBRÉ sur le réel** | rythme par usager ; montants (L1, quantiles, multiples ronds) ; heures du jour ; sessions toutes directions ; sessions de sorties | mesuré contre l'étalon, avec une bande fixée **avant** la mesure (PERSONAS §5) et un verdict |
-| **DÉCLARÉ sans ancrage** | agent (rythme, 1 % des usagers) ; paie (salaire du 28) ; événements SIM ; canal et liaison d'appareil ; graphe de bénéficiaires | hypothèses documentées (PERSONAS §1, §4) ; rapportées, **sans verdict** ; sensibilité en T3-07 |
+| **DÉCLARÉ sans ancrage** | agent (rythme, 1 % des usagers) ; paie (salaire du 28) ; événements SIM ; canal et liaison d'appareil ; graphe de bénéficiaires | hypothèses documentées (PERSONAS §1, §4) ; rapportées, **sans verdict** ; analyse de sensibilité aux surcouches : non encore réalisée, à planifier |
 | **DIAGNOSTIC seulement** | part d'usagers dépassant VEL (monétaire, sorties) | rapportée avec dénominateur et fenêtre ; **jamais une cible**, donc jamais un verdict |
 
 Les agents sont **exclus** des comparaisons de rythme, de sessions et de VEL : ils sont une surcouche déclarée, que le réel ne contient pas.
@@ -88,12 +88,16 @@ Périmètres : *montants* et *heures* portent sur **toutes** les transactions sy
 
 La bande « ≤ réel » sur les multiples est voulue : un jeu **moins** rond que le réel ne donne au détecteur aucun indice artificiel de montant rond.
 
-### 4.3 Heures du jour
+### 4.3 Heures du jour — deux lentilles
 
-| Mesure | Réel | Bande | Jeu gelé | Verdict |
-|---|--:|--:|--:|---|
-| Distance L1 sur 24 h | — | < 0,08 | **0,0473** | **DANS LA BANDE** |
-| Part NUIT (heures 23 h–4 h, lues dans `NIGHT`) | 6,51 % | ±1,5 pt | 5,87 % (−0,64 pt) | **DANS LA BANDE** |
+**Fuseau.** L'heure du CSV réel est **naïve** : aucune colonne ni aucun suffixe ne donne son fuseau. Décision du propriétaire du 2026-10-06 : elle est **déclarée** comme heure locale WAT (`Africa/Douala`, UTC+1). C'est une **hypothèse non vérifiée**, cohérente avec T3-07 et ADR-016 (`NIGHT_ZONE`). La part NUIT réelle reste donc **6,51 %** sans recalcul, puisque naïf = local. Le générateur, lui, part de minuit **UTC**, tire l'heure dans le profil réel et l'écrit avec le suffixe `Z` (`generator.py`, lignes 348 et 502). La synthèse est donc mesurée sous deux lentilles : **telle qu'écrite** (UTC) et **locale** (UTC + 1, ce que verra le PDP). Fenêtre de la règle `NIGHT` : 23:00–05:00 en heure locale, soit 22:00–04:00 UTC.
+
+| Mesure | Réel (naïf = local, déclaré) | Bande | Jeu gelé, lentille UTC (telle qu'écrite) | Verdict UTC | Jeu gelé, lentille locale WAT | Verdict local |
+|---|--:|--:|--:|---|--:|---|
+| Distance L1 sur 24 h | — | < 0,08 | **0,0473** | **DANS LA BANDE** | **0,1804** | **HORS BANDE** |
+| Part NUIT (23:00–05:00) | 6,51 % | ±1,5 pt | 5,87 % (−0,64 pt) | **DANS LA BANDE** | 8,58 % (+2,07 pt) | **HORS BANDE** |
+
+**Le verdict n'est pas robuste au fuseau.** Il ne le serait que si les deux lentilles tombaient dans la bande. La lentille UTC reproduit le profil réel. La lentille locale le montre **décalé d'une heure trop tard** : le générateur a placé un profil (supposé) local sur des heures UTC. La forme est juste, la phase est déplacée d'une heure. Si l'hypothèse WAT est vraie, c'est un défaut de la base de temps du jeu gelé (limite n° 6). Le jeu gelé n'est pas modifié.
 
 ### 4.4 Sessions
 
@@ -104,7 +108,7 @@ La bande « ≤ réel » sur les multiples est voulue : un jeu **moins** rond qu
 | Écarts entre sorties consécutives < 10 min | 5,05 % | ±25 % relatif | 4,88 % (−3,40 %) | **DANS LA BANDE** |
 | Écarts entre sorties consécutives < 1 min | 1,49 % | rapporté | 1,38 % | rapporté |
 
-**Bilan des dimensions calibrées : 22 mesures sous bande, 22 dans la bande, 0 hors bande.**
+**Bilan des dimensions calibrées : 22 mesures sous bande. Lentille UTC (telle qu'écrite) : 22 dans la bande, 0 hors bande. Lentille locale WAT (fuseau réel supposé) : 20 dans la bande, 2 hors bande (les deux mesures horaires, §4.3).**
 
 ---
 
@@ -130,10 +134,11 @@ Règle lue dans `config/ruleset.yaml` (`VEL`) : **plus de 3 transactions en 10 m
 ## 6. Limites déclarées
 
 1. **Petit échantillon réel.** L'étalon repose sur 64 usagers (52 pour le rythme et les montants par usager, 49 pour les sorties). Les bandes sont relatives à des quantiles estimés sur ces effectifs, et les queues (p95, max) sont incertaines. La plausibilité est démontrée **contre cet étalon**, pas contre la population Mobile Money camerounaise.
-2. **Agent non ancré.** Le réel ne contient pas d'agent. L'archétype agent (1 % des usagers, 15,8 % du volume) est une surcouche déclarée (rythme lognormal de médiane 10 tx/j, σ 1,0). Il est exclu de toutes les comparaisons et n'a pas de verdict.
-3. **Autres surcouches déclarées sans ancrage.** Paie (salaire ~80 000 le 28), événements SIM (a 77, b 64, c 219 ; vérité-terrain dans le sidecar seulement), canal et liaison d'appareil, graphe de bénéficiaires (nouveau bénéficiaire : 7,07 % des sorties). Ces champs sont **absents du réel** (étalon section e). Leur effet sur les résultats est l'objet de l'analyse de sensibilité de T3-07.
+2. **Agent non ancré.** Le réel ne contient pas d'agent. L'archétype agent (1 % des usagers ; **15,8 % du volume, mesuré sur le jeu gelé** (≈ 12,5 % attendu du modèle ; écart dû au tirage de seulement 25 agents, +1,2 écart-type)) est une surcouche déclarée (rythme lognormal de médiane 10 tx/j, σ 1,0). Il est exclu de toutes les comparaisons et n'a pas de verdict. *Calcul* : mesuré 98 756 / 624 645 = 15,81 %, soit 98 756 / (25 × 182) = 21,70 tx/j par agent. Attendu : moyenne de la lognormale 10 × e^(σ²/2) = 16,49 tx/j, × 25 × 182 ≈ 75 017 tx, soit 75 017 / (525 889 + 75 017) = 12,48 % du volume. Écart-type de la moyenne de 25 tirages : 10 × √(e·(e − 1)) / 5 = 4,32 tx/j ; (21,70 − 16,49) / 4,32 = +1,21 écart-type, donc cohérent avec le modèle.
+3. **Autres surcouches déclarées sans ancrage.** Paie (salaire ~80 000 le 28), événements SIM (a 77, b 64, c 219 ; vérité-terrain dans le sidecar seulement), canal et liaison d'appareil, graphe de bénéficiaires (nouveau bénéficiaire : 7,07 % des sorties). Ces champs sont **absents du réel** (étalon section e). Leur effet sur les résultats relève d'une analyse de sensibilité aux surcouches : non encore réalisée, à planifier (T3-07 a porté sur la calibration ADR-016, pas sur cette sensibilité).
 4. **VEL au-dessus du réel sur 322 jours** (monétaire 40,77 % contre 26,92 % ; sorties 13,69 % contre 10,20 %). C'est **assumé et conservateur** (§5) : VEL est un diagnostic, et sa surreprésentation pénalise le PDP au lieu de l'avantager.
 5. **Part de sorties non forcée.** 37,38 % des transactions de synthèse sont des sorties, contre 49,58 % dans le réel parmi les entrées et sorties. Ce n'est pas une cible de PERSONAS §5. Déduit (non mesuré isolément) : l'écart vient surtout des marchands (14,92 % de sorties : ils encaissent) et de la paie (entrées de salaire), qui sont des surcouches déclarées ; ordinaire 48,36 %, victime 48,32 %, salarié 44,39 %. Rapporté pour transparence.
+6. **Base de temps du jeu gelé décalée d'une heure sous l'hypothèse WAT** (§4.3). Si l'heure naïve réelle est locale, le profil horaire synthétique, vu en heure locale, est décalé d'une heure trop tard : NUIT 8,58 % contre 6,51 %, L1 0,1804 contre une cible < 0,08. Effet sur T3-07 et ADR-016, qui mesurent NIGHT en heure locale : le jeu contient **plus** de sorties nocturnes que le réel, donc le FPR de NIGHT y est **surestimé**. C'est pessimiste pour le PDP, pas flatteur. Correction possible, non faite : placer le profil en heure locale (UTC = local − 1 h) dans un horizon v2. Cela changerait les empreintes du gel et du plan AC-02.
 
 ---
 
@@ -159,9 +164,11 @@ uv run --project simulator python -m isc_simulator.stats --sample <out>.csv --et
 
 Pour la variante diagnostique, remplacer `--days 182` par `--days 322`.
 
+Lentille locale WAT du §4.3 : sur la vue détecteur, heure locale = heure UTC du `timestamp` + 1 ; NUIT = heures locales 23, 0, 1, 2, 3 et 4 ; L1 = Σ |part synthétique locale − part réelle| sur les 24 heures (profil réel : `b_heure_du_jour.par_heure` de l'étalon).
+
 ---
 
 ## 8. Traçabilité
 
 - **Amont** : PERSONAS v2.1 §0 (statuts), §1.12 (sessions orientées), §5 (bandes) ; étalon v1.1 ; manifeste dev horizon v1 (T3-05) ; ADR-033 (bibliothèque standard), ADR-035 (identifiants MTN fictifs).
-- **Aval** : T3-07 (sensibilité aux surcouches déclarées) ; évaluation AC-02 du mois 5 sur ce même jeu (plan `data/eval/ac02_plan.csv`, branche `t3-04b-plan`) ; chapitre « données » du mémoire.
+- **Aval** : T3-07 (calibration ADR-016, mesurée sur ce jeu) ; analyse de sensibilité aux surcouches déclarées (non encore réalisée, à planifier) ; évaluation AC-02 du mois 5 sur ce même jeu (plan `data/eval/ac02_plan.csv`, branche `t3-04b-plan`) ; chapitre « données » du mémoire.
