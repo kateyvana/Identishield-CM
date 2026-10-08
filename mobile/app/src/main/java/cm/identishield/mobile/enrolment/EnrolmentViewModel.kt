@@ -16,15 +16,18 @@ import cm.identishield.mobile.security.DeviceKeyManager
 import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.InsecureKeyStorageException
 import cm.identishield.mobile.security.LocalUnlock
+import cm.identishield.mobile.security.RecoveryThrottle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
 import java.util.Base64
 
-/** Erreurs affichées sur les écrans du flux A (SPEC §5.3) ; les textes vivent dans strings.xml. */
+/** Erreurs affichées sur les écrans des flux A et D (SPEC §5.3, §8.4) ; les textes vivent dans strings.xml. */
 enum class EnrolError {
     NUMBER_INVALID, // format local (9 chiffres) ou plage refusée par le serveur (REQUEST_INVALID)
     CREDENTIALS_INVALID, // compte inexistant OU PIN faux : un seul message (ES-22)
@@ -32,8 +35,9 @@ enum class EnrolError {
     OTP_EXPIRED,
     SESSION_EXPIRED, // ENROLMENT_EXPIRED : l'enrôlement a expiré (ENROL_TTL), recommencer
     UNREACHABLE, // MOB-NF-03 : message clair, jamais de mise en file
-    REENROLMENT_NOT_AVAILABLE, // compte déjà lié : flux D, carte M-08
-    DEVICE_REFUSED, // puce logicielle ou attestation refusée (E-27, carte M-08)
+    RECOVERY_INVALID, // « Clé incorrecte » : même message pour tout le monde (ES-22, SPEC §8.3)
+    REENROL_FROZEN, // ré-enrôlements gelés après « ce n'est pas moi » (ES-27, REENROL_FREEZE)
+    DEVICE_REFUSED, // puce logicielle ou attestation refusée : E-27b (M-08)
     UNLOCK_CANCELLED,
     CONFIRM_MISMATCH,
     UNEXPECTED,
@@ -42,7 +46,7 @@ enum class EnrolError {
 /** Étapes 3 d'E-07 : clé créée, déverrouillage local, enregistrement auprès du serveur. */
 enum class SecuringStage { CREATING_KEY, UNLOCKING, REGISTERING }
 
-/** Un état par écran du flux A (E-02 à E-09, E-11). */
+/** Un état par écran des flux A et D (E-02 à E-09, E-11, E-20 à E-22, E-26). */
 sealed interface EnrolStep {
     data object Welcome : EnrolStep // E-02
 
@@ -83,12 +87,28 @@ sealed interface EnrolStep {
     data class Home(
         val account: Account,
     ) : EnrolStep // E-11
+
+    data class Recovery(
+        val error: EnrolError? = null,
+    ) : EnrolStep // E-20
+
+    data class RecoveryWait(
+        val until: Instant,
+    ) : EnrolStep // E-21
+
+    data object KeyLost : EnrolStep // E-26
+
+    data class Rebound(
+        val msisdn: String,
+    ) : EnrolStep // E-22
 }
 
 /**
- * Flux A — premier enrôlement. Le serveur décide (P-2) ; l'application exécute.
- * Garde-fous : la clé n'est créée QU'APRÈS la validation de l'OTP par le serveur (ES-25) ; le PIN
- * et la clé de récupération ne vivent qu'en mémoire et sont effacés à l'arrivée sur l'accueil (P-9).
+ * Flux A — premier enrôlement — et flux D — ré-enrôlement par clé de récupération (M-08). Le serveur
+ * décide (P-2) : c'est LUI qui répond RECOVERY ; l'application ne devine jamais pourquoi.
+ * Garde-fous : la clé n'est créée QU'APRÈS la validation de l'OTP ou de la clé de récupération par le
+ * serveur (ES-25) ; en flux D, l'ancienne clé locale est détruite AVANT la création de la nouvelle ; le
+ * PIN et les clés de récupération ne vivent qu'en mémoire ; la clé saisie n'est jamais conservée.
  */
 class EnrolmentViewModel(
     private val repository: EnrolmentRepository,
@@ -96,6 +116,7 @@ class EnrolmentViewModel(
     scope: CoroutineScope? = null,
     private val boundDevice: BoundDeviceStore? = null, // numéro + device_id pour le flux B (M-07)
     private val session: SessionHolder? = null, // jeton ouvert en E-09, repris par le flux B (M-07)
+    private val throttle: RecoveryThrottle? = null, // délai croissant local du flux D (M-08) ; absent = refus
 ) : ViewModel() {
     private val scope: CoroutineScope = scope ?: viewModelScope
     private val _step = MutableStateFlow<EnrolStep>(EnrolStep.Welcome)
@@ -109,6 +130,8 @@ class EnrolmentViewModel(
     private var recovery: IssuedCode? = null
     private var redisplayUsed = false
     private var inFlight = false
+    private var rebinding = false // flux D : la clé de récupération a été validée par le serveur
+    private var beforeKeyLost: EnrolStep? = null
 
     private data class IssuedCode(
         val enrolmentId: String,
@@ -120,12 +143,20 @@ class EnrolmentViewModel(
         _step.value = EnrolStep.Number()
     }
 
+    /** E-27a « Sécuriser à nouveau ce téléphone » : numéro mémorisé, on reprend au PIN (E-06). */
+    fun beginWithNumber(number: String) {
+        msisdn = number
+        _step.value = EnrolStep.Pin(number)
+    }
+
     fun back() {
         _step.value =
             when (val s = _step.value) {
                 is EnrolStep.Number -> EnrolStep.Welcome
                 is EnrolStep.Pin -> EnrolStep.Number()
                 is EnrolStep.Otp -> EnrolStep.Pin(s.msisdn)
+                is EnrolStep.Recovery, is EnrolStep.RecoveryWait -> msisdn?.let { EnrolStep.Pin(it) } ?: EnrolStep.Number()
+                EnrolStep.KeyLost -> beforeKeyLost ?: EnrolStep.Recovery()
                 else -> s // pas de retour pendant la liaison ni après
             }
     }
@@ -171,7 +202,11 @@ class EnrolmentViewModel(
                             val generation = ((previous as? EnrolStep.Otp)?.resendGeneration ?: -1) + 1
                             _step.value = EnrolStep.Otp(number, resendGeneration = generation)
                         }
-                        NEXT_RECOVERY -> _step.value = EnrolStep.Pin(number, EnrolError.REENROLMENT_NOT_AVAILABLE)
+                        NEXT_RECOVERY -> {
+                            // Flux D : décidé par le SERVEUR (clé enregistrée, pas de signature valide).
+                            enrolmentId = r.value.enrolmentId
+                            _step.value = recoveryEntry()
+                        }
                         else -> _step.value = EnrolStep.Pin(number, EnrolError.UNEXPECTED)
                     }
                 is ApiResult.Refused ->
@@ -179,6 +214,7 @@ class EnrolmentViewModel(
                         when (r.reason) {
                             REASON_CREDENTIALS -> EnrolStep.Pin(number, EnrolError.CREDENTIALS_INVALID)
                             REASON_REQUEST -> EnrolStep.Number(EnrolError.NUMBER_INVALID)
+                            REASON_ACCOUNT_FROZEN -> EnrolStep.Pin(number, EnrolError.REENROL_FROZEN)
                             else -> EnrolStep.Pin(number, EnrolError.UNEXPECTED)
                         }
                 ApiResult.Unreachable ->
@@ -263,7 +299,12 @@ class EnrolmentViewModel(
                     val deviceId = r.value.deviceId
                     if (number != null && deviceId != null) boundDevice?.save(BoundDevice(number, deviceId))
                     recovery = IssuedCode(r.value.enrolmentId, r.value.recoveryCode, r.value.confirmPositions)
-                    _step.value = EnrolStep.RecoveryKey(r.value.recoveryCode, lastDisplay = false)
+                    _step.value =
+                        if (rebinding && number != null) {
+                            EnrolStep.Rebound(number) // E-22, puis la nouvelle clé (E-08)
+                        } else {
+                            EnrolStep.RecoveryKey(r.value.recoveryCode, lastDisplay = false)
+                        }
                 }
                 is ApiResult.Refused -> {
                     keys.delete() // le serveur n'a pas enregistré la clé : elle ne vaut rien
@@ -285,16 +326,84 @@ class EnrolmentViewModel(
         }
     }
 
-    /** Crée la clé puis la fait signer le défi après déverrouillage local ; null si l'usager annule. */
+    /**
+     * Crée la clé puis la fait signer le défi après déverrouillage local ; null si l'usager annule.
+     * Flux D : l'ancienne clé locale est détruite AVANT la création de la nouvelle (une seule clé).
+     */
     private suspend fun createAndSign(
         challenge: ByteArray,
         unlock: LocalUnlock,
     ): Pair<GeneratedKey, ByteArray>? {
         _step.value = EnrolStep.Securing(SecuringStage.CREATING_KEY)
+        if (rebinding) keys.delete()
         val key = keys.generate(challenge)
         _step.value = EnrolStep.Securing(SecuringStage.UNLOCKING)
         val signature = unlock.unlockAndSign(keys.newSigner(), challenge) ?: return null
         return key to signature
+    }
+
+    // ---- Flux D : clé de récupération (E-20, E-21, E-22, E-26) -----------------------------------
+
+    /** E-20, ou E-21 directement si cet appareil doit encore attendre. */
+    private fun recoveryEntry(error: EnrolError? = null): EnrolStep =
+        throttle?.lockedUntil()?.let { EnrolStep.RecoveryWait(it) } ?: EnrolStep.Recovery(error)
+
+    /**
+     * E-20 : la clé saisie part au serveur pour CETTE tentative et n'est conservée nulle part. Échec :
+     * « Clé incorrecte », puis délai croissant sur CET appareil ; jamais de blocage du compte (ES-21).
+     */
+    fun submitRecoveryCode(raw: String) {
+        if (_step.value !is EnrolStep.Recovery) return
+        val gate = throttle ?: return run { _step.value = EnrolStep.Recovery(EnrolError.UNEXPECTED) } // défaut fermé
+        // Pas de garde sur le délai ici : l'état RecoveryWait refuse déjà toute saisie, et
+        // recoveryEntry() consulte le délai avant d'afficher E-20 (prouvé par les tests).
+        val id = enrolmentId ?: return begin()
+        val code = raw.uppercase().filter { it.isLetterOrDigit() }
+        exclusive {
+            when (val r = repository.recover(id, code)) {
+                is ApiResult.Ok -> {
+                    gate.recordSuccess()
+                    rebinding = true
+                    attestationChallenge = r.value.attestationChallenge // ES-25 : liaison après validation
+                    _step.value = EnrolStep.Securing(SecuringStage.CREATING_KEY)
+                }
+                is ApiResult.Refused ->
+                    _step.value =
+                        when (r.reason) {
+                            REASON_RECOVERY_INVALID ->
+                                gate.recordFailure(r.retryAfterSeconds?.let(Duration::ofSeconds))?.let { EnrolStep.RecoveryWait(it) }
+                                    ?: EnrolStep.Recovery(EnrolError.RECOVERY_INVALID)
+                            REASON_THROTTLED -> EnrolStep.RecoveryWait(gate.serverWait(r.retryAfterSeconds?.let(Duration::ofSeconds)))
+                            REASON_ACCOUNT_FROZEN -> EnrolStep.Recovery(EnrolError.REENROL_FROZEN)
+                            REASON_ENROLMENT_EXPIRED -> msisdn?.let { EnrolStep.Pin(it, EnrolError.SESSION_EXPIRED) } ?: EnrolStep.Number()
+                            else -> EnrolStep.Recovery(EnrolError.UNEXPECTED)
+                        }
+                ApiResult.Unreachable -> _step.value = EnrolStep.Recovery(EnrolError.UNREACHABLE)
+            }
+        }
+    }
+
+    /** Attente restante sur cet appareil (E-21), lue sur l'horloge injectée. */
+    fun waitRemaining(): Duration? = throttle?.remaining()
+
+    /** E-21 → E-20 quand l'attente est écoulée. */
+    fun recoveryWaitOver() {
+        if (_step.value is EnrolStep.RecoveryWait && throttle?.remaining() == null) _step.value = EnrolStep.Recovery()
+    }
+
+    /** « J'ai perdu ma clé » (E-20, E-21) → E-26, écran d'orientation (QM-05). */
+    fun lostKey() {
+        val current = _step.value
+        if (current !is EnrolStep.Recovery && current !is EnrolStep.RecoveryWait) return
+        beforeKeyLost = current
+        _step.value = EnrolStep.KeyLost
+    }
+
+    /** E-22 → E-08 : la nouvelle clé de récupération, affichée une seule fois. */
+    fun showNewKey() {
+        if (_step.value !is EnrolStep.Rebound) return
+        val issued = recovery ?: return
+        _step.value = EnrolStep.RecoveryKey(issued.code, lastDisplay = false)
     }
 
     /** E-08 → E-09 : « Je l'ai écrite sur papier ». */
@@ -364,10 +473,11 @@ class EnrolmentViewModel(
         private val keys: DeviceKeyManager,
         private val boundDevice: BoundDeviceStore,
         private val session: SessionHolder,
+        private val throttle: RecoveryThrottle,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            EnrolmentViewModel(repository, keys, boundDevice = boundDevice, session = session) as T
+            EnrolmentViewModel(repository, keys, boundDevice = boundDevice, session = session, throttle = throttle) as T
     }
 
     companion object {
@@ -381,6 +491,8 @@ class EnrolmentViewModel(
         const val REASON_OTP_EXPIRED = "OTP_EXPIRED"
         const val REASON_ENROLMENT_EXPIRED = "ENROLMENT_EXPIRED"
         const val REASON_RECOVERY_INVALID = "RECOVERY_INVALID"
+        const val REASON_THROTTLED = "THROTTLED"
+        const val REASON_ACCOUNT_FROZEN = "ACCOUNT_FROZEN"
         const val REASON_ATTESTATION_REJECTED = "ATTESTATION_REJECTED"
         const val REASON_DEVICE_UNSUPPORTED = "DEVICE_UNSUPPORTED"
     }

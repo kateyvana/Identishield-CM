@@ -14,17 +14,14 @@ import cm.identishield.mobile.data.SignedAction
 import cm.identishield.mobile.data.Transaction
 import cm.identishield.mobile.data.TransferRequest
 import cm.identishield.mobile.security.BoundDeviceStore
-import cm.identishield.mobile.security.DeviceKeyInvalidatedException
 import cm.identishield.mobile.security.DeviceKeyManager
 import cm.identishield.mobile.security.LocalUnlock
 import cm.identishield.mobile.security.SignedPayload
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Base64
 
 /** Erreurs affichées dans les flux B et C (SPEC §6, §7.4) ; les textes vivent dans strings.xml. */
 enum class DailyError {
@@ -169,7 +166,7 @@ class DailyViewModel(
                     ApiResult.Unreachable -> return@exclusive lock(Problem(DailyError.UNREACHABLE))
                 }
             val signature =
-                when (val s = sign(unlock) { SignedPayload.sessionChallenge(challenge) }) {
+                when (val s = signLocally(keys, unlock) { SignedPayload.sessionChallenge(challenge) }) {
                     is Signed.Done -> s.base64
                     is Signed.Failed -> return@exclusive lock(Problem(s.error))
                 }
@@ -284,7 +281,7 @@ class DailyViewModel(
             val signature =
                 when (
                     val s =
-                        sign(unlock) {
+                        signLocally(keys, unlock) {
                             SignedPayload.transfer(owner.accountId, TRANSFER_TYPE, current.amountXaf, current.holder.beneficiaryId, nonce)
                         }
                 ) {
@@ -329,7 +326,7 @@ class DailyViewModel(
                     }
                 }
             val signature =
-                when (val s = sign(unlock) { SignedPayload.cancel(owner.accountId, current.transferId, nonce) }) {
+                when (val s = signLocally(keys, unlock) { SignedPayload.cancel(owner.accountId, current.transferId, nonce) }) {
                     is Signed.Done -> s.base64
                     is Signed.Failed -> {
                         _step.value = current.copy(problem = Problem(s.error))
@@ -351,7 +348,21 @@ class DailyViewModel(
         }
     }
 
-    /** Retour arrière : jamais pendant un appel ; jamais vers un écran de saisie après un envoi. */
+    /** Session perdue ailleurs (401 sur les alertes, flux F) : retour à E-10. */
+    fun sessionLost() {
+        if (_step.value is DailyStep.Unlock || _step.value is DailyStep.NotBound) return
+        lock(Problem(DailyError.SESSION_EXPIRED))
+    }
+
+    /** E-27a « Sécuriser à nouveau ce téléphone » : on quitte le flux B pour le flux D. */
+    fun leaveForReenrolment() {
+        session.token = null
+        session.accountId = null
+        account = null
+        _step.value = DailyStep.NotBound
+    }
+
+        /** Retour arrière : jamais pendant un appel ; jamais vers un écran de saisie après un envoi. */
     fun back() {
         if (inFlight) return
         when (val s = _step.value) {
@@ -372,6 +383,7 @@ class DailyViewModel(
         val t = repository.transactions(token)
         if (a is ApiResult.Ok && t is ApiResult.Ok) {
             account = a.value
+            session.accountId = a.value.accountId // signature des réponses aux alertes (flux F)
             _step.value = DailyStep.Home(a.value, t.value.items)
         } else {
             readFailed(if (a !is ApiResult.Ok) a else t)
@@ -433,41 +445,12 @@ class DailyViewModel(
     /** E-10 : numéro mémorisé seulement. Le jeton et le compte en mémoire sont oubliés. */
     private fun lock(problem: Problem? = null) {
         session.token = null
+        session.accountId = null
         account = null
         val bound = device.load()
         _step.value =
             if (bound == null || !keys.hasDeviceKey()) DailyStep.NotBound else DailyStep.Unlock(bound.msisdn, problem)
     }
-
-    private sealed interface Signed {
-        data class Done(
-            val base64: String,
-        ) : Signed
-
-        data class Failed(
-            val error: DailyError,
-        ) : Signed
-    }
-
-    /**
-     * Fabrique la charge PUIS la signe après déverrouillage local. Un champ impossible à signer
-     * (séparateur « | »…) échoue fermé AVANT toute requête ; une erreur de la puce ne plante jamais.
-     */
-    private suspend fun sign(
-        unlock: LocalUnlock,
-        payload: () -> ByteArray,
-    ): Signed =
-        try {
-            val bytes = payload()
-            val signature = unlock.unlockAndSign(keys.newSigner(), bytes)
-            if (signature == null) Signed.Failed(DailyError.UNLOCK_CANCELLED) else Signed.Done(Base64.getEncoder().encodeToString(signature))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: DeviceKeyInvalidatedException) {
-            Signed.Failed(DailyError.KEY_INVALIDATED)
-        } catch (e: Exception) {
-            Signed.Failed(DailyError.UNEXPECTED)
-        }
 
     private fun withToken(block: suspend (String) -> Unit) {
         val token = session.token ?: return lock(Problem(DailyError.SESSION_EXPIRED))

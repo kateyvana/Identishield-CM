@@ -36,6 +36,15 @@ class SignedPayloadTest {
     }
 
     @Test
+    fun alertAnswers_areAccountActionAlertIdNonce() {
+        assertEquals("acc-000123|ALERT_ACK|al-1|$nonce", String(SignedPayload.alertAck("acc-000123", "al-1", nonce), Charsets.UTF_8))
+        assertEquals("acc-000123|ALERT_NOT_ME|al-1|$nonce", String(SignedPayload.alertNotMe("acc-000123", "al-1", nonce), Charsets.UTF_8))
+        assertThrows(UnsignableFieldException::class.java) { SignedPayload.alertAck("acc-000123", "al|1", nonce) }
+        assertThrows(UnsignableFieldException::class.java) { SignedPayload.alertNotMe("", "al-1", nonce) }
+        assertThrows(UnsignableFieldException::class.java) { SignedPayload.alertNotMe("acc-000123", "al-1", nonce.uppercase()) }
+    }
+
+    @Test
     fun aSeparatorInAnyField_isRefused_failClosed() {
         assertThrows(UnsignableFieldException::class.java) { SignedPayload.transfer("acc|1", "P2P", 1, "b", nonce) }
         assertThrows(UnsignableFieldException::class.java) { SignedPayload.transfer("a", "P2P|X", 1, "b", nonce) }

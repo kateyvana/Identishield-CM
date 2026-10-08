@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cm.identishield.mobile.R
 import cm.identishield.mobile.data.Account
+import cm.identishield.mobile.data.Alert
 import cm.identishield.mobile.data.DeferredOperation
 import cm.identishield.mobile.data.Transaction
 import cm.identishield.mobile.enrolment.BackHeader
@@ -198,7 +199,7 @@ fun UnlockScreen(
 
 /**
  * Titulaire, solde, badge « protégé » (session ouverte, donc liaison vérifiée par le serveur),
- * envois différés annulables, dernières opérations. Pas de bandeau d'alerte (M-08).
+ * envois différés annulables, dernières opérations ; bandeau et compteur des alertes à traiter (M-08).
  */
 @Composable
 fun DailyHomeScreen(
@@ -210,6 +211,9 @@ fun DailyHomeScreen(
     onHistory: (() -> Unit)? = null,
     onDeferred: ((DeferredOperation) -> Unit)? = null,
     zone: ZoneId = ZoneId.systemDefault(),
+    pendingAlerts: List<Alert> = emptyList(),
+    onAlerts: (() -> Unit)? = null,
+    onAlert: ((Alert) -> Unit)? = null,
 ) {
     Page(DailyTags.HOME) {
         Column(
@@ -223,10 +227,14 @@ fun DailyHomeScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 Tile(R.string.home_send, "↗", onSend, "tile-send", Modifier.weight(1f))
                 Tile(R.string.home_history, "≡", onHistory, "tile-history", Modifier.weight(1f))
-                Tile(R.string.home_alerts, "🔔", null, "tile-alerts", Modifier.weight(1f))
+                Tile(R.string.home_alerts, "🔔", onAlerts, "tile-alerts", Modifier.weight(1f), count = pendingAlerts.size)
                 Tile(R.string.home_security, "🛡", null, "tile-security", Modifier.weight(1f))
             }
             problem?.let { ErrorText(problemText(it)) }
+            pendingAlerts.firstOrNull()?.let { alert ->
+                VerticalGap(16)
+                AlertBanner(alert) { onAlert?.invoke(alert) }
+            }
             if (account.deferredOperations.isNotEmpty()) {
                 VerticalGap(16)
                 Card(R.string.home_deferred, "deferred") {
@@ -260,8 +268,34 @@ fun DailyHomeScreen(
                 }
             }
         }
-        BottomNav(NavTab.HOME, onHome = null, onSend = onSend, onHistory = onHistory)
+        BottomNav(NavTab.HOME, onHome = null, onSend = onSend, onHistory = onHistory, onAlerts = onAlerts)
     }
+}
+
+/** Bandeau d'alerte de la maquette E-11 : résumé du serveur, jamais de lien ni de code (MOB-S-15). */
+@Composable
+private fun AlertBanner(
+    alert: Alert,
+    onClick: () -> Unit,
+) {
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.alert_banner_title)) }
+            append(" · " + alert.summary + " ")
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.alert_banner_see)) }
+        },
+        color = Ink,
+        fontSize = 16.sp,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Amber.copy(alpha = 0.16f))
+                .border(1.dp, Amber.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+                .clickable(onClick = onClick)
+                .padding(16.dp)
+                .testTag("alert-banner"),
+    )
 }
 
 @Composable
@@ -312,6 +346,7 @@ private fun Tile(
     onClick: (() -> Unit)?,
     tag: String,
     modifier: Modifier,
+    count: Int = 0,
 ) {
     val color = if (onClick != null) Navy else Secondary
     Column(
@@ -326,19 +361,28 @@ private fun Tile(
                 .testTag(tag),
     ) {
         Text(glyph, fontSize = 26.sp, color = color)
-        Text(stringResource(label), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(
+            buildAnnotatedString {
+                append(stringResource(label))
+                if (count > 0) withStyle(SpanStyle(color = Danger)) { append(" $count") }
+            },
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = color,
+        )
     }
 }
 
-enum class NavTab { HOME, SEND, HISTORY }
+enum class NavTab { HOME, SEND, HISTORY, ALERTS }
 
-/** Barre de navigation des maquettes (E-11, E-19). Alertes et Sécurité : inactives jusqu'à M-08. */
+/** Barre de navigation des maquettes (E-11, E-19, E-23). Sécurité (E-25) : inactive, hors M-08. */
 @Composable
 fun BottomNav(
     selected: NavTab,
     onHome: (() -> Unit)?,
     onSend: (() -> Unit)?,
     onHistory: (() -> Unit)?,
+    onAlerts: (() -> Unit)? = null,
 ) {
     Column {
         Box(
@@ -357,7 +401,7 @@ fun BottomNav(
             NavItem("⌂", R.string.home_home, selected == NavTab.HOME, onHome, "nav-home", Modifier.weight(1f))
             NavItem("↗", R.string.home_send, selected == NavTab.SEND, onSend, "nav-send", Modifier.weight(1f))
             NavItem("≡", R.string.home_history, selected == NavTab.HISTORY, onHistory, "nav-history", Modifier.weight(1f))
-            NavItem("🔔", R.string.home_alerts, false, null, "nav-alerts", Modifier.weight(1f))
+            NavItem("🔔", R.string.home_alerts, selected == NavTab.ALERTS, onAlerts, "nav-alerts", Modifier.weight(1f))
             NavItem("🛡", R.string.home_security, false, null, "nav-security", Modifier.weight(1f))
         }
     }

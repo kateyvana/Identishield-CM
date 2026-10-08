@@ -6,4 +6,7 @@ package cm.identishield.mobile.data
  */
 class SessionHolder {
     var token: String? = null
+
+    /** Compte de la session ouverte, pour signer les réponses aux alertes (flux F) ; mémoire seule. */
+    var accountId: String? = null
 }

@@ -8,7 +8,7 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-/** Routes des flux A, B et C (contracts/mobile-api.yaml), relatives à l'URL de base `…/mobile/v1/`. */
+/** Routes des flux A à D et F (contracts/mobile-api.yaml), relatives à l'URL de base `…/mobile/v1/`. */
 interface MobileApi {
     @POST("enrolment/start")
     suspend fun start(
@@ -73,4 +73,28 @@ interface MobileApi {
         @Path("transferId") transferId: String,
         @Body body: SignedAction,
     ): Response<CancelResponse>
+
+    @POST("enrolment/recover")
+    suspend fun recover(
+        @Body body: RecoverRequest,
+    ): Response<BindResponse>
+
+    @GET("alerts")
+    suspend fun alerts(
+        @Header("Authorization") bearer: String,
+    ): Response<AlertList>
+
+    @POST("alerts/{alertId}/ack")
+    suspend fun acknowledgeAlert(
+        @Header("Authorization") bearer: String,
+        @Path("alertId") alertId: String,
+        @Body body: SignedAction,
+    ): Response<AlertActionResponse>
+
+    @POST("alerts/{alertId}/not-me")
+    suspend fun denyAlert(
+        @Header("Authorization") bearer: String,
+        @Path("alertId") alertId: String,
+        @Body body: SignedAction,
+    ): Response<AlertActionResponse>
 }

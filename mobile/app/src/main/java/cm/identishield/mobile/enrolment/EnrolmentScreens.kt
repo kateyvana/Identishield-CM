@@ -81,7 +81,8 @@ fun errorMessage(error: EnrolError): String =
             EnrolError.OTP_EXPIRED -> R.string.error_otp_expired
             EnrolError.SESSION_EXPIRED -> R.string.error_session_expired
             EnrolError.UNREACHABLE -> R.string.error_unreachable
-            EnrolError.REENROLMENT_NOT_AVAILABLE -> R.string.error_reenrolment_not_available
+            EnrolError.RECOVERY_INVALID -> R.string.error_recovery_invalid
+            EnrolError.REENROL_FROZEN -> R.string.error_reenrol_frozen
             EnrolError.DEVICE_REFUSED -> R.string.error_device_refused
             EnrolError.UNLOCK_CANCELLED -> R.string.error_unlock_cancelled
             EnrolError.CONFIRM_MISMATCH -> R.string.error_confirm_mismatch
@@ -447,7 +448,7 @@ fun RecoveryKeyScreen(
 // ---- E-09 Confirmation --------------------------------------------------------------------------
 
 /** MOB-S-06 : ni copier ni coller sur la saisie de la clé (barre d'outils de texte neutralisée). */
-private object NoTextToolbar : TextToolbar {
+internal object NoTextToolbar : TextToolbar {
     override val status = TextToolbarStatus.Hidden
 
     override fun hide() = Unit

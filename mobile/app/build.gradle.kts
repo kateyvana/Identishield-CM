@@ -12,6 +12,27 @@ fun rulesetSeconds(name: String): Int {
     return match.groupValues[1].toInt()
 }
 
+/** Durée ISO simple « PT<n>H », « PT<n>M » ou « PT<n>S », en secondes. */
+fun rulesetDurationSeconds(name: String): Long {
+    val match =
+        Regex("^\\s*$name:\\s*PT(\\d+)([HMS])\\b", RegexOption.MULTILINE).find(rulesetText.get())
+            ?: throw GradleException("$name absent de config/ruleset.yaml (forme attendue : PT<n>H|M|S)")
+    val n = match.groupValues[1].toLong()
+    return when (match.groupValues[2]) {
+        "H" -> n * 3600
+        "M" -> n * 60
+        else -> n
+    }
+}
+
+/** Entier simple « NAME: <n> ». */
+fun rulesetInt(name: String): Int {
+    val match =
+        Regex("^\\s*$name:\\s*(\\d+)\\b", RegexOption.MULTILINE).find(rulesetText.get())
+            ?: throw GradleException("$name absent de config/ruleset.yaml (forme attendue : entier)")
+    return match.groupValues[1].toInt()
+}
+
 /** Séquence en bloc d'entiers (« NAME: » puis des lignes « - n »), seule forme lue par tous les lecteurs. */
 fun rulesetLongs(name: String): List<Long> {
     val block =
@@ -55,6 +76,13 @@ android {
         buildConfigField("long", "NETWORK_TIMEOUT_SECONDS", "${rulesetSeconds("APP_NETWORK_TIMEOUT")}L")
         val quickAmounts = rulesetLongs("QUICK_AMOUNTS")
         buildConfigField("long[]", "QUICK_AMOUNTS_XAF", quickAmounts.joinToString(", ", "{", "}") { "${it}L" })
+        // Flux D (M-08) : délai croissant local, même règle que le serveur (ES-21).
+        buildConfigField("int", "REENROL_ATTEMPTS", rulesetInt("REENROL_ATTEMPTS").toString())
+        buildConfigField("long", "LOCK_BASE_SECONDS", "${rulesetDurationSeconds("LOCK_BASE")}L")
+        buildConfigField("long", "LOCK_MAX_SECONDS", "${rulesetDurationSeconds("LOCK_MAX")}L")
+        buildConfigField("int", "CODE_LENGTH", rulesetInt("CODE_LENGTH").toString())
+        // Flux F (M-08) : interrogation des alertes au premier plan (ISC-MOB-SPEC §9.4).
+        buildConfigField("long", "POLL_FOREGROUND_SECONDS", "${rulesetDurationSeconds("POLL_FOREGROUND")}L")
     }
 
     buildTypes {

@@ -40,6 +40,15 @@ interface EnrolmentRepository {
 
     suspend fun complete(request: CompleteRequest): ApiResult<RecoveryCodeIssued>
 
+    /**
+     * Flux D : la clé de récupération saisie, pour CETTE tentative seulement (jamais conservée).
+     * Défaut FERMÉ (refus) : une implémentation qui ne la prend pas en charge ne lie jamais rien.
+     */
+    suspend fun recover(
+        enrolmentId: String,
+        recoveryCode: String,
+    ): ApiResult<BindResponse> = ApiResult.Refused(0, RetrofitEnrolmentRepository.CONTRACT_VIOLATION)
+
     suspend fun confirm(request: ConfirmRequest): ApiResult<SessionResponse>
 
     suspend fun account(sessionToken: String): ApiResult<Account>
@@ -89,6 +98,11 @@ class RetrofitEnrolmentRepository(
     ) = call { api.otp(OtpRequest(enrolmentId, otp)) }
 
     override suspend fun complete(request: CompleteRequest) = call { api.complete(request) }
+
+    override suspend fun recover(
+        enrolmentId: String,
+        recoveryCode: String,
+    ) = call { api.recover(RecoverRequest(enrolmentId, recoveryCode)) }
 
     override suspend fun confirm(request: ConfirmRequest) = call { api.confirm(request) }
 

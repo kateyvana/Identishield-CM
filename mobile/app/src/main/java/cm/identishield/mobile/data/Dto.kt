@@ -168,3 +168,33 @@ data class CancelResponse(
     val transferId: String,
     val status: String,
 )
+
+// Flux D (ré-enrôlement) et F (alertes), M-08 : même désérialisation stricte.
+
+@Serializable
+data class RecoverRequest(
+    val enrolmentId: String,
+    val recoveryCode: String,
+)
+
+@Serializable
+data class Alert(
+    val alertId: String,
+    val type: String,
+    val at: String,
+    val summary: String,
+    val actions: List<String>,
+    val status: String,
+)
+
+@Serializable
+data class AlertList(
+    val items: List<Alert>,
+)
+
+@Serializable
+data class AlertActionResponse(
+    val alertId: String,
+    val status: String,
+    val accountState: String,
+)

@@ -211,7 +211,7 @@ class EnrolmentViewModelTest {
         repo.startResult = ApiResult.Ok(StartResponse(next = "RECOVERY", enrolmentId = "e-2"))
         val vm = vm()
         untilOtp(vm)
-        assertEquals(EnrolStep.Pin(NEW_NUMBER, EnrolError.REENROLMENT_NOT_AVAILABLE), vm.step.value)
+        assertEquals(EnrolStep.Recovery(), vm.step.value) // M-08 : flux D (E-20), et non plus un message
         assertEquals(0, keys.generateCalls)
     }
 

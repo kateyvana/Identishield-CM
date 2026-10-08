@@ -45,7 +45,23 @@ object SignedPayload {
         nonce: String,
     ): ByteArray = join(field("accountId", accountId), CANCEL, field("transferId", transferId), nonce(nonce))
 
+    /** E-24 « C'est moi » : accountId|ALERT_ACK|alertId|nonce (amendement M-08 d'ADR-018). */
+    fun alertAck(
+        accountId: String,
+        alertId: String,
+        nonce: String,
+    ): ByteArray = join(field("accountId", accountId), ALERT_ACK, field("alertId", alertId), nonce(nonce))
+
+    /** E-24 « Ce n'est pas moi » : accountId|ALERT_NOT_ME|alertId|nonce (amendement M-08 d'ADR-018). */
+    fun alertNotMe(
+        accountId: String,
+        alertId: String,
+        nonce: String,
+    ): ByteArray = join(field("accountId", accountId), ALERT_NOT_ME, field("alertId", alertId), nonce(nonce))
+
     const val CANCEL = "CANCEL"
+    const val ALERT_ACK = "ALERT_ACK"
+    const val ALERT_NOT_ME = "ALERT_NOT_ME"
     private const val SEPARATOR = "|"
 
     private fun field(
