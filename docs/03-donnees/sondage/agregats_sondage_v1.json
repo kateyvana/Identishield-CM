@@ -1954,35 +1954,6 @@
   }
  },
  "severity": {
-  "Q11_declared_victim": {
-   "en": {
-    "k": 19,
-    "n": 35,
-    "pct": 54.29,
-    "wilson95": [
-     38.19,
-     69.53
-    ]
-   },
-   "fr": {
-    "k": 8,
-    "n": 44,
-    "pct": 18.18,
-    "wilson95": [
-     9.51,
-     31.96
-    ]
-   },
-   "total": {
-    "k": 27,
-    "n": 79,
-    "pct": 34.18,
-    "wilson95": [
-     24.67,
-     45.15
-    ]
-   }
-  },
   "Q11_distribution": {
    "en": {
     "codes": {
@@ -2097,6 +2068,35 @@
      }
     },
     "n": 79
+   }
+  },
+  "Q11_self_victim": {
+   "en": {
+    "k": 5,
+    "n": 35,
+    "pct": 14.29,
+    "wilson95": [
+     6.26,
+     29.38
+    ]
+   },
+   "fr": {
+    "k": 8,
+    "n": 44,
+    "pct": 18.18,
+    "wilson95": [
+     9.51,
+     31.96
+    ]
+   },
+   "total": {
+    "k": 13,
+    "n": 79,
+    "pct": 16.46,
+    "wilson95": [
+     9.88,
+     26.15
+    ]
    }
   },
   "Q12_distribution_victims": {
@@ -2244,7 +2244,12 @@
     ]
    }
   },
-  "Q12_population": "victimes déclarées (Q11 = soi-même, ou proche en EN)",
+  "Q12_population": "victimes déclarées en Q11 : mélange soi-même (FR+EN) et proche (EN seul), non comparable entre FR et EN ; sert seulement de population à Q12",
+  "Q12_population_n": {
+   "en": 19,
+   "fr": 8,
+   "total": 27
+  },
   "Q13_distribution": {
    "en": {
     "codes": {

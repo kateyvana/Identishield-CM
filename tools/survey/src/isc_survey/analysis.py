@@ -12,6 +12,7 @@ Usage:
 import argparse
 import csv
 import json
+import random
 import statistics
 from collections import Counter
 from math import sqrt
@@ -21,6 +22,9 @@ from isc_survey.labels import LABELS, MULTI, NUMERIC, QUESTIONS, SECOND_HEADER
 
 LANGS = ("fr", "en")
 EXPECTED_COLUMNS = 24
+ANON_FILE = "reponses_anonymisees.csv"
+ANON_SEED = 20261008  # fixed shuffle seed of the de-identified dataset (row order carries nothing)
+ANON_COLUMNS = ["lang"] + list(QUESTIONS.values())
 
 
 class UnknownLabel(ValueError):
@@ -147,8 +151,16 @@ def analyse(fr: list[dict], en: list[dict]) -> dict:
         },
         "severity": {
             "Q11_distribution": by_lang(rs, lambda s: distribution(s, "Q11")),
-            "Q11_declared_victim": by_lang(rs, lambda s: share(s, "Q11", {"self", "close"})),
-            "Q12_population": "victimes déclarées (Q11 = soi-même, ou proche en EN)",
+            # Main indicator: "myself", the only victim option present in BOTH forms.
+            "Q11_self_victim": by_lang(rs, lambda s: share(s, "Q11", {"self"})),
+            "Q12_population": (
+                "victimes déclarées en Q11 : mélange soi-même (FR+EN) et proche (EN seul), "
+                "non comparable entre FR et EN ; sert seulement de population à Q12"
+            ),
+            "Q12_population_n": {
+                "total": len(victims),
+                **{lang: sum(1 for r in victims if r["lang"] == lang) for lang in LANGS},
+            },
             "Q12_distribution_victims": by_lang(victims, lambda s: distribution(s, "Q12")),
             "Q12_not_recovered_victims": by_lang(victims, lambda s: share(s, "Q12", {"no"})),
             "Q13_distribution": by_lang(rs, lambda s: distribution(s, "Q13")),
@@ -295,7 +307,7 @@ def figures(a: dict) -> dict[str, str]:
         "fig_axe2_gravite.svg": bar_chart_svg(
             "Axe 2 — Gravité perçue (IC Wilson 95 %)",
             [
-                ("Q11 victime déclarée (soi ou proche)", sv["Q11_declared_victim"]["total"]),
+                ("Q11 victime : moi-même", sv["Q11_self_victim"]["total"]),
                 ("Q12 non récupéré (victimes)", sv["Q12_not_recovered_victims"]["total"]),
                 ("Q13 grave ou catastrophique", sv["Q13_serious_or_catastrophic"]["total"]),
                 ("Q14 peur 8–10 / 10", sv["Q14_fear"]["total"]["share_8_10"]),
@@ -329,6 +341,54 @@ def figures(a: dict) -> dict[str, str]:
     }
 
 
+# --- De-identified dataset -----------------------------------------------------------------
+
+
+def _known_codes(question: str) -> set[str]:
+    return {code for table in LABELS[question].values() for code in table.values()}
+
+
+def write_anonymised(rs: list[dict], path: Path) -> None:
+    """Harmonised codes + language only: no timestamp, rows shuffled with a fixed seed."""
+    rows = list(rs)
+    random.Random(ANON_SEED).shuffle(rows)
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(ANON_COLUMNS)
+        for r in rows:
+            cells = [r["lang"]]
+            for q in QUESTIONS.values():
+                v = r[q]
+                cells.append("" if v is None else ";".join(v) if q in MULTI else str(v))
+            w.writerow(cells)
+
+
+def load_anonymised(path: Path) -> list[dict]:
+    """Read the de-identified dataset back; any unknown column or code is an error."""
+    with path.open(encoding="utf-8", newline="") as f:
+        reader = csv.reader(f)
+        if next(reader) != ANON_COLUMNS:
+            raise ValueError(f"{path} : colonnes inattendues")
+        rs = []
+        for row in reader:
+            if row[0] not in LANGS:
+                raise UnknownLabel(f"langue inconnue : {row[0]!r}")
+            r = {"lang": row[0]}
+            for q, cell in zip(QUESTIONS.values(), row[1:], strict=True):
+                if not cell:
+                    r[q] = None
+                elif q in NUMERIC:
+                    r[q] = _code(q, r["lang"], cell)
+                else:
+                    codes = cell.split(";") if q in MULTI else [cell]
+                    unknown = set(codes) - _known_codes(q)
+                    if unknown:
+                        raise UnknownLabel(f"{q} : code inconnu {sorted(unknown)}")
+                    r[q] = codes if q in MULTI else codes[0]
+            rs.append(r)
+    return rs
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--fr", type=Path, required=True)
@@ -341,10 +401,13 @@ def main(argv: list[str] | None = None) -> int:
     result["excluded_empty_submissions"] = {"fr": empty_fr, "en": empty_en}
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / "agregats_sondage_v1.json").write_text(
-        json.dumps(result, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(result, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
     for name, svg in figures(result).items():
-        (args.out_dir / name).write_text(svg, encoding="utf-8")
+        (args.out_dir / name).write_text(svg, encoding="utf-8", newline="\n")
+    write_anonymised(fr + en, args.out_dir / ANON_FILE)
     print(f"OK : {result['n_valid']['total']} répondants valides -> {args.out_dir}")
     return 0
 

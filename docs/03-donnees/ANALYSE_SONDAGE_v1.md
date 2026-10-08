@@ -1,11 +1,20 @@
 # Analyse du sondage utilisateurs — v1
 
-- **Statut** : **BROUILLON, en relecture par le propriétaire (non figé)**
+- **Statut** : **FIGÉ** le 2026-10-08, après relecture du propriétaire
 - **Date** : 2026-10-08
+- **Corrections de relecture (2026-10-08)** :
+  1. Limite n° 2 : Q20 retirée de la liste des intervalles supérieurs à ± 15 points (± 12,7) ; seules Q12 et Q22 y restent.
+  2. Q11 : l'indicateur principal devient « moi-même » (13/79), comparable FR/EN. Le total 27/79 n'est plus un résultat, il ne sert que de population à Q12 (mélange non comparable).
+  3. Lecture de l'axe 2 : « presque jamais » remplacé par « dans 78 % des cas déclarés (n = 27) ».
+  4. Lecture de l'axe 4 : « les faux positifs sont le risque d'adoption principal » remplacé par « chez ces répondants, la crainte d'un blocage injustifié est le premier frein cité ».
+  5. Q19 : le code de secours de la conception n'était pas une option ; c'est Q22 qui le teste.
+  6. Limites : ajout du consentement oral et de l'absence de données nominatives.
+  7. Publication du jeu dé-identifié `reponses_anonymisees.csv`, avec un test toujours exécuté qui en recalcule l'oracle ; le nombre de tests passe de 11 à 14.
 - **Objet** : exigence du superviseur pour la soutenance de jalon. Il s'agit des blocs « collecte de données » et « analyse & résultats ».
-- **Source** : deux exports Google Forms, un formulaire FR (45 soumissions) et un formulaire EN (36 soumissions). Ils ne sont **jamais versionnés** : `data/survey/raw/` est ignoré par git. Seuls le code, les agrégats et les figures sont dans le dépôt.
-- **Outil** : `tools/survey` (`python -m isc_survey.analysis`), déterministe, bibliothèque standard seule (ADR-033). Il est testé : 11 tests, dont un qui rejoue l'oracle du superviseur.
+- **Source** : deux exports Google Forms, un formulaire FR (45 soumissions) et un formulaire EN (36 soumissions). Ils ne sont **jamais versionnés** : `data/survey/raw/` est ignoré par git. Seuls le code, les agrégats, les figures et le jeu dé-identifié sont dans le dépôt.
+- **Outil** : `tools/survey` (`python -m isc_survey.analysis`), déterministe, bibliothèque standard seule (ADR-033). Il est testé : 14 tests, dont deux qui rejouent l'oracle du superviseur : l'un sur les exports bruts (ignoré s'ils sont absents), l'autre sur le jeu dé-identifié publié (exécuté **toujours**).
 - **Agrégats bruts** : `docs/03-donnees/sondage/agregats_sondage_v1.json`, plus 5 figures SVG dans le même dossier.
+- **Jeu dé-identifié** : `docs/03-donnees/sondage/reponses_anonymisees.csv`, 79 lignes. Il contient les codes harmonisés et la colonne langue, **sans horodatage**, et ses lignes sont mélangées avec une graine fixe (`ANON_SEED`), donc l'ordre ne porte aucune information. Les soumissions vides en sont exclues. Les 11 valeurs de l'oracle se recalculent **à partir de ce seul fichier** (c'est testé).
 
 > Toutes les proportions portent un **intervalle de confiance de Wilson à 95 %**, la méthode adaptée aux petits effectifs et déjà utilisée dans le rapport de plausibilité. Le dénominateur **n** est le nombre de répondants qui ont répondu à la question, dans la population indiquée. Il varie d'une question à l'autre, parce que les questions sans réponse ne sont pas comptées.
 
@@ -18,7 +27,8 @@
 | Soumissions vides | **1 par fichier**, entièrement vide, est exclue. Il reste **79 répondants valides** (FR 44, EN 35) |
 | Harmonisation FR/EN | Une table explicite (`tools/survey/src/isc_survey/labels.py`) associe chaque libellé à un code commun. **Un libellé non reconnu fait échouer le script**, il n'est jamais ignoré (c'est testé) |
 | Q6 (solde) | **Non fusionnée.** Le formulaire FR demande le solde maximum « déjà eu », le formulaire EN le solde maximum « par mois ». Ce sont deux questions différentes, rapportées séparément |
-| Q12 (argent récupéré) | Restreinte aux **victimes déclarées** en Q11 : soi-même, ou un proche (option qui n'existe qu'en EN) |
+| Q11 (victime) | Indicateur principal : **« moi-même »**, seule option présente dans les deux formulaires, donc comparable FR/EN |
+| Q12 (argent récupéré) | Restreinte aux **victimes déclarées** en Q11 : soi-même, ou un proche (option qui n'existe qu'en EN). Ce total (27) est un mélange non comparable et ne sert que de population à Q12 |
 | Q20 (protection USSD) | Restreinte aux **utilisateurs USSD** en Q3 : USSD, ou les deux canaux |
 | Q22 (code de secours) | **Ajoutée le 2026-09-24**, en cours de collecte : seuls **19** répondants l'ont vue et y ont répondu |
 | Q14 (peur, 1 à 10) | Médiane, distribution, parts 8–10 et 1–3, en plus de la moyenne |
@@ -88,14 +98,14 @@ Un calcul indépendant du superviseur a fixé 11 valeurs à retrouver exactement
 
 | Indicateur | Total [IC 95 %] | FR | EN |
 |---|--:|--:|--:|
-| Q11 victime déclarée (soi, ou proche en EN) | 27/79 = 34,2 % [24,7–45,2] | 8/44 (18,2 %) | 19/35 (54,3 %) |
+| Q11 **victime elle-même** (« moi-même », seule option présente dans les deux formulaires) | **13/79 = 16,5 %** [9,9–26,2] | 8/44 (18,2 %) [9,5–32,0] | 5/35 (14,3 %) [6,3–29,4] |
 | Q11 en a entendu parler par d'autres | 43/79 = 54,4 % [43,5–65,0] | — | — |
-| Q12 **argent non récupéré**, chez les victimes déclarées | **21/27 = 77,8 %** [59,2–89,4] | 5/8 (62,5 %) | 16/19 (84,2 %) |
+| Q12 **argent non récupéré**, chez les victimes déclarées (population : voir la note) | **21/27 = 77,8 %** [59,2–89,4] | 5/8 (62,5 %) | 16/19 (84,2 %) |
 | Q12 récupéré en totalité, chez les victimes | 3/27 = 11,1 % [3,9–28,1] | — | — |
 | Q13 vol du solde **grave ou catastrophique** | **62/79 = 78,5 %** [68,2–86,1] | 37/44 (84,1 %) | 25/35 (71,4 %) |
 | Q13 dont catastrophique (entreprise, loyer, scolarité) | 15/79 = 19,0 % [11,9–29,0] | — | — |
 
-L'écart entre FR et EN sur Q11 vient en grande partie de l'option « proche » (`close`), qui n'existe qu'en EN : voir les limites.
+**Population de Q12.** Q12 est posée aux 27 victimes déclarées en Q11 : « moi-même » (FR + EN, 13) et « un proche » (EN seul, 14). C'est un **mélange soi-même (FR+EN) et proche (EN seul), non comparable** entre FR et EN. Ce total n'est donc pas un résultat sur la victimisation ; il sert seulement de dénominateur à Q12. L'indicateur de victimisation est « moi-même » (16,5 %).
 
 **Q14 — Peur de se faire arnaquer, échelle de 1 à 10** (n = 79) :
 
@@ -110,7 +120,7 @@ L'écart entre FR et EN sur Q11 vient en grande partie de l'option « proche » 
 
 Distribution (effectifs, de 1 à 10) : 8 · 9 · 5 · 3 · 6 · 5 · 5 · 11 · 3 · **24**.
 
-**Lecture.** La distribution est **bimodale**. Près d'un répondant sur deux est à 8–10, et 24 sont à 10. Mais un quart est à 1–3. La moyenne (6,4) masque ces deux groupes ; la médiane (7) et les parts aux extrêmes les montrent. Quand une victime perd son argent, elle ne le récupère presque jamais (78 % de non-récupération), et le vol serait grave pour près de 8 répondants sur 10.
+**Lecture.** La distribution est **bimodale**. Près d'un répondant sur deux est à 8–10, et 24 sont à 10. Mais un quart est à 1–3. La moyenne (6,4) masque ces deux groupes ; la médiane (7) et les parts aux extrêmes les montrent. Quand une victime perd son argent, elle ne le récupère pas dans 78 % des cas déclarés (n = 27), et le vol serait grave pour près de 8 répondants sur 10.
 
 ---
 
@@ -142,25 +152,26 @@ Distribution (effectifs, de 1 à 10) : 8 · 9 · 5 · 3 · 6 · 5 · 5 · 11 · 
 |---|--:|
 | Q15 les mesures actuelles (PIN + code SMS) **suffisent** | 38/78 = 48,7 % [38,0–59,6] (FR 41,9 % ; EN 57,1 %) |
 | Q16 système jugé **très utile** | 34/78 = 43,6 % [33,1–54,6] ; modérément utile 32 (41,0 %) ; inutile 12 (15,4 %) |
-| Q19 méthode de récupération préférée | **agence avec pièce d'identité 34/78 = 43,6 %** [33,1–54,6] ; e-mail de récupération 30 (38,5 %) ; personne de confiance 14 (17,9 %) [11,0–27,9] |
+| Q19 méthode de récupération préférée (le code de secours de la conception n'était **pas** proposé ; voir Q22) | **agence avec pièce d'identité 34/78 = 43,6 %** [33,1–54,6] ; e-mail de récupération 30 (38,5 %) ; personne de confiance 14 (17,9 %) [11,0–27,9] |
 | Q23 freins à l'adoption (plusieurs réponses, n = 75) | **crainte d'être bloqué à tort 37/75 = 49,3 %** [38,3–60,4] ; trop compliqué 22 (29,3 %) ; confidentialité 18 (24,0 %) ; rien, adopterait sans hésiter 17 (22,7 %) ; coût 1 (1,3 %, option EN seulement) |
 
-**Lecture.** Le **premier frein** cité est la **crainte d'être bloqué à tort** : un répondant sur deux. C'est exactement le coût mesuré en T3-07, où les annulations de STEP_UP sur USSD touchent une part importante des usagers légitimes. Le sondage confirme que **les faux positifs sont le risque d'adoption principal**, avant la complexité. Les répondants sont partagés sur la suffisance des mesures actuelles (environ 1 sur 2). Pour la récupération, ils préfèrent l'agence physique ; le contact de confiance, prévu par la conception, ne recueille que 18 %.
+**Lecture.** Le **premier frein** cité est la **crainte d'être bloqué à tort** : un répondant sur deux. C'est exactement le coût mesuré en T3-07, où les annulations de STEP_UP sur USSD touchent une part importante des usagers légitimes. Chez ces répondants, **la crainte d'un blocage injustifié est le premier frein cité**, avant la complexité. Les répondants sont partagés sur la suffisance des mesures actuelles (environ 1 sur 2). Pour la récupération, ils préfèrent l'agence physique ; le contact de confiance, prévu par la conception, ne recueille que 18 %. **Le code de secours retenu par la conception (ADR-029) ne figurait pas parmi les options de Q19** : Q19 ne peut donc ni le confirmer ni l'écarter. C'est **Q22** qui le teste (16/19 l'accepteraient, sur un effectif réduit).
 
 ---
 
 ## 6. Limites
 
 1. **Échantillon non probabiliste.** Les répondants se sont auto-sélectionnés via Google Forms, dans le réseau du propriétaire, et sont **à 58 % des étudiants** (46/79). Les résultats décrivent **cet échantillon** et **ne se généralisent pas** à la population des utilisateurs Mobile Money au Cameroun. Les intervalles de Wilson mesurent l'incertitude d'échantillonnage, pas ce biais de sélection.
-2. **Effectif insuffisant** : n = 79 valides, sous la cible de 100. Les intervalles sont larges, souvent ± 10 points. Ils dépassent ± 15 points sur les sous-populations (Q12 n = 27, Q20 n = 50) et sur Q22 (n = 19).
+2. **Effectif insuffisant** : n = 79 valides, sous la cible de 100. Les intervalles sont larges, souvent ± 10 points. Ils dépassent ± 15 points sur Q12 (n = 27, victimes déclarées) et sur Q22 (n = 19). Q20 (n = 50, utilisateurs USSD) reste sous ce seuil (± 12,7 points).
 3. **Intention déclarée ≠ comportement.** Q17, Q18, Q20, Q21 et Q22 mesurent ce que les répondants **disent** qu'ils feraient, pas ce qu'ils feraient. L'acceptation réelle d'une vérification, d'un blocage ou d'une installation payante est probablement plus basse.
 4. **Asymétries entre les formulaires FR et EN** :
    - **Q6** : « déjà eu » en FR contre « par mois » en EN. La question n'est pas la même, donc pas de fusion.
-   - **Q11** : l'option « un proche » n'existe qu'en EN. Les victimes déclarées FR (18 %) et EN (54 %) ne sont pas comparables, et la population de Q12 est déséquilibrée (8 FR, 19 EN).
+   - **Q11** : l'option « un proche » n'existe qu'en EN. Seul « moi-même » est comparable (FR 18,2 %, EN 14,3 %). La population de Q12 mélange soi-même et proche, et elle est déséquilibrée (8 FR, 19 EN).
    - **Q22** : les options de refus diffèrent (« autre méthode » en FR, « trop contraignant » en EN).
    - **Q23** : l'option « coût » n'existe qu'en EN (1 réponse).
 5. **Q22 ajoutée en cours de collecte**, le 2026-09-24. Les répondants antérieurs ne l'ont pas vue : n = 19, sans garantie que ces 19 ressemblent aux 60 autres.
 6. **Libellés imparfaits dans les formulaires.** Certaines options du formulaire FR sont en anglais (Q8, Q9 : « Yes / No » ; Q3 : « Both »), et certains libellés contiennent des coquilles (« 250,000f », « immediatly »). L'harmonisation les rattache explicitement aux codes communs ; elle ne corrige pas le sens des questions.
+7. **Consentement recueilli oralement ; aucune donnée nominative collectée.** Le formulaire ne demande ni nom, ni numéro, ni adresse. La seule donnée de contexte individuelle, l'horodatage de soumission, n'est jamais versionnée ni publiée.
 
 ---
 
@@ -170,10 +181,12 @@ Depuis `tools/survey/`, une fois les deux exports placés dans `data/survey/raw/
 
 ```text
 uv run python -m isc_survey.analysis --fr ../../data/survey/raw/reponses_fr.csv --en ../../data/survey/raw/reponses_en.csv --out-dir ../../docs/03-donnees/sondage
-uv run pytest -q   # 11 tests, dont l'oracle du superviseur (ignoré si les exports sont absents)
+uv run pytest -q   # 14 tests ; l'oracle est rejoué sur le jeu dé-identifié (toujours) et sur les exports bruts (s'ils sont présents)
 ```
 
-La sortie est identique à l'octet d'une exécution à l'autre (c'est testé). Elle ne contient ni réponse individuelle ni horodatage de soumission.
+La sortie est identique à l'octet d'une exécution à l'autre (c'est testé). Elle ne contient aucun horodatage de soumission. Les réponses individuelles n'y figurent que dans `reponses_anonymisees.csv`, sous forme de codes harmonisés, dé-identifiées et mélangées.
+
+Sans les exports bruts, l'analyse se vérifie depuis le jeu publié : `load_anonymised("docs/03-donnees/sondage/reponses_anonymisees.csv")`, puis `analyse()`.
 
 ## 8. Traçabilité
 

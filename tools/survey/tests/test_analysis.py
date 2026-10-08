@@ -2,15 +2,27 @@
 
 import csv
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from isc_survey import analysis
-from isc_survey.analysis import UnknownLabel, analyse, load, share, wilson
+from isc_survey.analysis import (
+    ANON_COLUMNS,
+    ANON_FILE,
+    UnknownLabel,
+    analyse,
+    load,
+    load_anonymised,
+    share,
+    wilson,
+    write_anonymised,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 RAW = ROOT / "data" / "survey" / "raw"
+PUBLISHED = ROOT / "docs" / "03-donnees" / "sondage" / ANON_FILE
 
 # One full FR answer and one full EN answer (labels copied from the harmonisation tables).
 FR_ROW = [
@@ -160,22 +172,8 @@ def test_outputs_are_deterministic_and_carry_no_timestamp(tmp_path):
         assert "2026/09" not in a_txt  # no submission timestamp leaks into the outputs
 
 
-@pytest.mark.skipif(
-    not (RAW / "reponses_fr.csv").exists(), reason="exports bruts absents (non versionnés)"
-)
-def test_supervisor_oracle_on_real_exports(tmp_path):
+def assert_supervisor_oracle(a: dict) -> None:
     """Independent supervisor computation (2026-10-08): must be reproduced EXACTLY."""
-    analysis.main(
-        [
-            "--fr",
-            str(RAW / "reponses_fr.csv"),
-            "--en",
-            str(RAW / "reponses_en.csv"),
-            "--out-dir",
-            str(tmp_path),
-        ]
-    )
-    a = json.loads((tmp_path / "agregats_sondage_v1.json").read_text(encoding="utf-8"))
 
     def kn(p):
         return (p["total"]["k"], p["total"]["n"])
@@ -191,3 +189,56 @@ def test_supervisor_oracle_on_real_exports(tmp_path):
     assert kn(a["adoption"]["Q21_would_install"]) == (70, 77)
     assert kn(a["adoption"]["Q22_would_accept_code"]) == (16, 19)
     assert kn(a["expectations"]["Q23_fear_wrongly_blocked"]) == (37, 75)
+
+
+@pytest.mark.skipif(
+    not (RAW / "reponses_fr.csv").exists(), reason="exports bruts absents (non versionnés)"
+)
+def test_supervisor_oracle_on_real_exports(tmp_path):
+    analysis.main(
+        [
+            "--fr",
+            str(RAW / "reponses_fr.csv"),
+            "--en",
+            str(RAW / "reponses_en.csv"),
+            "--out-dir",
+            str(tmp_path),
+        ]
+    )
+    assert_supervisor_oracle(
+        json.loads((tmp_path / "agregats_sondage_v1.json").read_text(encoding="utf-8"))
+    )
+
+
+def test_published_anonymised_dataset_reproduces_the_oracle():
+    """ALWAYS runs: the versioned de-identified dataset alone yields the 11 oracle values."""
+    text = PUBLISHED.read_text(encoding="utf-8")
+    rows = list(csv.reader(text.splitlines()))
+    assert rows[0] == ANON_COLUMNS and "Timestamp" not in rows[0]
+    assert len(rows) - 1 == 79
+    assert not re.search(r"\d{4}/\d{2}/\d{2}|GMT|\d{1,2}:\d{2}:\d{2}", text)  # no timestamp
+    rs = load_anonymised(PUBLISHED)
+    fr = [r for r in rs if r["lang"] == "fr"]
+    en = [r for r in rs if r["lang"] == "en"]
+    assert_supervisor_oracle(analyse(fr, en))
+
+
+def test_anonymised_round_trip_is_lossless_and_shuffled_deterministically(tmp_path):
+    fr, _ = load(_write(tmp_path, "fr", [FR_ROW, FR_ROW]), "fr")
+    en, _ = load(_write(tmp_path, "en", [EN_ROW]), "en")
+    for name in ("a.csv", "b.csv"):
+        write_anonymised(fr + en, tmp_path / name)
+    assert (tmp_path / "a.csv").read_bytes() == (tmp_path / "b.csv").read_bytes()
+    back = load_anonymised(tmp_path / "a.csv")
+    assert analyse(
+        [r for r in back if r["lang"] == "fr"], [r for r in back if r["lang"] == "en"]
+    ) == (analyse(fr, en))
+
+
+def test_anonymised_unknown_code_fails(tmp_path):
+    p = tmp_path / "anon.csv"
+    header = ",".join(ANON_COLUMNS)
+    body = "fr," + ",".join(["inconnu"] * 23)
+    p.write_text(f"{header}\n{body}\n", encoding="utf-8")
+    with pytest.raises(UnknownLabel):
+        load_anonymised(p)

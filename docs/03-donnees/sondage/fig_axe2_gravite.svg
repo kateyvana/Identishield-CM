@@ -11,12 +11,12 @@
 <text x="570.0" y="204" text-anchor="middle" fill="#5b6672">75 %</text>
 <line x1="660.0" y1="40" x2="660.0" y2="188" stroke="#dde3ea"/>
 <text x="660.0" y="204" text-anchor="middle" fill="#5b6672">100 %</text>
-<text x="290" y="63" text-anchor="end">Q11 victime déclarée (soi ou proche)</text>
-<rect x="300" y="51" width="123.0" height="18" fill="#2f6f9f"/>
-<line x1="388.8" y1="60" x2="462.5" y2="60" stroke="#1b1f24" stroke-width="1.5"/>
-<line x1="388.8" y1="55" x2="388.8" y2="65" stroke="#1b1f24" stroke-width="1.5"/>
-<line x1="462.5" y1="55" x2="462.5" y2="65" stroke="#1b1f24" stroke-width="1.5"/>
-<text x="468.5" y="64" fill="#1b1f24">34.2 % (27/79)</text>
+<text x="290" y="63" text-anchor="end">Q11 victime : moi-même</text>
+<rect x="300" y="51" width="59.3" height="18" fill="#2f6f9f"/>
+<line x1="335.6" y1="60" x2="394.1" y2="60" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="335.6" y1="55" x2="335.6" y2="65" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="394.1" y1="55" x2="394.1" y2="65" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="400.1" y="64" fill="#1b1f24">16.5 % (13/79)</text>
 <text x="290" y="97" text-anchor="end">Q12 non récupéré (victimes)</text>
 <rect x="300" y="85" width="280.0" height="18" fill="#2f6f9f"/>
 <line x1="513.3" y1="94" x2="621.8" y2="94" stroke="#1b1f24" stroke-width="1.5"/>
