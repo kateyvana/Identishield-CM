@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="212" viewBox="0 0 720 212" font-family="sans-serif" font-size="13">
+<rect width="720" height="212" fill="#ffffff"/>
+<text x="12" y="24" font-size="15" font-weight="bold">Axe 3 — Volonté d'adopter (IC Wilson 95 %)</text>
+<line x1="300.0" y1="40" x2="300.0" y2="188" stroke="#dde3ea"/>
+<text x="300.0" y="204" text-anchor="middle" fill="#5b6672">0 %</text>
+<line x1="390.0" y1="40" x2="390.0" y2="188" stroke="#dde3ea"/>
+<text x="390.0" y="204" text-anchor="middle" fill="#5b6672">25 %</text>
+<line x1="480.0" y1="40" x2="480.0" y2="188" stroke="#dde3ea"/>
+<text x="480.0" y="204" text-anchor="middle" fill="#5b6672">50 %</text>
+<line x1="570.0" y1="40" x2="570.0" y2="188" stroke="#dde3ea"/>
+<text x="570.0" y="204" text-anchor="middle" fill="#5b6672">75 %</text>
+<line x1="660.0" y1="40" x2="660.0" y2="188" stroke="#dde3ea"/>
+<text x="660.0" y="204" text-anchor="middle" fill="#5b6672">100 %</text>
+<text x="290" y="63" text-anchor="end">Q17 accepte une vérification</text>
+<rect x="300" y="51" width="327.7" height="18" fill="#2f6f9f"/>
+<line x1="597.4" y1="60" x2="644.1" y2="60" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="597.4" y1="55" x2="597.4" y2="65" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="644.1" y1="55" x2="644.1" y2="65" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="650.1" y="64" fill="#1b1f24">91.0 % (71/78)</text>
+<text x="290" y="97" text-anchor="end">Q20 oui (utilisateurs USSD)</text>
+<rect x="300" y="85" width="237.6" height="18" fill="#2f6f9f"/>
+<line x1="487.7" y1="94" x2="579.2" y2="94" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="487.7" y1="89" x2="487.7" y2="99" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="579.2" y1="89" x2="579.2" y2="99" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="585.2" y="98" fill="#1b1f24">66.0 % (33/50)</text>
+<text x="290" y="131" text-anchor="end">Q21 installerait l'application</text>
+<rect x="300" y="119" width="327.3" height="18" fill="#2f6f9f"/>
+<line x1="596.6" y1="128" x2="643.9" y2="128" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="596.6" y1="123" x2="596.6" y2="133" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="643.9" y1="123" x2="643.9" y2="133" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="649.9" y="132" fill="#1b1f24">90.9 % (70/77)</text>
+<text x="290" y="165" text-anchor="end">Q22 accepterait le code (n réduit)</text>
+<rect x="300" y="153" width="303.2" height="18" fill="#2f6f9f"/>
+<line x1="524.7" y1="162" x2="640.1" y2="162" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="524.7" y1="157" x2="524.7" y2="167" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="640.1" y1="157" x2="640.1" y2="167" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="646.1" y="166" fill="#1b1f24">84.2 % (16/19)</text>
+</svg>

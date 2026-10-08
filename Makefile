@@ -8,7 +8,7 @@ SHELL := /bin/bash
 COMPOSE := MSYS_NO_PATHCONV=1 docker compose -f infra/docker-compose.yml
 PY      ?= $(shell command -v python >/dev/null 2>&1 && echo python || echo python3)
 GRADLE_PROJECTS := core pdp
-PY_PROJECTS     := simulator attacker hlr-agent evaluation tools/mobile-mock
+PY_PROJECTS     := simulator attacker hlr-agent evaluation tools/mobile-mock tools/survey
 # Faux serveur de l'API mobile (M-03) : port et mode démo sont des paramètres, pas du code.
 MOBILE_MOCK_PORT ?= 8089
 MOBILE_MOCK_DEMO ?=

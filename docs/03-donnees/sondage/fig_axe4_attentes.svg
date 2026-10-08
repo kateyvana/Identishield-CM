@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="212" viewBox="0 0 720 212" font-family="sans-serif" font-size="13">
+<rect width="720" height="212" fill="#ffffff"/>
+<text x="12" y="24" font-size="15" font-weight="bold">Axe 4 — Attentes (IC Wilson 95 %)</text>
+<line x1="300.0" y1="40" x2="300.0" y2="188" stroke="#dde3ea"/>
+<text x="300.0" y="204" text-anchor="middle" fill="#5b6672">0 %</text>
+<line x1="390.0" y1="40" x2="390.0" y2="188" stroke="#dde3ea"/>
+<text x="390.0" y="204" text-anchor="middle" fill="#5b6672">25 %</text>
+<line x1="480.0" y1="40" x2="480.0" y2="188" stroke="#dde3ea"/>
+<text x="480.0" y="204" text-anchor="middle" fill="#5b6672">50 %</text>
+<line x1="570.0" y1="40" x2="570.0" y2="188" stroke="#dde3ea"/>
+<text x="570.0" y="204" text-anchor="middle" fill="#5b6672">75 %</text>
+<line x1="660.0" y1="40" x2="660.0" y2="188" stroke="#dde3ea"/>
+<text x="660.0" y="204" text-anchor="middle" fill="#5b6672">100 %</text>
+<text x="290" y="63" text-anchor="end">Q15 mesures actuelles suffisantes</text>
+<rect x="300" y="51" width="175.4" height="18" fill="#2f6f9f"/>
+<line x1="436.6" y1="60" x2="514.6" y2="60" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="436.6" y1="55" x2="436.6" y2="65" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="514.6" y1="55" x2="514.6" y2="65" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="520.6" y="64" fill="#1b1f24">48.7 % (38/78)</text>
+<text x="290" y="97" text-anchor="end">Q16 système très utile</text>
+<rect x="300" y="85" width="156.9" height="18" fill="#2f6f9f"/>
+<line x1="419.3" y1="94" x2="496.7" y2="94" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="419.3" y1="89" x2="419.3" y2="99" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="496.7" y1="89" x2="496.7" y2="99" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="502.7" y="98" fill="#1b1f24">43.6 % (34/78)</text>
+<text x="290" y="131" text-anchor="end">Q19 préfère l'agence</text>
+<rect x="300" y="119" width="156.9" height="18" fill="#2f6f9f"/>
+<line x1="419.3" y1="128" x2="496.7" y2="128" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="419.3" y1="123" x2="419.3" y2="133" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="496.7" y1="123" x2="496.7" y2="133" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="502.7" y="132" fill="#1b1f24">43.6 % (34/78)</text>
+<text x="290" y="165" text-anchor="end">Q23 crainte d'être bloqué à tort</text>
+<rect x="300" y="153" width="177.6" height="18" fill="#2f6f9f"/>
+<line x1="438.0" y1="162" x2="517.4" y2="162" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="438.0" y1="157" x2="438.0" y2="167" stroke="#1b1f24" stroke-width="1.5"/>
+<line x1="517.4" y1="157" x2="517.4" y2="167" stroke="#1b1f24" stroke-width="1.5"/>
+<text x="523.4" y="166" fill="#1b1f24">49.3 % (37/75)</text>
+</svg>

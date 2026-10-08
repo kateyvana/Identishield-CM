@@ -42,3 +42,6 @@ tools/mobile-mock/.tls/
 # Sorties compilees IDE/Java
 core/bin/
 pdp/bin/
+
+# Sondage utilisateurs : reponses individuelles brutes, JAMAIS versionnees (seuls code, agregats, figures)
+data/survey/raw/
