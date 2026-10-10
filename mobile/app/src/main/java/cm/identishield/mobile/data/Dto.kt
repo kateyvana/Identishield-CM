@@ -91,3 +91,110 @@ data class Account(
 data class ErrorBody(
     val reason: String,
 )
+
+// Flux B (session) et C (envoi signé), même règle de désérialisation stricte.
+
+@Serializable
+data class ChallengeResponse(
+    val challenge: String,
+)
+
+@Serializable
+data class SessionRequest(
+    val msisdn: String,
+    val pin: String,
+    val deviceId: String,
+    val challenge: String,
+    val signature: String,
+)
+
+@Serializable
+data class NonceResponse(
+    val nonce: String,
+)
+
+@Serializable
+data class Transaction(
+    val transferId: String,
+    val direction: String,
+    val amountXaf: Long,
+    val counterpartyMsisdn: String,
+    val counterpartyName: String? = null,
+    val status: String,
+    val at: String,
+)
+
+@Serializable
+data class TransactionList(
+    val items: List<Transaction>,
+)
+
+@Serializable
+data class Holder(
+    val msisdn: String,
+    val beneficiaryId: String,
+    val holderName: String,
+    val newBeneficiary: Boolean,
+)
+
+@Serializable
+data class TransferRequest(
+    val type: String,
+    val amountXaf: Long,
+    val beneficiaryId: String,
+    val nonce: String,
+    val signature: String,
+    val pin: String,
+)
+
+@Serializable
+data class TransferResponse(
+    val transferId: String,
+    val decision: String,
+    val status: String,
+    val reason: String? = null,
+    val executeAt: String? = null,
+    val balanceXaf: Long,
+)
+
+@Serializable
+data class SignedAction(
+    val nonce: String,
+    val signature: String,
+)
+
+@Serializable
+data class CancelResponse(
+    val transferId: String,
+    val status: String,
+)
+
+// Flux D (ré-enrôlement) et F (alertes), M-08 : même désérialisation stricte.
+
+@Serializable
+data class RecoverRequest(
+    val enrolmentId: String,
+    val recoveryCode: String,
+)
+
+@Serializable
+data class Alert(
+    val alertId: String,
+    val type: String,
+    val at: String,
+    val summary: String,
+    val actions: List<String>,
+    val status: String,
+)
+
+@Serializable
+data class AlertList(
+    val items: List<Alert>,
+)
+
+@Serializable
+data class AlertActionResponse(
+    val alertId: String,
+    val status: String,
+    val accountState: String,
+)

@@ -9,6 +9,9 @@ import static org.mockito.Mockito.when;
 
 import cm.identishield.pdp.audit.AuditLog;
 import cm.identishield.pdp.config.RuleSet;
+import cm.identishield.pdp.device.DeviceRegistry;
+import cm.identishield.pdp.signature.NonceStore;
+import cm.identishield.pdp.signature.SignatureVerifier;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -27,7 +30,11 @@ class EvaluateControllerTest {
   private final AuditLog auditLog = mock(AuditLog.class);
   private final RuleSet ruleSet = new RuleSet("rs-0.1.0", Map.of());
   private final EvaluateController controller =
-      new EvaluateController(auditLog, Clock.fixed(T0, ZoneOffset.UTC), ruleSet);
+      new EvaluateController(
+          auditLog,
+          Clock.fixed(T0, ZoneOffset.UTC),
+          ruleSet,
+          new SignatureVerifier(mock(DeviceRegistry.class), mock(NonceStore.class)));
 
   private EvaluateRequest request() {
     return new EvaluateRequest(

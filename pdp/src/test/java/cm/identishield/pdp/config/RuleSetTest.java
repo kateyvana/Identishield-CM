@@ -29,8 +29,13 @@ class RuleSetTest {
   @Test
   void loadsVersionAndNamedParametersFromVersionedConfig() throws IOException {
     RuleSet rs = load();
-    assertEquals("rs-0.5.0", rs.version()); // bump correctif M-06 (APP_NETWORK_TIMEOUT)
+    assertEquals("rs-0.7.0", rs.version()); // bump M-09 (NONCE_TTL)
     assertTrue(rs.parameters().containsKey("CAR_IMSI"), "les parametres nommes sont charges");
     assertEquals("PT72H", rs.parameters().get("CAR_IMSI"));
+  }
+
+  @Test
+  void nonceTtlComesFromTheVersionedConfig_es10() throws IOException {
+    assertEquals(java.time.Duration.ofSeconds(120), load().nonceTtl());
   }
 }

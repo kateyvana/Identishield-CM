@@ -88,3 +88,18 @@ Préfère toujours la solution la plus courte et la plus lisible. N'introduis pa
 Tu le dis. Tu ne combles jamais un vide de spécification par une supposition plausible. « Je ne trouve pas l'exigence qui couvre ce cas » est une réponse correcte ; un comportement inventé n'en est pas une.
 
 Signaler une contradiction puis l'exécuter quand même n'est pas signaler : c'est exécuter. Tu t'arrêtes et tu attends.
+
+## 10. Charte qualité mobile — standard produit réel
+
+Décision du propriétaire du 2026-10-08, après la première passe sur appareil réel. Elle s'applique à **toute étape mobile**. Une étape qui ne la respecte pas n'est **pas terminée**, quel que soit l'état des tests JVM et de `make check`.
+
+1. **Appareil réel obligatoire.** Chaque étape est vérifiée sur un appareil physique (téléphone, et tablette si disponible) avant d'être déclarée terminée. Les tests JVM ne suffisent pas. Les parcours critiques ont des tests d'interface instrumentés.
+2. **Champs de saisie.** Chaque champ est touchable, ouvre le clavier, du bon type, impose sa longueur maximale, et se trouve à côté de son libellé. Le bouton de validation reste désactivé tant que la saisie n'est pas valide.
+3. **Messages d'erreur.** Jamais de message générique quand la cause est connue. Chaque erreur dit ce qui s'est passé et quoi faire. Le message générique est réservé aux causes réellement inconnues.
+4. **Préconditions vérifiées AVANT d'agir** : verrouillage d'écran configuré, version d'Android, réseau. Chacune a son écran explicatif, avec un lien vers les réglages.
+5. **État conservé** à la rotation ET à la mort du processus (retour depuis les Réglages). Les secrets (PIN, OTP, code de secours, jeton) ne sont JAMAIS conservés.
+6. **Secrets à l'écran** : protection contre les captures ET masquage pour les services d'accessibilité ; champs masqués ; jamais dans les journaux ; effacés après usage. Le compromis avec les lecteurs d'écran pour malvoyants est documenté.
+7. **Session** : expiration après inactivité, verrouillage après passage en arrière-plan, durée maximale, imposées par le serveur (valeurs : décision du propriétaire en attente).
+8. **Mise en page** vérifiée sur téléphone ET tablette, et avec une taille de police à 200 %. Aucun texte coupé, aucun espace manquant.
+9. **Rapports** : « conforme » seulement pour ce qui a été observé. Sinon : « non observé ».
+10. **Tout secret** apparaissant dans un journal, un fichier temporaire ou un rapport est un incident : il est supprimé, et le secret est considéré comme compromis.

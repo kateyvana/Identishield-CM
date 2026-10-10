@@ -7,8 +7,11 @@ import cm.identishield.mobile.data.CompleteRequest
 import cm.identishield.mobile.data.ConfirmRequest
 import cm.identishield.mobile.data.EnrolmentRepository
 import cm.identishield.mobile.data.RecoveryCodeIssued
+import cm.identishield.mobile.data.SessionHolder
 import cm.identishield.mobile.data.SessionResponse
 import cm.identishield.mobile.data.StartResponse
+import cm.identishield.mobile.security.BoundDevice
+import cm.identishield.mobile.security.BoundDeviceStore
 import cm.identishield.mobile.security.DeviceKeyManager
 import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.InsecureKeyStorageException
@@ -208,7 +211,7 @@ class EnrolmentViewModelTest {
         repo.startResult = ApiResult.Ok(StartResponse(next = "RECOVERY", enrolmentId = "e-2"))
         val vm = vm()
         untilOtp(vm)
-        assertEquals(EnrolStep.Pin(NEW_NUMBER, EnrolError.REENROLMENT_NOT_AVAILABLE), vm.step.value)
+        assertEquals(EnrolStep.Recovery(), vm.step.value) // M-08 : flux D (E-20), et non plus un message
         assertEquals(0, keys.generateCalls)
     }
 
@@ -332,5 +335,41 @@ class EnrolmentViewModelTest {
         assertEquals(EnrolStep.Securing(SecuringStage.UNLOCKING, EnrolError.UNEXPECTED), vm.step.value)
         assertFalse(keys.hasDeviceKey())
         assertFalse(repo.calls.contains("complete"))
+    }
+
+    private class RecordingStore : BoundDeviceStore {
+        val saved = mutableListOf<BoundDevice>()
+
+        override fun load() = saved.lastOrNull()
+
+        override fun save(device: BoundDevice) {
+            saved += device
+        }
+    }
+
+    @Test
+    fun endOfFlowA_remembersNumberAndDeviceId_andHandsTheSessionToFlowB() {
+        repo.completeResult = ApiResult.Ok(RecoveryCodeIssued("c-1", CODE, POSITIONS, deviceId = "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0"))
+        val store = RecordingStore()
+        val session = SessionHolder()
+        val vm = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), store, session)
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        assertEquals("mémorisés dès la liaison", listOf(BoundDevice(NEW_NUMBER, "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0")), store.saved)
+        vm.keyWrittenDown()
+        vm.confirmCharacters(POSITIONS.associateWith { CODE[it - 1].toString() })
+        assertEquals("jeton", session.token)
+        assertFalse(vm.holdsSecrets())
+    }
+
+    @Test
+    fun withoutDeviceIdFromTheServer_nothingIsRemembered() {
+        val store = RecordingStore()
+        val vm = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), store, SessionHolder())
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        assertTrue(store.saved.isEmpty())
     }
 }

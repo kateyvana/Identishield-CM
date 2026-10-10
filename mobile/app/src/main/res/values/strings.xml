@@ -38,7 +38,8 @@
     <string name="pin_body">Entrez le code PIN de votre compte MoMo.</string>
     <string name="pin_note">Ne partagez jamais votre PIN. Personne chez l\'opérateur ne vous le demandera.</string>
     <string name="error_credentials_invalid">Identifiants incorrects</string>
-    <string name="error_reenrolment_not_available">Ce compte est déjà protégé par un autre téléphone. Le réenrôlement avec la clé de récupération arrive dans une prochaine version.</string>
+    <string name="error_recovery_invalid">Clé incorrecte</string>
+    <string name="error_reenrol_frozen">La liaison d\'un nouveau téléphone est temporairement suspendue pour ce compte. Votre compte reste utilisable par USSD.</string>
     <string name="keypad_delete">Effacer</string>
 
     <!-- E-04 Vérification -->
@@ -95,4 +96,166 @@
     <string name="home_history">Historique</string>
     <string name="home_alerts">Alertes</string>
     <string name="home_security">Sécurité</string>
+    <string name="home_home">Accueil</string>
+    <string name="home_recent">Dernières opérations</string>
+    <string name="home_deferred">Envois programmés</string>
+    <string name="home_deferred_item">%1$s FCFA → %2$s</string>
+
+    <!-- E-10 Déverrouillage (flux B) -->
+    <string name="unlock_pin">Votre code PIN</string>
+    <string name="unlock_then">puis déverrouillez votre téléphone pour confirmer (empreinte, visage ou code)</string>
+    <string name="unlock_prompt_title">Ouvrir votre compte</string>
+    <string name="unlock_prompt_subtitle">Déverrouillez votre téléphone pour confirmer (empreinte, visage ou code).</string>
+
+    <!-- Erreurs des flux B et C -->
+    <string name="error_pin_incorrect">Code PIN incorrect</string>
+    <string name="error_throttled">Trop d\'essais. Réessayez dans %1$s.</string>
+    <string name="error_throttled_later">Trop d\'essais. Réessayez plus tard.</string>
+    <string name="duration_seconds">%1$d s</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="error_key_revoked">Cet appareil n\'est plus la clé de votre compte.</string>
+    <string name="error_key_invalidated">La biométrie de votre téléphone a changé ; il faut sécuriser à nouveau cet appareil.</string>
+    <string name="error_account_frozen">Votre compte est gelé pour votre sécurité. Rendez-vous chez un agent avec votre pièce d\'identité.</string>
+    <string name="error_session_ended">Votre session a expiré. Déverrouillez à nouveau.</string>
+    <string name="error_insufficient_funds">Solde insuffisant</string>
+    <string name="error_beneficiary_unknown">Aucun compte MoMo pour ce numéro.</string>
+    <string name="error_cancel_unavailable">Cet envoi ne peut plus être annulé.</string>
+    <string name="error_cancel_unconfirmed">Impossible de confirmer l\'annulation. Vérifiez votre historique.</string>
+
+    <!-- E-12 Bénéficiaire -->
+    <string name="send_title">Envoyer de l\'argent</string>
+    <string name="beneficiary_label">NUMÉRO DU BÉNÉFICIAIRE</string>
+    <string name="beneficiary_prefix">🇨🇲 +237</string>
+    <string name="recents_label">RÉCENTS</string>
+    <string name="recent_known">connu</string>
+
+    <!-- E-13 Montant -->
+    <string name="amount_title">Montant</string>
+    <string name="amount_to">À </string>
+    <string name="amount_after">Solde après envoi : %1$s FCFA</string>
+
+    <!-- E-14 Confirmation -->
+    <string name="review_title">Vérifiez avant d\'envoyer</string>
+    <string name="review_beneficiary">BÉNÉFICIAIRE</string>
+    <string name="review_amount">MONTANT</string>
+    <string name="review_amount_value">%1$s FCFA</string>
+    <string name="review_new">● Nouveau bénéficiaire</string>
+    <string name="review_new_warning_before">Vous n\'avez jamais envoyé d\'argent à ce numéro. Vérifiez le </string>
+    <string name="review_new_warning_key">nom du titulaire</string>
+    <string name="review_new_warning_after"> avant de confirmer.</string>
+    <string name="action_confirm">Confirmer</string>
+    <string name="action_cancel">Annuler</string>
+
+    <!-- E-15 Autorisation -->
+    <string name="authorize_title">Autoriser l\'envoi</string>
+    <string name="authorize_summary">%1$s FCFA → %2$s</string>
+    <string name="authorize_step_pin">1. Votre code PIN</string>
+    <string name="authorize_step_unlock">2. Déverrouillez votre téléphone pour confirmer</string>
+    <string name="authorize_step_unlock_body">(empreinte, visage ou code). Cette étape autorise ce téléphone à signer l\'envoi.</string>
+    <string name="authorize_prompt_subtitle">Cette étape autorise ce téléphone à signer l\'envoi.</string>
+
+    <!-- E-16 Succès -->
+    <string name="sent_title">Envoyé</string>
+    <string name="sent_to">à %1$s · %2$s</string>
+    <string name="receipt_reference">Référence</string>
+    <string name="receipt_signed_by">Signé par</string>
+    <string name="receipt_this_phone">ce téléphone (%1$s)</string>
+    <string name="action_home">Retour à l\'accueil</string>
+
+    <!-- E-17 Exécution différée -->
+    <string name="deferred_title">Envoi programmé</string>
+    <string name="deferred_body">Cette opération est inhabituelle. Par sécurité, elle sera exécutée le %1$s.</string>
+    <string name="deferred_body_unknown_time">Cette opération est inhabituelle. Par sécurité, son exécution est différée.</string>
+    <string name="deferred_can_cancel">Vous pouvez l\'annuler jusque-là depuis l\'accueil.</string>
+    <string name="deferred_pending">en attente</string>
+    <string name="deferred_cancel">Annuler cet envoi</string>
+    <string name="deferred_cancelled">Envoi annulé.</string>
+    <string name="cancel_prompt_title">Annuler l\'envoi</string>
+
+    <!-- E-18 Bloquée / Rejetée -->
+    <string name="frozen_title">Opération bloquée</string>
+    <string name="frozen_body">Pour votre sécurité, cet envoi n\'a pas été exécuté. Votre argent est toujours sur votre compte.</string>
+    <string name="frozen_what">Que faire ? </string>
+    <string name="frozen_what_body">Si vous êtes bien à l\'origine de cette opération, rendez-vous chez un agent avec votre pièce d\'identité. Aucun code ne vous sera demandé par téléphone.</string>
+    <string name="rejected_title">Opération rejetée</string>
+    <string name="rejected_body">Réessayez.</string>
+    <string name="rejected_key_body">Réessayez depuis votre téléphone lié.</string>
+    <string name="unknown_title">Envoi non confirmé</string>
+    <string name="unknown_body">Impossible de confirmer l\'envoi. Vérifiez votre historique.</string>
+    <string name="action_history">Voir l\'historique</string>
+
+    <!-- E-19 Historique -->
+    <string name="history_title">Historique</string>
+    <string name="history_out">Envoi</string>
+    <string name="history_in">Réception</string>
+    <string name="history_empty">Aucune opération.</string>
+    <string name="status_deferred">en attente</string>
+    <string name="status_cancelled">annulé</string>
+    <string name="status_frozen">bloqué</string>
+    <string name="status_rejected">rejeté</string>
+
+    <!-- Flux D (M-08) : E-20, E-21, E-22, E-26 -->
+    <string name="reenrol_title">Nouveau téléphone</string>
+    <string name="recovery_banner">🛡 Ce compte est déjà protégé par un autre téléphone.</string>
+    <string name="recovery_body_before">Pour lier </string>
+    <string name="recovery_body_this">ce</string>
+    <string name="recovery_body_after"> téléphone, entrez la clé de récupération que vous avez notée sur papier.</string>
+    <string name="recovery_label">CLÉ DE RÉCUPÉRATION</string>
+    <string name="recovery_no_sms">Aucun code ne vous sera envoyé par SMS pour cette étape.</string>
+    <string name="recovery_lost">J\'ai perdu ma clé</string>
+    <string name="wait_title">Clé incorrecte</string>
+    <string name="wait_body">Vous pourrez réessayer dans</string>
+    <string name="wait_not_blocked">Votre compte n\'est pas bloqué.</string>
+    <string name="wait_not_blocked_body"> Vous pouvez continuer à l\'utiliser par USSD. Seul ce téléphone doit attendre.</string>
+    <string name="wait_grows">Le délai augmente à chaque nouvelle erreur.</string>
+    <string name="rebound_title">Ce téléphone est maintenant votre clé</string>
+    <string name="rebound_old">Ancien téléphone</string>
+    <string name="rebound_this">Ce téléphone (%1$s)</string>
+    <string name="rebound_unbound">délié</string>
+    <string name="rebound_bound">lié</string>
+    <string name="rebound_warning">Votre ancienne clé de récupération ne vaut plus rien. Une nouvelle va vous être affichée, une seule fois.</string>
+    <string name="rebound_show_key">Afficher ma nouvelle clé</string>
+    <string name="lost_title">Clé de récupération perdue</string>
+    <string name="lost_heading">Vous avez perdu votre clé ?</string>
+    <string name="lost_body">Cette application ne peut pas la retrouver ni la remplacer : c\'est ce qui protège votre compte.</string>
+    <string name="lost_step_1">1. Rendez-vous chez un agent MTN</string>
+    <string name="lost_step_2">2. Présentez votre pièce d\'identité</string>
+    <string name="lost_step_3">3. L\'agent lance la procédure de récupération</string>
+    <string name="lost_pending">Procédure en cours de définition (point ouvert QM-05). Votre compte reste utilisable par USSD pendant ce temps.</string>
+
+    <!-- E-27 (M-08) -->
+    <string name="revoked_title">Cet appareil n\'est plus la clé de votre compte</string>
+    <string name="revoked_body">Un autre téléphone a été lié à votre compte.</string>
+    <string name="invalidated_title">La biométrie de votre téléphone a changé</string>
+    <string name="invalidated_body">Il faut sécuriser à nouveau cet appareil avec votre clé de récupération.</string>
+    <string name="revoked_warning">Si ce n\'est pas vous, rendez-vous chez un agent MTN avec votre pièce d\'identité. Cette notification est informative : aucune action n\'est possible depuis cet appareil.</string>
+    <string name="revoked_secure_again">Sécuriser à nouveau ce téléphone</string>
+    <string name="revoked_ussd">Continuer par USSD</string>
+    <string name="incompatible_title">Ce téléphone ne peut pas protéger votre compte</string>
+    <string name="incompatible_body">Il ne dispose pas de la puce sécurisée nécessaire (ou son système est trop ancien : Android 11 minimum).</string>
+    <string name="incompatible_ussd">Vous pouvez continuer à utiliser MoMo par USSD. Vos opérations restent surveillées par le service.</string>
+    <string name="incompatible_quit">Quitter</string>
+
+    <!-- Flux F (M-08) : bandeau E-11, E-23, E-24 -->
+    <string name="alert_banner_title">⚠ Alerte de sécurité</string>
+    <string name="alert_banner_see">Voir ›</string>
+    <string name="alerts_title">Alertes de sécurité</string>
+    <string name="alerts_empty">Aucune alerte.</string>
+    <string name="alert_to_handle">à traiter</string>
+    <string name="alert_title">Alerte de sécurité</string>
+    <string name="alert_type_sim_changed">Carte SIM changée</string>
+    <string name="alert_type_reenrol_attempt">Tentative de liaison d\'un autre téléphone</string>
+    <string name="alert_type_device_rebound">Nouveau téléphone lié</string>
+    <string name="alert_type_transfer_deferred">Envoi programmé</string>
+    <string name="alert_type_transfer_frozen">Envoi bloqué</string>
+    <string name="alert_number">Numéro</string>
+    <string name="alert_this_phone">Ce téléphone</string>
+    <string name="alert_still_bound">toujours lié</string>
+    <string name="alert_question">C\'est vous ?</string>
+    <string name="alert_yes">Oui, c\'est moi</string>
+    <string name="alert_no">Non, ce n\'est pas moi</string>
+    <string name="alert_never_code">Nous ne vous demanderons jamais de code ni de PIN dans une alerte.</string>
+    <string name="alert_answered_ack">Merci : vous avez confirmé que c\'était vous.</string>
+    <string name="alert_answered_not_me">Votre compte est gelé pour votre sécurité, et la liaison d\'un nouveau téléphone est suspendue. Rendez-vous chez un agent MTN avec votre pièce d\'identité.</string>
+    <string name="alert_prompt_title">Répondre à l\'alerte</string>
 </resources>

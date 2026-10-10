@@ -1,5 +1,6 @@
 package cm.identishield.pdp.config;
 
+import java.time.Duration;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -14,4 +15,13 @@ public record RuleSet(String version, Map<String, Object> parameters) {
 
   // @implements EF-17
   // @implements ES-15
+
+  /** ES-10 : durée de validité d'un nonce de signature (NONCE_TTL, durée ISO). */
+  public Duration nonceTtl() {
+    Object v = parameters == null ? null : parameters.get("NONCE_TTL");
+    if (v instanceof CharSequence s) {
+      return Duration.parse(s);
+    }
+    throw new IllegalStateException("NONCE_TTL absent du jeu de règles versionné");
+  }
 }

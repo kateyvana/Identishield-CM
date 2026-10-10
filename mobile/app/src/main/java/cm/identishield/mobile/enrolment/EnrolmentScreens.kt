@@ -50,6 +50,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cm.identishield.mobile.R
+import cm.identishield.mobile.daily.DailyHomeScreen
 import cm.identishield.mobile.data.Account
 import cm.identishield.mobile.ui.theme.Amber
 import cm.identishield.mobile.ui.theme.Ink
@@ -80,7 +81,8 @@ fun errorMessage(error: EnrolError): String =
             EnrolError.OTP_EXPIRED -> R.string.error_otp_expired
             EnrolError.SESSION_EXPIRED -> R.string.error_session_expired
             EnrolError.UNREACHABLE -> R.string.error_unreachable
-            EnrolError.REENROLMENT_NOT_AVAILABLE -> R.string.error_reenrolment_not_available
+            EnrolError.RECOVERY_INVALID -> R.string.error_recovery_invalid
+            EnrolError.REENROL_FROZEN -> R.string.error_reenrol_frozen
             EnrolError.DEVICE_REFUSED -> R.string.error_device_refused
             EnrolError.UNLOCK_CANCELLED -> R.string.error_unlock_cancelled
             EnrolError.CONFIRM_MISMATCH -> R.string.error_confirm_mismatch
@@ -446,7 +448,7 @@ fun RecoveryKeyScreen(
 // ---- E-09 Confirmation --------------------------------------------------------------------------
 
 /** MOB-S-06 : ni copier ni coller sur la saisie de la clé (barre d'outils de texte neutralisée). */
-private object NoTextToolbar : TextToolbar {
+internal object NoTextToolbar : TextToolbar {
     override val status = TextToolbarStatus.Hidden
 
     override fun hide() = Unit
@@ -529,65 +531,4 @@ fun ConfirmKeyScreen(
 fun HomeScreen(
     account: Account,
     deviceModel: String,
-) {
-    Page(EnrolTags.HOME) {
-        VerticalGap(16)
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Navy)
-                    .padding(24.dp),
-        ) {
-            Text(stringResource(R.string.home_hello), color = Color.White.copy(alpha = 0.8f), fontSize = 17.sp)
-            Text(account.holderName, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("holder"))
-            Text(stringResource(R.string.home_number, formatMsisdn(account.msisdn)), color = Color.White.copy(alpha = 0.8f), fontSize = 17.sp)
-            VerticalGap(16)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(formatXaf(account.balanceXaf), color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("balance"))
-                HorizontalGap(8)
-                Text(stringResource(R.string.home_currency), color = Color.White, fontSize = 22.sp, modifier = Modifier.padding(bottom = 6.dp))
-            }
-            Text(stringResource(R.string.home_balance), color = Color.White.copy(alpha = 0.8f), fontSize = 16.sp)
-            VerticalGap(16)
-            // Vert : état vérifié par le serveur (liaison confirmée) — règle de la palette.
-            Text(
-                stringResource(R.string.home_protected, deviceModel),
-                color = ProtectedGreen,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                modifier =
-                    Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(ProtectedGreen.copy(alpha = 0.15f))
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
-                        .testTag("protected"),
-            )
-        }
-        VerticalGap(20)
-        // Écart : tuiles affichées, sans action (Envoyer/Historique : M-07 ; Alertes/Sécurité : M-08).
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            listOf(
-                R.string.home_send to "↗",
-                R.string.home_history to "≡",
-                R.string.home_alerts to "🔔",
-                R.string.home_security to "🛡",
-            ).forEach { (label, glyph) ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White)
-                            .border(1.dp, Hairline, RoundedCornerShape(16.dp))
-                            .padding(vertical = 14.dp),
-                ) {
-                    Text(glyph, fontSize = 26.sp, color = Secondary)
-                    Text(stringResource(label), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Secondary)
-                }
-            }
-        }
-    }
-}
+) = DailyHomeScreen(account, deviceModel) // E-11 vit dans daily/ depuis M-07 (actions, opérations, navigation)
