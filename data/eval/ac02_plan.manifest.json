@@ -1,0 +1,41 @@
+{
+  "nom": "plan d'évaluation AC-02",
+  "version": "v1",
+  "date": "2026-10-01",
+  "statut": "FIGÉ — plan seulement ; les 300 exécutions réelles sont une action du propriétaire (Mois 5, pile isolée)",
+  "plan": {
+    "fichier": "data/eval/ac02_plan.csv",
+    "sha256": "72876d18d0e30b2a9e932ce412c4f972f19d0d6d06b91c503d02311bab5d3b85",
+    "N_CASES": 300,
+    "lignes": 301,
+    "entete": "run_id,victim_msisdn,victim_imsi,instant,beneficiary_msisdn,attacker_imsi,balance_xaf"
+  },
+  "harnais": {
+    "script": "tools/eval_harness/ac02_plan.py",
+    "sha256": "3e818100621c1ac22647c0d48a5ffcf0a67a9bf382c12f907031e5f0c7c91be7",
+    "commit": "49037ee4e75eb721496ec3217bc77d40a9cd6b15",
+    "PLAN_SEED": 20260927
+  },
+  "horizon_source": {
+    "manifeste": "data/eval/dev_horizon_v1.manifest.json",
+    "nom": "dev horizon v1",
+    "vue_detecteur_sha256": "c165d55bed40c441c16e2f7d5e987b8a67cceb71eb71e470cbc2309d18ac8adc",
+    "sidecar_labels_sha256": "6bc9ecbc6387e678fa6bb374f7ae20a125a8d43db162268ef26ad443fb4e2998",
+    "hlr_events_sha256": "12fb1a9121de3ce6ba80f6828465ec2b245b2a5afbde232300155cb55a93c36f"
+  },
+  "recette_de_regeneration": {
+    "depuis": "la racine du dépôt, au commit 49037ee4e75eb721496ec3217bc77d40a9cd6b15",
+    "etape_1_horizon": "uv run --project simulator python -m isc_simulator.generator --seed 20260925 --users 2480 --days 182 --start 2026-10-01 --out <h>.csv",
+    "etape_2_controle": "les sha256 de <h>.csv, <h>.labels.csv, <h>.hlr_events.csv doivent égaler horizon_source ; sinon arrêt",
+    "etape_3_plan": "uv run --project simulator python tools/eval_harness/ac02_plan.py --detector <h>.csv --sidecar <h>.labels.csv --hlr <h>.hlr_events.csv --out data/eval/ac02_plan.csv",
+    "etape_4_controle": "sha256 de data/eval/ac02_plan.csv = plan.sha256",
+    "verifie_le": "2026-10-01 : horizon régénéré identique au gel ; plan généré deux fois, identique à l'octet"
+  },
+  "controles": {
+    "victimes_distinctes": 300,
+    "victimes_archetype_ordinaire": "300/300 (vérifié via le sidecar ; l'archétype n'entre pas dans le plan)",
+    "imsi_15_chiffres_624_01": true,
+    "msisdn_plage_677000000_677009999": true,
+    "colonnes_de_verite_terrain_dans_le_plan": "aucune"
+  }
+}
