@@ -5,32 +5,60 @@
 #
 # Valeurs = ISC-TM v1.1 §7 « Valeur v1 » (initiales ; le protocole d'évaluation
 # du mois 4 mesurera leur sensibilité). Durées en ISO-8601 ; montants en FCFA
-# entiers (ED-05) ; NIGHT = fenêtre horloge murale UTC serveur (ED-04).
+# entiers (ED-05) ; ~~NIGHT = fenêtre horloge murale UTC serveur (ED-04)~~ NIGHT = fenêtre en
+# heure LOCALE du fuseau NIGHT_ZONE (rs-0.8.0, amendement ED-04 PROPOSÉ) ; les horodatages restent UTC serveur.
+#
+# Calibration T3-07 (rs-0.8.0) : valeurs PROVISOIRES issues de l'étude hors ligne sur le jeu
+# légitime gelé (dev horizon v1) et le plan AC-02 gelé ; ADR-016 PROVISOIRE ; amendements
+# ISC-TM §7, ES-06, ES-11, ED-04 au statut PROPOSÉ (note de revue T3-07, citée par ADR-016). Le moteur de
+# règles n'existe pas encore (mois 4) : SCORE, W, STEP_UP_POLICY, NIGHT_ZONE et CAP_FAILCLOSED
+# ne sont lus par aucun code à ce jour.
 #
 # La version DOIT figurer dans chaque décision /evaluate (EF-11 ruleSetVersion,
 # EF-17). Toute modification d'un paramètre s'accompagne d'un incrément de version.
 ruleset:
-  version: rs-0.7.0 # bump : NONCE_TTL (M-09) ; rs-0.6.0 = QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
+  version: rs-0.8.0 # bump : calibration T3-07 PROVISOIRE (SCORE, W, STEP_UP_POLICY, NIGHT_ZONE, CAP_FAILCLOSED ; sémantique CAP_PROB précisée ; numérotée rs-0.6.0 sur la branche t3-07, renumérotée à l'intégration) ; rs-0.7.0 = NONCE_TTL (M-09) ; rs-0.6.0 = QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
   parameters:
     CAR_IMSI: PT72H # carence post-changement d'IMSI (72 h, état PROBATION)
     # CAR_ENROL (PT48H, carence post-ré-enrôlement) : RETIRÉ — SRS v1.3, ISC-TM v1.2 §7, ES-03c ; retiré ici par ISC-AMD-02 v1.1
-    CAP_PROB: # plafond de sortie en PROBATION : min(dailyXaf ; balancePct % du solde)
-      dailyXaf: 25000
-      balancePct: 10
+    CAP_PROB: # ES-04, veto en PROBATION : cumul des sorties sur `window` glissante + montant > min(dailyXaf ; balancePct % du solde à l'entrée en PROBATION) -> FREEZE
+      dailyXaf: 25000 # inchangé (T3-07 : au-delà, la friction cas b ne baisse plus)
+      balancePct: 10 # inchangé (T3-07 : levier de perte AC-07 ; 25 % triplerait la perte médiane)
+      balanceBase: PROBATION_ENTRY # solde de référence figé à l'entrée en PROBATION (T3-07)
+      window: PT24H # cumul glissant (T3-07)
+    # ~~ES-11 fail-closed = CAP_PROB~~ : séparé (T3-07). ATTENTION : le cœur lit encore CAP_PROB.dailyXaf
+    # pour le fail-closed (FailClosedPolicy) ; le recâblage attend la ratification de l'amendement ES-11.
+    CAP_FAILCLOSED: # ES-11 (amendement PROPOSÉ) : PDP indisponible -> refus de toute sortie > xaf, par transaction
+      xaf: 50000 # H5 < 2 % par persona public (salarié 1,91 % ; 2,67 % à 25 000) ; agents 2,49 % déclarés
     THR_HIGH: # seuil « montant élevé » : min(absoluteXaf ; medianFactor × médiane 30 j)
       absoluteXaf: 50000
       medianFactor: 3
     THR_4EYES: # seuil quatre-yeux SOC
       xaf: 100000
     TTL_FREEZE: PT24H # TTL de gel, puis annulation
-    NIGHT: "23:00-05:00" # fenêtre nuit, heure serveur UTC (signal secondaire, jamais veto)
+    NIGHT: "23:00-05:00" # fenêtre nuit en heure LOCALE de NIGHT_ZONE (signal secondaire, jamais veto) ; ~~heure serveur UTC~~ (rs-0.8.0)
+    NIGHT_ZONE: Africa/Douala # WAT = UTC+1, SUPPOSÉ et déclaré (heure du CSV réel naïve) ; amendement ED-04 PROPOSÉ
     VEL: # fenêtre de vélocité : > count sorties / window OU > newBeneficiaries nouveaux / beneficiaryWindow
       count: 3
       window: PT10M
       newBeneficiaries: 3
       beneficiaryWindow: PT24H
-    DEFER: PT4H # temporisation STEP_UP sur USSD
+    DEFER: PT4H # temporisation STEP_UP ; ~~sur USSD~~ : USSD = BLOQUER (STEP_UP_POLICY.ussd), DEFER écarté pour l'USSD (décision du propriétaire du 06/10, ADR-016)
     NONCE_TTL: PT120S # validité d'un nonce de signature (ES-10 : 120 s) ; nommé par M-09 (ISC-MOB-SPEC §14 « à nommer »)
+    # --- Score comportemental (ES-05a..f) et agrégation — ADR-016 PROVISOIRE, calibration T3-07 ---
+    SCORE: # décision = bandes sur l'agrégat des contributions W
+      aggregation: bounded_sum # somme bornée à max ; « max » écarté par les données (NIGHT inerte, aucun FREEZE sans IMSI)
+      max: 100
+      stepUp: 40 # ES-05f : score >= stepUp -> STEP_UP
+      freeze: 70 # ES-05f : score >= freeze -> FREEZE
+    W: # contributions au score (points)
+      newBeneficiary: 15 # ES-05b : bénéficiaire jamais vu ; plus petit poids tel que NIGHT + nouveau >= stepUp
+      newBeneficiaryHigh: 45 # ES-05b : nouveau ET montant >= THR_HIGH (remplace newBeneficiary) ; plus petit poids tel que + NIGHT >= freeze
+      vel: 70 # ES-05c : dépassement de VEL (l'une des deux clauses) ; seul = FREEZE
+      night: 25 # ES-05d, ISC-TM AC-06 : sortie dans NIGHT ; 15 serait inerte (T3-07)
+    STEP_UP_POLICY: # ES-06 résolu — décision du propriétaire du 06/10 (ADR-016) : USSD = BLOQUER
+      app: SIGNATURE # STEP_UP résolu par signature du dispositif lié (preuve), puis réévaluation
+      ussd: CANCEL # aucun renforcement possible sur USSD -> CANCELLED (scénario « plafond » de T3-07)
     OTP: # OTP à usage unique (EF-03) : forme et durée sont des PARAMÈTRES, pas des constantes
       length: 6 # chiffres décimaux
       ttl: PT5M # durée de validité ; OTP_TTL (SRS v1.4 §0) est un alias de OTP.ttl

@@ -1,0 +1,21 @@
+{
+ "avec_imsi_freeze_pct": 100.0,
+ "motif_avec_imsi": "veto ES-04 : nouveau bénéficiaire en PROBATION",
+ "sans_imsi": {
+  "STEP_UP": 66.333,
+  "FREEZE": 23.667,
+  "ALLOW": 10.0
+ },
+ "sans_imsi_borne_basse_tpr_pct (FREEZE seul)": 23.667,
+ "wilson_borne_basse": [
+  19.21,
+  28.79
+ ],
+ "sans_imsi_borne_haute_tpr_pct (FREEZE + STEP_UP non résoluble)": 90.0,
+ "wilson_borne_haute": [
+  86.08,
+  92.91
+ ],
+ "part_night_locale_pct": 27.333,
+ "part_ge_thr_high_pct": 86.333
+}

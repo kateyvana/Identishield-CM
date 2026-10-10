@@ -1,0 +1,10 @@
+PARAMS {'AGG': 'bounded_sum', 'SCORE': {'stepUp': 40, 'freeze': 70, 'max': 100}, 'W': {'newBeneficiary': 15, 'newBeneficiaryHigh': 45, 'vel': 70, 'night': 25}, 'THR_HIGH': {'absoluteXaf': 50000, 'medianFactor': 3}, 'NIGHT_LOCAL': (23, 5), 'CAP_PROB': {'dailyXaf': 25000, 'balancePct': 10}}
+persona    | D1 FPR/tout         Wilson | D1 FPR/USSD         Wilson | D2 FPR/tout | D2 FPR/USSD | tout-annulé | STEP_UP USSD lié/non-lié, app non-lié
+ordinaire  |      0.622%   [0.58, 0.67] |      0.813%   [0.75, 0.88] |      0.494% |      0.639% |      0.818% | 146/449, 0  (tx USSD 83468, tout 114204)
+salarie    |      0.290%   [0.26, 0.32] |      0.563%    [0.5, 0.63] |      0.222% |      0.351% |      0.576% | 107/95, 0  (tx USSD 50656, tout 158015)
+victime    |      0.578%   [0.46, 0.73] |      0.728%   [0.57, 0.92] |      0.484% |      0.608% |      0.671% | 11/48, 0  (tx USSD 9203, tout 11774)
+marchand   |      0.391%   [0.36, 0.42] |      0.495%   [0.46, 0.54] |      0.220% |      0.273% |      0.504% | 267/296, 0  (tx USSD 120377, tout 156133)
+agent      |      4.928%   [4.78, 5.08] |      4.938%    [4.78, 5.1] |      4.428% |      4.361% |      5.050% | 411/426, 0  (tx USSD 71249, tout 82142)
+usagers USSD touchés par une annulation (D1) : {'ordinaire': '431/1282 = 33.619%', 'salarie': '158/646 = 24.458%', 'victime': '48/129 = 37.209%', 'marchand': '303/388 = 78.093%', 'agent': '25/25 = 100.0%'}
+usagers touchés par un FREEZE : {'ordinaire': '104', 'salarie': '178', 'victime': '8', 'marchand': '42', 'agent': '24'}
+DÉPASSEMENTS DU SEUIL EVAL (hors agents) : aucun
