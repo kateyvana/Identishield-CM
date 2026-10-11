@@ -11,7 +11,9 @@
 | QO-15 | L'agent complice est-il dans le modèle de menace ? | ISC-TM | Encadrement | — | FERMÉ — oui (ADR-008) |
 | QO-17 | Confirmation que la plage MSISDN fictive ~~699000000–699009999~~ est hors de tout bloc attribué par l'ART | ED-09 | Candidat | Semaine 3 | FERMÉ le 2026-09-25 par ADR-035 — réponse : NON, 69x est un préfixe Orange ; aucune plage réservée à la fiction n'existe au Cameroun ; nouvelle plage MTN 677000000–677009999, sûreté par isolement |
 | QO-18 | Quelle proportion des appareils du marché camerounais dispose d'un TEE exploitable (Keystore matériel) ? Limite constatée par SPIKE-1 : TEE sans StrongBox sur les deux appareils du projet | Mémoire (limite ES-02 / HP-2) | Candidat | Mois 4 | OUVERT |
-| QO-19 | Rôle des contacts de confiance sur le canal USSD, après leur retrait du parcours applicatif | ES-06, EF-44, composant TrustedContactManager | Candidat | Avant le découpage du mois 4 | OUVERT — DIFFÉRÉ par décision du propriétaire du 07/09/2026 |
+| QO-19 | Rôle des contacts de confiance sur le canal USSD, après leur retrait du parcours applicatif | ES-06, EF-44, composant TrustedContactManager | Candidat | Avant le découpage du mois 4 | ~~OUVERT — DIFFÉRÉ par décision du propriétaire du 07/09/2026~~ FERMÉE le 2026-10-11 — contact de confiance ABANDONNÉ (`docs/01-decisions/REGISTRE_DECISIONS.md`, P-01) |
+| QM-05 | Clé (code) de récupération perdue (ISC-MOB-SPEC v1.2, audit du 30/08, gravité G1) | Ré-enrôlement (ES-19) | Propriétaire | Mois 4 | FERMÉE le 2026-10-11 — code de récupération perdu : agence + pièce d'identité, puis ré-enrôlement ; LIMITE déclarée du projet (`docs/01-decisions/REGISTRE_DECISIONS.md`, P-14) |
+| QM-14 | Anti-force-brute du PIN (ISC-MOB-SPEC v1.2, audit du 30/08) | ES-21, ES-22 | Propriétaire | Mois 4 | FERMÉE le 2026-10-11 — 5 PIN faux : la source (l'appareil) est bloquée 15 min, jamais le compte ; valeurs en paramètres nommés (`docs/01-decisions/REGISTRE_DECISIONS.md`, P-11) |
 
 Règle : une question est fermée uniquement par une réponse écrite dans la colonne Statut. Une question bloquante ouverte depuis plus de deux semaines est remontée en revue hebdomadaire.
 

@@ -1,0 +1,56 @@
+# Registre des décisions — IdentiShield-CM
+
+- **Créé le** : 2026-10-11 (carte A0 du mois 4, ticket #34)
+- **Rôle** : une seule page où retrouver chaque décision en vigueur, sa date et sa source. Le registre **ne remplace pas** les ADR : une décision d'architecture garde son ADR, et le registre y renvoie.
+- **Règle de citation** : chaque ligne cite le fichier du dépôt qui porte la décision. Une décision prise en séance et absente du dépôt porte la mention « décision orale consignée ici » : ce registre en devient alors la source.
+- **Statuts** : EN VIGUEUR · PROVISOIRE (appliquée, non fermée) · ABANDONNÉ · LIMITE (limite déclarée, assumée devant le jury).
+
+## 1. Décisions du propriétaire
+
+| # | Date | Décision | Statut | Source |
+|---|---|---|---|---|
+| P-01 | 2026-09-07 → 2026-10-11 | **Contact de confiance : ABANDONNÉ.** Différé le 07/09 (QO-19), il est abandonné ; QO-19 est fermée : ni enregistrement, ni demande, ni réponse, ni levée de gel par un contact. Les mentions des spécifications sont marquées « ABANDONNÉ (voir REGISTRE_DECISIONS) » dans leurs versions suivantes. | ABANDONNÉ | `docs/00-registre-questions.md` (QO-19, différé) ; abandon : décision orale consignée ici |
+| P-02 | 2026-10-11 | **E-mail de récupération : ABANDONNÉ.** Aucune récupération de compte par e-mail. | ABANDONNÉ | décision orale consignée ici |
+| P-03 | 2026-09-07 | **Récupération par code uniquement.** Le ré-enrôlement exige le PIN puis le code de récupération ; jamais d'OTP. | EN VIGUEUR | `docs/01-decisions/ADR-029.md` ; SRS v1.4 ES-18, ES-19 |
+| P-04 | 2026-09-25 | « La biométrie n'est PAS un facteur d'authentification de l'application. Les deux facteurs sont le PIN de l'application et la signature de la clé de l'appareil. L'usage de la clé exige le déverrouillage local du téléphone, par la méthode que l'usager a configurée sur son téléphone (code de l'appareil, ou empreinte/visage s'il les a activés) ; l'application fonctionne sans aucun capteur biométrique (vérifié sur tablette sans capteur, 2026-10-08). ADR-037 (androidx.biometric) reste valable : c'est l'outil Android qui affiche ce déverrouillage local. » | EN VIGUEUR | ISC-MOB-SPEC v1.2, journal (tâche MOB-VOCAB, 25/09/2026) ; `docs/01-decisions/ADR-037.md` ; formulation : décision orale consignée ici (2026-10-11) ; sur les écrans, voir ISC-MOB-SPEC v1.3 |
+| P-05 | 2026-10-06 | **USSD : un STEP_UP est annulé** (CANCELLED), jamais reporté. | PROVISOIRE | `docs/01-decisions/ADR-016.md` §3 ; `docs/03-revues/2026-10-06-amendements-proposes-T3-07.md` |
+| P-06 | 2026-10-06 | **Réglages de la calibration T3-07 écrits à titre provisoire** (somme bornée, poids, seuils, CAP_FAILCLOSED, NIGHT_ZONE) ; ADR-016 non fermé. | PROVISOIRE | `docs/01-decisions/ADR-016.md` ; `config/ruleset.yaml` (rs-0.8.0) |
+| P-07 | 2026-10-08 | **Charte qualité mobile** : dix règles, une étape mobile qui ne les respecte pas n'est pas terminée. | EN VIGUEUR | `CLAUDE.md` §10 |
+| P-08 | 2026-10-10 | **Périmètre du mois 4 : AC-02 de bout en bout.** Les autres cas d'abus passent au mois 5, la console au mois 6. | EN VIGUEUR | décision orale consignée ici ; tableau « Mois 4 — Démo AC-02 » (`docs/03-revues/2026-10-11-levee-8e-interdiction-kanban-m4.md`) |
+| P-09 | 2026-10-10 | **Session de l'application** : inactivité 5 min, arrière-plan 60 s, durée maximale 30 min, imposées par le serveur, en paramètres nommés. | EN VIGUEUR | `CLAUDE.md` §10 règle 7 (commit `bc69e44`) |
+| P-10 | 2026-10-10 | **BouncyCastle** remplace le lecteur DER maison (`Der.java`) ; un **rejeu** est affiché « refusé » à l'usager. | EN VIGUEUR | décision orale consignée ici ; voir la note N-2 |
+| P-11 | 2026-10-10 | **PIN : 5 échecs bloquent la source 15 min, jamais le compte.** Valeurs en paramètres nommés. Ferme QM-14 (ISC-MOB-SPEC v1.3, `docs/00-registre-questions.md`). | EN VIGUEUR | décision orale consignée ici |
+| P-12 | 2026-10-10 | **Code de récupération : 6 caractères, lettres et chiffres.** Nombre d'essais selon la spécification mobile du 2026-09-25 (REENROL_ATTEMPTS = 2, puis délai croissant LOCK_BASE / LOCK_MAX, jamais sur le compte). | EN VIGUEUR | longueur : décision orale consignée ici ; essais : ISC-MOB-SPEC v1.2 §14, `config/ruleset.yaml` ; voir la note N-3 |
+| P-13 | 2026-10-10 | **Écran E-09 : saisie complète du code**, affiché masqué sauf les 2 derniers caractères. | EN VIGUEUR | décision orale consignée ici ; ISC-MOB-SPEC v1.3 |
+| P-14 | 2026-10-10 | **Code de récupération perdu : passage en agence**, avec pièce d'identité. Déclaré comme limite. | LIMITE | décision orale consignée ici ; ferme QM-05 (ISC-MOB-SPEC v1.3, `docs/00-registre-questions.md`) |
+| P-15 | 2026-10-10 | **USSD** : canal sans capacité cryptographique ; sa protection repose sur le signal IMSI et les règles comportementales. Déclaré comme limite (TPR AC-02 sans IMSI ≈ 90 %). | LIMITE | décision orale consignée ici ; mesure : `docs/01-decisions/ADR-016.md` §4 |
+
+## 2. Décisions du tech lead
+
+| # | Date | Décision | Statut | Source |
+|---|---|---|---|---|
+| T-01 | 2026-10-09 | **Ordre des contrôles d'une décision** : signature, puis état du compte, puis règles. Un veto court-circuite tout ce qui suit et ne traverse jamais le moteur de règles. | EN VIGUEUR | `CLAUDE.md` §3 (vetos distincts du moteur) ; carte A4 (ticket #38) ; ordre : décision orale consignée ici |
+| T-02 | 2026-09-07 | **Clés d'appareil : deux états seulement, ACTIVE et REVOKED.** Pas d'état PENDING ; une seule clé ACTIVE par compte, garantie par la base. | EN VIGUEUR | ISC-SAD v1.2 (ISC-AMD-01) ; `infra/init/init.sql` (`pdp.device`, index unique partiel) ; ABANDON de PENDING marqué dans les versions suivantes |
+| T-03 | 2026-09-07 | **PROBATION déclenchée par un changement d'IMSI uniquement**, jamais par un enrôlement ou un ré-enrôlement. | EN VIGUEUR | SRS v1.4 ES-01b, ES-03c |
+| T-04 | 2026-10-06 | **Pas de règle « montant seul »** : le montant ne contribue qu'avec un bénéficiaire nouveau (ES-05b). | EN VIGUEUR | `docs/01-decisions/ADR-016.md` (poids `newBeneficiaryHigh`) ; SRS v1.4 ES-05b |
+| T-05 | 2026-10-10 | **État LOCKED hors du mois 4** : aucun déclencheur n'est défini depuis ISC-AMD-01 ; il n'est pas implémenté au mois 4. | EN VIGUEUR | décision orale consignée ici ; ISC-SAD v1.3 (« incident → LOCKED », non défini) |
+| T-06 | 2026-10-10 | **Renumérotation des versions du ruleset à la fusion** : une branche fusionnée après une autre prend le numéro suivant libre, avec l'ancien numéro annoté. | EN VIGUEUR | `config/ruleset.yaml` (historique rs-0.8.0) ; commit d'intégration `bb7753e` |
+
+## 3. Règles permanentes
+
+| # | Règle | Source |
+|---|---|---|
+| R-01 | `make check` VERT sur la branche, prouvé dans le rapport, avant toute fusion. | `CLAUDE.md` §4 (règle du 2026-09-25) |
+| R-02 | `git add` des fichiers par leur nom **avant** `make check` (les portes lisent les fichiers suivis par git). | décision orale consignée ici (2026-10-08) |
+| R-03 | Une session = un worktree ; deux couloirs, deux sessions. | `CLAUDE.md` §4 (2026-09-25, décision D-14) |
+| R-04 | Aucun push, aucune action sur GitHub sans levée écrite du propriétaire, consignée dans `docs/03-revues/`. | `CLAUDE.md` §4 |
+| R-05 | Les documents de `docs/02-specifications/` ne sont jamais modifiés en place ; une version suivante est créée à côté, sous levée écrite. | `CLAUDE.md` §2 ; `docs/03-revues/2026-10-11-levee-regle-2-carte-A0.md` |
+| R-06 | Aucun paramètre nommé en dur dans le code : il vient de `config/ruleset.yaml`. | `CLAUDE.md` §4 |
+| R-07 | Commande destructrice : jamais enchaînée, cible listée avant, erreurs non masquées. | `CLAUDE.md` §4 |
+| R-08 | Une décision d'architecture et toute bibliothèque hors de la pile exigent un ADR écrit par le propriétaire. | `CLAUDE.md` §4 et §5 |
+
+## 4. Notes
+
+- **N-1 (biométrie).** Voir P-04. Les écrans ne présentent pas la biométrie comme nécessaire : « Déverrouillez votre téléphone », sans lister « empreinte, visage » (ISC-MOB-SPEC v1.3).
+- **N-2 (BouncyCastle).** Bibliothèque hors de la pile : son ADR sera fourni avec la carte B2 (ticket #45), conformément à `CLAUDE.md` §4. Le lecteur DER maison qu'elle remplace est décrit dans l'amendement M-09 d'ADR-018.
+- **N-3 (longueur du code).** `config/ruleset.yaml` fixe encore `CODE_LENGTH: 20`. Le passage à 6 relève de la carte B1a (ticket #43) ; la carte A0 ne modifie pas le ruleset.
