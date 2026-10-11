@@ -99,7 +99,7 @@ Décision du propriétaire du 2026-10-08, après la première passe sur appareil
 4. **Préconditions vérifiées AVANT d'agir** : verrouillage d'écran configuré, version d'Android, réseau. Chacune a son écran explicatif, avec un lien vers les réglages.
 5. **État conservé** à la rotation ET à la mort du processus (retour depuis les Réglages). Les secrets (PIN, OTP, code de secours, jeton) ne sont JAMAIS conservés.
 6. **Secrets à l'écran** : protection contre les captures ET masquage pour les services d'accessibilité ; champs masqués ; jamais dans les journaux ; effacés après usage. Le compromis avec les lecteurs d'écran pour malvoyants est documenté.
-7. **Session** : expiration après inactivité, verrouillage après passage en arrière-plan, durée maximale, imposées par le serveur (valeurs : décision du propriétaire en attente).
+7. **Session** : expiration après inactivité, verrouillage après passage en arrière-plan, durée maximale, imposées par le serveur (inactivité 5 min, arrière-plan 60 s, durée maximale 30 min — décision du propriétaire du 2026-10-10 ; valeurs en paramètres nommés dans la configuration, jamais en dur).
 8. **Mise en page** vérifiée sur téléphone ET tablette, et avec une taille de police à 200 %. Aucun texte coupé, aucun espace manquant.
 9. **Rapports** : « conforme » seulement pour ce qui a été observé. Sinon : « non observé ».
 10. **Tout secret** apparaissant dans un journal, un fichier temporaire ou un rapport est un incident : il est supprimé, et le secret est considéré comme compromis.
