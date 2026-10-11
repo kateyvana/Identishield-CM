@@ -35,6 +35,9 @@
 | T-04 | 2026-10-06 | **Pas de règle « montant seul »** : le montant ne contribue qu'avec un bénéficiaire nouveau (ES-05b). | EN VIGUEUR | `docs/01-decisions/ADR-016.md` (poids `newBeneficiaryHigh`) ; SRS v1.4 ES-05b |
 | T-05 | 2026-10-10 | **État LOCKED hors du mois 4** : aucun déclencheur n'est défini depuis ISC-AMD-01 ; il n'est pas implémenté au mois 4. | EN VIGUEUR | décision orale consignée ici ; ISC-SAD v1.3 (« incident → LOCKED », non défini) |
 | T-06 | 2026-10-10 | **Renumérotation des versions du ruleset à la fusion** : une branche fusionnée après une autre prend le numéro suivant libre, avec l'ancien numéro annoté. | EN VIGUEUR | `config/ruleset.yaml` (historique rs-0.8.0) ; commit d'intégration `bb7753e` |
+| T-07 | 2026-10-11 | **Ordre des champs du canonical** : l'ordre d'ADR-018 (`accountId\|type\|amountXaf\|beneficiaryId\|nonce`) prime sur le texte d'EF-21. | EN VIGUEUR | `docs/01-decisions/ADR-018.md` ; décision du tech lead, consignée ici (2026-10-11) |
+| T-08 | 2026-10-11 | **Aucune carte mobile n'est acceptée sur les seuls tests JVM** : preuve sur appareil réel obligatoire. | EN VIGUEUR | `CLAUDE.md` §10 règle 1 ; décision du tech lead, consignée ici (2026-10-11) |
+| T-09 | 2026-10-11 | **Réseau de l'application** : réserve de connexion plus courte côté application que côté serveur ; rejeu automatique des lectures seulement, jamais d'une action ; si le résultat d'une action est incertain, l'application interroge le serveur. | EN VIGUEUR | son ADR sera fourni avec la carte B1a (ticket #43) ; décision du tech lead, consignée ici (2026-10-11) |
 
 ## 3. Règles permanentes
 
