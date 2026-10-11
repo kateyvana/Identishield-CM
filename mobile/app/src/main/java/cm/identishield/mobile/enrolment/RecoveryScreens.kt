@@ -30,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -38,9 +37,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -62,23 +58,6 @@ object RecoveryTags {
     const val LOST = "E-26"
     const val REVOKED = "E-27a"
     const val INCOMPATIBLE = "E-27b"
-}
-
-/** Tirets tous les 4 caractères, à l'affichage seulement : la valeur saisie reste brute. */
-internal object RecoveryGrouping : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val raw = text.text
-        return TransformedText(
-            AnnotatedString(raw.chunked(GROUP).joinToString("-")),
-            object : OffsetMapping {
-                override fun originalToTransformed(offset: Int) = offset + if (offset == 0) 0 else (offset - 1) / GROUP
-
-                override fun transformedToOriginal(offset: Int) = (offset - offset / (GROUP + 1)).coerceAtMost(raw.length)
-            },
-        )
-    }
-
-    private const val GROUP = 4
 }
 
 /** « 04:00 », ou « 1:04:00 » au-delà d'une heure. */
@@ -139,7 +118,7 @@ fun RecoveryScreen(
                 value = code,
                 onValueChange = { v -> code = v.uppercase().filter { it.isLetterOrDigit() }.take(codeLength) },
                 singleLine = true,
-                visualTransformation = RecoveryGrouping,
+                visualTransformation = CodeTransformation(visibleTail = null),
                 textStyle = TextStyle(fontSize = 22.sp, color = Ink, fontFamily = FontFamily.Monospace),
                 keyboardOptions =
                     KeyboardOptions(

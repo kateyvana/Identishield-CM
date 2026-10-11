@@ -210,7 +210,7 @@ private fun EnrolmentRoot(
                 SecuringScreen(step, onSecure = { enrolment.secureDevice(unlocks.securing) }, onRestart = enrolment::begin)
             }
         is EnrolStep.RecoveryKey -> RecoveryKeyScreen(step, enrolment::keyWrittenDown)
-        is EnrolStep.Confirm -> ConfirmKeyScreen(step, enrolment::confirmCharacters)
+        is EnrolStep.Confirm -> ConfirmKeyScreen(step, BuildConfig.CODE_LENGTH, enrolment::confirmCode)
         is EnrolStep.Home -> CheckingScreen() // relais vers le flux B (AppRoot)
         is EnrolStep.Recovery ->
             RecoveryScreen(step, BuildConfig.CODE_LENGTH, enrolment::submitRecoveryCode, enrolment::lostKey, enrolment::back)

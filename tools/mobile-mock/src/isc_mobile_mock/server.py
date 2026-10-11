@@ -223,8 +223,7 @@ class MockState:
 
     def _issue_code(self, acc, kind, device_id):
         code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(self.p.code_length))
-        positions = sorted(secrets.SystemRandom().sample(range(1, self.p.code_length + 1), 4))
-        acc["recovery"] = self._protect(code)
+        acc["recovery"] = self._protect(code)  # seul le haché salé est conservé, dès l'émission
         eid = secrets.token_hex(8)
         self.enrolments[eid] = {
             "accountId": acc["accountId"],
@@ -232,10 +231,8 @@ class MockState:
             "stage": "CONFIRM",
             "expires": self.clock() + self.p.enrol_ttl,
             "deviceId": device_id,
-            "positions": positions,
-            "code": code,  # gardé le temps de la confirmation seulement (mémoire volatile du mock)
         }
-        return {"enrolmentId": eid, "recoveryCode": code, "confirmPositions": positions}
+        return {"enrolmentId": eid, "recoveryCode": code}
 
     def _settle(self, acc):
         """Exécute les opérations différées arrivées à échéance (DEFER)."""
@@ -359,14 +356,13 @@ class MockState:
         return 200, {**issued, "deviceId": device_id}
 
     def recovery_confirm(self, body, token, origin):
+        # B1a (2026-10-10) : le code COMPLET est retapé une fois et vérifié contre le haché salé.
         e = self._enrolment(body["enrolmentId"], "CONFIRM")
-        given = {c["position"]: c["character"].upper() for c in body["characters"]}
-        if sorted(given) != e["positions"] or any(
-            e["code"][pos - 1] != ch for pos, ch in given.items()
-        ):
+        acc = self.by_id[e["accountId"]]
+        if not self._code_matches(acc, body["recoveryCode"]):
             _err(401, "RECOVERY_INVALID")
         del self.enrolments[body["enrolmentId"]]
-        return 200, self._new_session(self.by_id[e["accountId"]], e["deviceId"])
+        return 200, self._new_session(acc, e["deviceId"])
 
     def session_challenge(self, query, token, origin):
         device_id = query.get("deviceId", [""])[0]

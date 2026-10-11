@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import cm.identishield.mobile.data.Account
 import cm.identishield.mobile.data.ApiResult
 import cm.identishield.mobile.data.CompleteRequest
-import cm.identishield.mobile.data.ConfirmCharacter
 import cm.identishield.mobile.data.ConfirmRequest
 import cm.identishield.mobile.data.EnrolmentRepository
 import cm.identishield.mobile.data.SessionHolder
@@ -79,8 +78,9 @@ sealed interface EnrolStep {
         val lastDisplay: Boolean,
     ) : EnrolStep // E-08
 
+    /** E-09 : [codeTail] = les [CODE_VISIBLE_TAIL] derniers caractères du code émis, pour le rappel masqué. */
     data class Confirm(
-        val positions: List<Int>,
+        val codeTail: String,
         val error: EnrolError? = null,
     ) : EnrolStep // E-09
 
@@ -136,7 +136,6 @@ class EnrolmentViewModel(
     private data class IssuedCode(
         val enrolmentId: String,
         val code: String,
-        val positions: List<Int>,
     )
 
     fun begin() {
@@ -298,7 +297,7 @@ class EnrolmentViewModel(
                     val number = msisdn
                     val deviceId = r.value.deviceId
                     if (number != null && deviceId != null) boundDevice?.save(BoundDevice(number, deviceId))
-                    recovery = IssuedCode(r.value.enrolmentId, r.value.recoveryCode, r.value.confirmPositions)
+                    recovery = IssuedCode(r.value.enrolmentId, r.value.recoveryCode)
                     _step.value =
                         if (rebinding && number != null) {
                             EnrolStep.Rebound(number) // E-22, puis la nouvelle clé (E-08)
@@ -406,21 +405,20 @@ class EnrolmentViewModel(
         _step.value = EnrolStep.RecoveryKey(issued.code, lastDisplay = false)
     }
 
-    /** E-08 → E-09 : « Je l'ai écrite sur papier ». */
+    /** E-08 → E-09 : « Je l'ai écrite sur papier ». Seule la fin du code part à l'écran (rappel masqué). */
     fun keyWrittenDown() {
         val issued = recovery ?: return
-        _step.value = EnrolStep.Confirm(issued.positions)
+        _step.value = EnrolStep.Confirm(issued.code.takeLast(CODE_VISIBLE_TAIL))
     }
 
-    /** E-09 : 4 caractères demandés par le serveur ; en cas d'erreur, la clé est réaffichée une fois. */
-    fun confirmCharacters(characters: Map<Int, String>) {
+    /**
+     * E-09 (décision du propriétaire du 2026-10-10, méthode « carte bancaire ») : le code COMPLET est
+     * retapé et vérifié par le serveur contre son haché ; en cas d'erreur, la clé est réaffichée une fois.
+     */
+    fun confirmCode(code: String) {
         val issued = recovery ?: return
         val current = _step.value as? EnrolStep.Confirm ?: return
-        val request =
-            ConfirmRequest(
-                enrolmentId = issued.enrolmentId,
-                characters = issued.positions.map { ConfirmCharacter(it, characters[it].orEmpty().uppercase()) },
-            )
+        val request = ConfirmRequest(enrolmentId = issued.enrolmentId, recoveryCode = code.uppercase().filter { it.isLetterOrDigit() })
         exclusive {
             when (val r = repository.confirm(request)) {
                 is ApiResult.Ok -> loadHome(r.value.sessionToken)
@@ -483,6 +481,9 @@ class EnrolmentViewModel(
     companion object {
         /** Plan de numérotation camerounais : 9 chiffres (forme seulement ; plage côté serveur). */
         const val NATIONAL_NUMBER_LENGTH = 9
+
+        /** Caractères de la clé laissés lisibles (rappel E-09, saisie E-09/E-20) : décision du propriétaire, 2026-10-10. */
+        const val CODE_VISIBLE_TAIL = 2
         const val NEXT_OTP = "OTP"
         const val NEXT_RECOVERY = "RECOVERY"
         const val REASON_CREDENTIALS = "CREDENTIALS_INVALID"

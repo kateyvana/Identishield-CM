@@ -80,11 +80,14 @@
 
     <!-- E-09 Confirmation -->
     <string name="confirm_title">Vérifions votre copie</string>
-    <string name="confirm_body">Pour vérifier que vous l\'avez bien notée, entrez les caractères demandés.</string>
-    <string name="confirm_row">Caractère n° %1$d</string>
+    <string name="confirm_body">Retapez la clé que vous venez de noter sur papier, en entier. Pour vous aider, voici comment elle se termine.</string>
+    <string name="confirm_reminder_label">RAPPEL</string>
+    <string name="confirm_reminder_a11y">Rappel : votre clé se termine par %1$s</string>
+    <string name="confirm_input_label">VOTRE CLÉ (%1$d caractères)</string>
+    <string name="confirm_masked_hint">Les caractères saisis sont masqués, sauf les deux derniers.</string>
     <string name="confirm_note">En cas d\'erreur, la clé vous sera affichée une dernière fois.</string>
     <string name="confirm_action">Confirmer</string>
-    <string name="error_confirm_mismatch">Caractères incorrects.</string>
+    <string name="error_confirm_mismatch">Clé incorrecte. Vérifiez votre copie papier.</string>
 
     <!-- E-11 Accueil -->
     <string name="home_hello">Bonjour</string>

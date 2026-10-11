@@ -62,15 +62,17 @@ class RecoveryScreensTest {
     }
 
     @Test
-    fun recoveryGrouping_showsDashesEveryFour_andMapsOffsetsBothWays() {
-        val t = RecoveryGrouping.filter(AnnotatedString("K7PQ3MZX9"))
-        assertEquals("K7PQ-3MZX-9", t.text.text)
-        assertEquals(4, t.offsetMapping.originalToTransformed(4))
-        assertEquals(6, t.offsetMapping.originalToTransformed(5))
-        assertEquals(11, t.offsetMapping.originalToTransformed(9))
-        assertEquals(4, t.offsetMapping.transformedToOriginal(5))
-        assertEquals(9, t.offsetMapping.transformedToOriginal(11))
-        assertEquals(24, RecoveryGrouping.filter(AnnotatedString("A".repeat(20))).offsetMapping.originalToTransformed(20))
+    fun codeTransformation_groupsByThree_masksAllButTheTail_andMapsOffsetsBothWays() {
+        val plain = CodeTransformation(visibleTail = null).filter(AnnotatedString("K7PQ3MZX9"))
+        assertEquals("K7P-Q3M-ZX9", plain.text.text)
+        assertEquals(3, plain.offsetMapping.originalToTransformed(3))
+        assertEquals(5, plain.offsetMapping.originalToTransformed(4))
+        assertEquals(11, plain.offsetMapping.originalToTransformed(9))
+        assertEquals(3, plain.offsetMapping.transformedToOriginal(4))
+        assertEquals(9, plain.offsetMapping.transformedToOriginal(11))
+        val masked = CodeTransformation(visibleTail = 2).filter(AnnotatedString("K7PQ3M"))
+        assertEquals("•••-•3M", masked.text.text)
+        assertEquals("K7P-Q3M", maskedCode("K7PQ3M", null))
     }
 
     @Test

@@ -682,7 +682,6 @@ components:
       required:
         - enrolmentId
         - recoveryCode
-        - confirmPositions
       properties:
         enrolmentId:
           type: string
@@ -691,39 +690,19 @@ components:
           $ref: '#/components/schemas/DeviceId'
         recoveryCode:
           type: string
-          description: Affichée une seule fois (CODE_LENGTH caractères) ; seul un haché salé est conservé.
-        confirmPositions:
-          type: array
-          minItems: 4
-          maxItems: 4
-          items:
-            type: integer
-            minimum: 1
+          description: "Affichée une seule fois (CODE_LENGTH caractères, lettres et chiffres) ; seul un haché salé est conservé. Décision du propriétaire du 2026-10-10 (B1a) : l'usager retape le code complet sur E-09, plus de positions tirées au hasard (à reprendre dans ISC-MOB-SPEC v1.3, carte A0)."
     ConfirmRequest:
       type: object
       additionalProperties: false
       required:
         - enrolmentId
-        - characters
+        - recoveryCode
       properties:
         enrolmentId:
           type: string
-        characters:
-          type: array
-          minItems: 4
-          maxItems: 4
-          items:
-            type: object
-            additionalProperties: false
-            required:
-              - position
-              - character
-            properties:
-              position:
-                type: integer
-                minimum: 1
-              character:
-                type: string
+        recoveryCode:
+          type: string
+          description: Le code complet, retapé une fois ; vérifié contre le haché salé (B1a, 2026-10-10).
     ChallengeResponse:
       type: object
       additionalProperties: false

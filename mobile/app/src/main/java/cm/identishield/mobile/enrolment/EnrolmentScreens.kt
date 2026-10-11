@@ -19,11 +19,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,18 +30,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
@@ -462,65 +461,58 @@ internal object NoTextToolbar : TextToolbar {
     ) = Unit
 }
 
+/**
+ * Décision du propriétaire du 2026-10-10 (méthode « carte bancaire ») : rappel du code émis, masqué
+ * sauf ses derniers caractères ([EnrolmentViewModel.CODE_VISIBLE_TAIL]), puis ressaisie COMPLÈTE dans
+ * un champ mot de passe. L'écran ne reçoit que la fin du code : le reste ne quitte pas le ViewModel.
+ * Le rappel est retiré de l'arbre d'accessibilité (D2) ; seule sa fin, déjà visible, est annoncée.
+ */
 @Composable
 fun ConfirmKeyScreen(
     step: EnrolStep.Confirm,
-    onConfirm: (Map<Int, String>) -> Unit,
+    codeLength: Int,
+    onConfirm: (String) -> Unit,
 ) {
-    val typed = remember(step.positions) { mutableStateMapOf<Int, String>() }
+    var typed by remember(step.codeTail) { mutableStateOf("") }
+    val reminderSpoken = stringResource(R.string.confirm_reminder_a11y, step.codeTail.toList().joinToString(" "))
     Page(EnrolTags.CONFIRM, secure = true) {
         BackHeader(stringResource(R.string.confirm_title), onBack = null)
         VerticalGap(16)
         BodyText(stringResource(R.string.confirm_body))
         VerticalGap(20)
-        CompositionLocalProvider(LocalTextToolbar provides NoTextToolbar) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White)
-                        .border(1.dp, Hairline, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-            ) {
-                step.positions.forEachIndexed { i, position ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 14.dp),
-                    ) {
-                        Text(stringResource(R.string.confirm_row, position), color = Ink, fontSize = 18.sp, modifier = Modifier.weight(1f))
-                        BasicTextField(
-                            value = typed[position].orEmpty(),
-                            onValueChange = { v -> typed[position] = v.takeLast(1).uppercase() },
-                            singleLine = true,
-                            textStyle = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink, textAlign = TextAlign.End),
-                            keyboardOptions =
-                                KeyboardOptions(
-                                    keyboardType = KeyboardType.Ascii,
-                                    capitalization = KeyboardCapitalization.Characters,
-                                    autoCorrectEnabled = false,
-                                ),
-                            modifier =
-                                Modifier
-                                    .size(width = 48.dp, height = 36.dp)
-                                    .testTag("char-$position"),
-                        )
-                    }
-                    if (i < step.positions.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(Hairline))
-                }
-            }
-        }
-        VerticalGap(12)
+        Text(stringResource(R.string.confirm_reminder_label), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        VerticalGap(8)
+        Text(
+            codeReminder(codeLength, step.codeTail),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 26.sp,
+            letterSpacing = 2.sp,
+            color = Ink,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Navy.copy(alpha = 0.06f))
+                    .padding(vertical = 14.dp)
+                    .clearAndSetSemantics {
+                        testTag = "code-reminder"
+                        contentDescription = reminderSpoken
+                    },
+        )
+        VerticalGap(20)
+        Text(stringResource(R.string.confirm_input_label, codeLength), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        VerticalGap(8)
+        CodeField(typed, { typed = it }, codeLength, "confirm-input")
+        VerticalGap(8)
+        BodyText(stringResource(R.string.confirm_masked_hint))
         BodyText(stringResource(R.string.confirm_note))
         step.error?.let { ErrorText(errorMessage(it)) }
         Spacer(Modifier.weight(1f))
         PrimaryButton(
             stringResource(R.string.confirm_action),
-            { onConfirm(typed.toMap()) },
-            enabled = step.positions.all { !typed[it].isNullOrEmpty() },
+            { onConfirm(typed) },
+            enabled = typed.length == codeLength,
             tag = "confirm",
         )
     }

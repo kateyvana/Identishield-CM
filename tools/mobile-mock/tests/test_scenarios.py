@@ -35,15 +35,12 @@ def _complete(mock, enrolment_id):
     return r.body
 
 
-def _confirm(mock, issued):
-    chars = [
-        {"position": p, "character": issued["recoveryCode"][p - 1]}
-        for p in issued["confirmPositions"]
-    ]
+def _confirm(mock, issued, code=None):
+    """Décision du propriétaire du 2026-10-10 (B1a) : le code COMPLET est retapé une fois."""
     return mock.call(
         "POST",
         f"{V1}/recovery-code/confirm",
-        {"enrolmentId": issued["enrolmentId"], "characters": chars},
+        {"enrolmentId": issued["enrolmentId"], "recoveryCode": code or issued["recoveryCode"]},
     )
 
 
@@ -57,7 +54,7 @@ def test_flow_a_first_enrolment(mock):
     assert r.status == 200 and r.body["next"] == "BIND"  # liaison APRÈS validation (ES-25)
     issued = _complete(mock, eid)
     assert len(issued["recoveryCode"]) == PARAMS.code_length
-    assert len(issued["confirmPositions"]) == 4
+    assert "confirmPositions" not in issued  # B1a : le code complet est retapé, pas des positions
     r = _confirm(mock, issued)
     assert r.status == 200
     acc = mock.call("GET", f"{V1}/account", token=r.body["sessionToken"]).body

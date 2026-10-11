@@ -52,11 +52,7 @@ def test_every_route_answers_according_to_the_contract(mock):
             "challengeSignature": SIG,
         },
     ).body
-    chars = [
-        {"position": p, "character": issued["recoveryCode"][p - 1]}
-        for p in issued["confirmPositions"]
-    ]
-    confirm = {"enrolmentId": issued["enrolmentId"], "characters": chars}
+    confirm = {"enrolmentId": issued["enrolmentId"], "recoveryCode": issued["recoveryCode"]}
     token = mock.call("POST", f"{V1}/recovery-code/confirm", confirm).body["sessionToken"]
     # lectures, bénéficiaire, envoi différé puis annulé
     mock.call("GET", f"{V1}/account", token=token)
