@@ -143,7 +143,10 @@ class MockState:
         return {"salt": salt, "hash": _hash(salt, _normalise_code(code))}
 
     def _code_matches(self, acc, code):
-        rec = acc["recovery"]
+        return self._hash_matches(acc["recovery"], code)
+
+    @staticmethod
+    def _hash_matches(rec, code):
         return rec is not None and hmac.compare_digest(
             rec["hash"], _hash(rec["salt"], _normalise_code(code))
         )
@@ -222,8 +225,9 @@ class MockState:
         return e
 
     def _issue_code(self, acc, kind, device_id):
+        """Code émis, en attente de confirmation (D4) : rien n'est encore actif sur le compte ; seul
+        un haché salé du code est gardé, dans l'enrôlement, jusqu'à E-09."""
         code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(self.p.code_length))
-        acc["recovery"] = self._protect(code)  # seul le haché salé est conservé, dès l'émission
         eid = secrets.token_hex(8)
         self.enrolments[eid] = {
             "accountId": acc["accountId"],
@@ -231,6 +235,7 @@ class MockState:
             "stage": "CONFIRM",
             "expires": self.clock() + self.p.enrol_ttl,
             "deviceId": device_id,
+            "pendingRecovery": self._protect(code),
         }
         return {"enrolmentId": eid, "recoveryCode": code}
 
@@ -343,15 +348,9 @@ class MockState:
             if base64.b64decode(raw + "=" * (-len(raw) % 4))[:8] == b"SOFTWARE":  # règle de MOCK
                 _err(422, "DEVICE_UNSUPPORTED")
         acc = self.by_id[e["accountId"]]
-        old = acc["device"]
-        if old is not None:
-            acc["revoked"].add(old)
+        # D4 : l'appareil n'est PAS encore lié ; il le devient à la confirmation du code (E-09).
         device_id = "-".join(secrets.token_hex(n) for n in (4, 2, 2, 2, 6))  # forme UUID, aléatoire
-        acc["device"] = device_id
-        acc["alerted"], acc["failures"] = False, []
         del self.enrolments[body["enrolmentId"]]
-        if old is not None:  # ancien appareil informé, sans action (EF-47, ADR-010)
-            self._alert(acc, "DEVICE_REBOUND", "Un nouveau téléphone a été lié à votre compte.", [])
         issued = self._issue_code(acc, e["kind"], device_id)
         return 200, {**issued, "deviceId": device_id}
 
@@ -359,8 +358,16 @@ class MockState:
         # B1a (2026-10-10) : le code COMPLET est retapé une fois et vérifié contre le haché salé.
         e = self._enrolment(body["enrolmentId"], "CONFIRM")
         acc = self.by_id[e["accountId"]]
-        if not self._code_matches(acc, body["recoveryCode"]):
+        if not self._hash_matches(e["pendingRecovery"], body["recoveryCode"]):
             _err(401, "RECOVERY_INVALID")
+        # D4 : la confirmation ACTIVE la liaison (et révoque l'ancienne) ; elle ne peut pas être sautée.
+        old = acc["device"]
+        if old is not None and old != e["deviceId"]:
+            acc["revoked"].add(old)
+            self._alert(acc, "DEVICE_REBOUND", "Un nouveau téléphone a été lié à votre compte.", [])
+        acc["device"] = e["deviceId"]
+        acc["recovery"] = e["pendingRecovery"]
+        acc["alerted"], acc["failures"] = False, []
         del self.enrolments[body["enrolmentId"]]
         return 200, self._new_session(acc, e["deviceId"])
 

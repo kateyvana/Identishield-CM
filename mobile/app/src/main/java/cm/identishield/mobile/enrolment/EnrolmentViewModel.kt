@@ -1,8 +1,11 @@
 package cm.identishield.mobile.enrolment
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import cm.identishield.mobile.data.Account
 import cm.identishield.mobile.data.ApiResult
 import cm.identishield.mobile.data.CompleteRequest
@@ -40,6 +43,7 @@ enum class EnrolError {
     DEVICE_REFUSED, // puce logicielle ou attestation refusée : E-27b (M-08)
     UNLOCK_CANCELLED,
     CONFIRM_MISMATCH,
+    PROCESS_RESTARTED, // D4 : le téléphone a fermé l'application ; on reprend au PIN, numéro conservé
     UNEXPECTED,
 }
 
@@ -124,6 +128,7 @@ class EnrolmentViewModel(
     private val session: SessionHolder? = null, // jeton ouvert en E-09, repris par le flux B (M-07)
     private val throttle: RecoveryThrottle? = null, // délai croissant local du flux D (M-08) ; absent = refus
     private val screenLock: ScreenLock = ScreenLock { true }, // D3 : précondition vérifiée avant la clé
+    private val savedState: SavedStateHandle? = null, // D4 : position du parcours seulement, jamais un secret
 ) : ViewModel() {
     private val scope: CoroutineScope = scope ?: viewModelScope
     private val _step = MutableStateFlow<EnrolStep>(EnrolStep.Welcome)
@@ -144,6 +149,41 @@ class EnrolmentViewModel(
         val enrolmentId: String,
         val code: String,
     )
+
+    init {
+        restorePosition()
+        // Chaque changement d'écran note la position (D4) ; collecté dans le scope du ViewModel.
+        this.scope.launch { step.collect { rememberPosition(it) } }
+    }
+
+    /**
+     * D4 : seuls l'étape et le numéro sont sauvegardés. Le PIN, l'OTP, la clé de récupération, le défi
+     * et l'identifiant d'enrôlement ne le sont JAMAIS : ce dernier permettrait de lier un appareil.
+     * Après la mort du processus, on reprend donc au PIN, numéro conservé, avec un message clair.
+     */
+    private fun rememberPosition(step: EnrolStep) {
+        val saved = savedState ?: return
+        val stage =
+            when (step) {
+                EnrolStep.Welcome, is EnrolStep.Home -> null
+                is EnrolStep.Number -> STAGE_NUMBER
+                else -> if (msisdn != null) STAGE_PIN else STAGE_NUMBER
+            }
+        saved[KEY_STAGE] = stage
+        saved[KEY_MSISDN] = if (stage == STAGE_PIN) msisdn else null
+    }
+
+    private fun restorePosition() {
+        val saved = savedState ?: return
+        when (saved.get<String>(KEY_STAGE)) {
+            STAGE_NUMBER -> _step.value = EnrolStep.Number()
+            STAGE_PIN ->
+                saved.get<String>(KEY_MSISDN)?.let { number ->
+                    msisdn = number
+                    _step.value = EnrolStep.Pin(number, EnrolError.PROCESS_RESTARTED)
+                }
+        }
+    }
 
     fun begin() {
         _step.value = EnrolStep.Number()
@@ -497,13 +537,29 @@ class EnrolmentViewModel(
         private val screenLock: ScreenLock,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            EnrolmentViewModel(repository, keys, boundDevice = boundDevice, session = session, throttle = throttle, screenLock = screenLock) as T
+        override fun <T : ViewModel> create(
+            modelClass: Class<T>,
+            extras: CreationExtras,
+        ): T =
+            EnrolmentViewModel(
+                repository,
+                keys,
+                boundDevice = boundDevice,
+                session = session,
+                throttle = throttle,
+                screenLock = screenLock,
+                savedState = extras.createSavedStateHandle(),
+            ) as T
     }
 
     companion object {
         /** Plan de numérotation camerounais : 9 chiffres (forme seulement ; plage côté serveur). */
         const val NATIONAL_NUMBER_LENGTH = 9
+
+        private const val KEY_STAGE = "enrolment.stage"
+        private const val KEY_MSISDN = "enrolment.msisdn"
+        private const val STAGE_NUMBER = "NUMBER"
+        private const val STAGE_PIN = "PIN"
 
         /** Caractères de la clé laissés lisibles (rappel E-09, saisie E-09/E-20) : décision du propriétaire, 2026-10-10. */
         const val CODE_VISIBLE_TAIL = 2

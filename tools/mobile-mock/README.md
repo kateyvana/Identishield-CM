@@ -11,6 +11,7 @@ Faux serveur de **développement** de l'application mobile. Il sert les 18 route
   - `FREEZE` : envoi vers le numéro de test `freezeBeneficiaryMsisdn` des fixtures ;
   - `STEP_UP` (exécution différée de `DEFER`, annulable) : montant ≥ `CAP_PROB.dailyXaf`, ou nouveau bénéficiaire ;
   - `ALLOW` : dans tous les autres cas.
+- **Liaison active à la confirmation seulement (D4, B1a).** `/enrolment/complete` renvoie le `deviceId` et le code, mais l'appareil ne devient lié (et l'ancien révoqué) qu'à `/recovery-code/confirm` réussie ; avant, `/session` répond `401 CREDENTIALS_INVALID`. La copie du code ne peut donc jamais être sautée. Règle de serveur à reprendre dans ISC-MOB-SPEC v1.3 (carte A0) et par le cœur (B3).
 - **Attestation de mock :** un certificat dont le contenu commence par `SOFTWARE` est refusé (`422 DEVICE_UNSUPPORTED`), pour simuler l'écran E-27b.
 - **État en mémoire, volatile,** rechargé depuis `fixtures.json` à chaque démarrage. Toutes les données sont **fictives** (plage 677000000–677009999, ADR-035).
 - ~~**HTTP en clair,** sur `127.0.0.1` par défaut. Pas de TLS épinglé (MOB-S-08) : c'est une limite du mock, à traiter avant de brancher un téléphone physique (M-05 ou M-06).~~ **HTTPS obligatoire, sans repli en clair (ADR-038).**

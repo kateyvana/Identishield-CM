@@ -118,7 +118,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         applyTouchProtection() // MOB-S-07
-        launchViewModel.check()
+        launchViewModel.checkOnce()
         val unlocks =
             Unlocks(
                 securing = prompt(R.string.securing_prompt_title, R.string.securing_prompt_subtitle),
@@ -181,10 +181,13 @@ fun AppRoot(
         return
     }
     val enrolled = enrolStep is EnrolStep.Home // fin du flux A ou D : la session est ouverte
+    // D4 (b) : un enrôlement en cours garde la main, même si la clé existe déjà dans la puce (après
+    // E-07) : la copie de la clé de récupération (E-08, E-09) ne peut jamais être sautée.
+    val enrolling = enrolStep !is EnrolStep.Welcome && !enrolled
     LaunchedEffect(launchState, enrolled) {
         if (launchState == LaunchState.KeyPresent || enrolled) daily.start()
     }
-    val inDaily = enrolled || (launchState == LaunchState.KeyPresent && dailyStep != DailyStep.NotBound)
+    val inDaily = enrolled || (!enrolling && launchState == LaunchState.KeyPresent && dailyStep != DailyStep.NotBound)
     if (inDaily) {
         DailyRoot(daily, dailyStep, alerts, unlocks, deviceModel, boundMsisdn) { msisdn ->
             // E-27a « Sécuriser à nouveau » : flux D, numéro mémorisé ; le SERVEUR dira RECOVERY.
@@ -314,8 +317,8 @@ private fun DailyRoot(
                 onAlert = alerts::open,
             )
         is DailyStep.History -> HistoryScreen(step, onBack = daily::back, onHome = daily::goHome, onSend = daily::startSend)
-        is DailyStep.Beneficiary -> BeneficiaryScreen(step, daily::chooseBeneficiary, daily::back)
-        is DailyStep.Amount -> AmountScreen(step, BuildConfig.QUICK_AMOUNTS_XAF.toList(), daily::submitAmount, daily::back)
+        is DailyStep.Beneficiary -> BeneficiaryScreen(step, daily::chooseBeneficiary, daily::back, daily::updateBeneficiaryDraft)
+        is DailyStep.Amount -> AmountScreen(step, BuildConfig.QUICK_AMOUNTS_XAF.toList(), daily::submitAmount, daily::back, daily::updateAmountDraft)
         is DailyStep.Confirm -> ReviewScreen(step, daily::confirmTransfer, onCancel = daily::goHome, onBack = daily::back)
         is DailyStep.Authorize -> AuthorizeScreen(step, { pin -> daily.authorize(pin, unlocks.transfer) }, daily::back)
         is DailyStep.Sent -> SentScreen(step, deviceModel, daily::goHome)

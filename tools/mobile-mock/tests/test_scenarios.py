@@ -64,6 +64,33 @@ def test_flow_a_first_enrolment(mock):
     assert issued["recoveryCode"].encode() not in stored["hash"] + stored["salt"]
 
 
+def test_flow_a_binding_is_active_only_after_the_code_is_confirmed(mock):
+    """D4 : la confirmation du code (E-09) ne peut jamais être sautée : avant elle, le nouvel
+    appareil n'est pas lié (pas de session), l'ancien reste lié, le nouveau code n'est pas actif."""
+    old_token = mock.session()
+    eid = mock.call("POST", f"{V1}/enrolment/start", {"msisdn": BOUND_MSISDN, "pin": PIN}).body[
+        "enrolmentId"
+    ]
+    assert _recover(mock, eid, RECOVERY).status == 200
+    issued = _complete(mock, eid)
+    device = issued["deviceId"]
+    ch = mock.call("GET", f"{V1}/session/challenge?deviceId={device}").body["challenge"]
+    body = {
+        "msisdn": BOUND_MSISDN,
+        "pin": PIN,
+        "deviceId": device,
+        "challenge": ch,
+        "signature": SIG,
+    }
+    r = mock.call("POST", f"{V1}/session", body)
+    assert (r.status, r.body["reason"]) == (401, "CREDENTIALS_INVALID")  # pas lié avant E-09
+    assert mock.call("GET", f"{V1}/account", token=old_token).status == 200  # l'ancien reste lié
+    assert _confirm(mock, issued, code="A" * PARAMS.code_length).status == 401
+    assert _confirm(mock, issued).status == 200
+    assert mock.call("GET", f"{V1}/account", token=old_token).status == 401  # révoqué à E-09
+    assert mock.session(device=device)
+
+
 def test_flow_a_demo_mode_exposes_otp(demo_mock):
     r = demo_mock.call("POST", f"{V1}/enrolment/start", {"msisdn": NEW_MSISDN, "pin": PIN})
     assert r.body["demoOtp"] == FIX["demoOtp"]

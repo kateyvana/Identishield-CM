@@ -16,6 +16,7 @@ import cm.identishield.mobile.security.DeviceKeyManager
 import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.InsecureKeyStorageException
 import cm.identishield.mobile.security.ScreenLock
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -386,6 +387,26 @@ class EnrolmentViewModelTest {
         vm.secureDevice(unlockOk)
         assertEquals(1, keys.generateCalls)
         assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = false), vm.step.value)
+    }
+
+    /**
+     * D4 (a) : le téléphone tue le processus (retour des Réglages). Le parcours reprend au PIN avec le
+     * numéro ; AUCUN secret n'est dans l'état sauvegardé : ni PIN, ni OTP, ni clé de récupération, ni
+     * contexte d'enrôlement (qui permettrait de lier un appareil), ni défi, ni jeton (charte, point 5).
+     */
+    @Test
+    fun d4_processDeath_resumesAtThePinWithTheNumber_andTheSavedStateHoldsNoSecret() {
+        val saved = SavedStateHandle()
+        val vm = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), savedState = saved)
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = false), vm.step.value)
+        val revived = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), savedState = saved)
+        assertEquals(EnrolStep.Pin(NEW_NUMBER, EnrolError.PROCESS_RESTARTED), revived.step.value)
+        val stored = saved.keys().map { saved.get<Any?>(it).toString() }
+        val secrets = listOf(PIN, OTP, CODE, "e-1", "c-1", Base64.getEncoder().encodeToString(CHALLENGE), "jeton")
+        secrets.forEach { secret -> assertTrue("secret « $secret » dans l'état sauvegardé", stored.none { it.contains(secret) }) }
     }
 
     @Test

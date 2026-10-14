@@ -547,8 +547,9 @@ fun BeneficiaryScreen(
     step: DailyStep.Beneficiary,
     onSubmit: (String) -> Unit,
     onBack: () -> Unit,
+    onDraft: (String) -> Unit = {},
 ) {
-    var number by remember(step.recents) { mutableStateOf("") }
+    var number by remember(step.recents) { mutableStateOf(step.draft) } // D4 : restitué après reconnexion
     Page(DailyTags.BENEFICIARY) {
         BackHeader(stringResource(R.string.send_title), onBack)
         VerticalGap(16)
@@ -568,7 +569,10 @@ fun BeneficiaryScreen(
             HorizontalGap(12)
             BasicTextField(
                 value = number,
-                onValueChange = { v -> number = v.filter { it.isDigit() }.take(DailyViewModel.NATIONAL_NUMBER_LENGTH) },
+                onValueChange = { v ->
+                    number = v.filter { it.isDigit() }.take(DailyViewModel.NATIONAL_NUMBER_LENGTH)
+                    onDraft(number)
+                },
                 singleLine = true,
                 textStyle = TextStyle(fontSize = 20.sp, color = Ink),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -617,8 +621,9 @@ fun AmountScreen(
     quickAmounts: List<Long>,
     onSubmit: (Long) -> Unit,
     onBack: () -> Unit,
+    onDraft: (String) -> Unit = {},
 ) {
-    var digits by remember(step) { mutableStateOf("") }
+    var digits by remember(step.holder, step.balanceXaf) { mutableStateOf(step.draft) } // D4
     val amount = digits.toLongOrNull() ?: 0
     Page(DailyTags.AMOUNT) {
         BackHeader(stringResource(R.string.amount_title), onBack)
@@ -665,7 +670,10 @@ fun AmountScreen(
                             .clip(RoundedCornerShape(50))
                             .background(Color.White)
                             .border(1.dp, Hairline, RoundedCornerShape(50))
-                            .clickable { digits = q.toString() }
+                            .clickable {
+                                digits = q.toString()
+                                onDraft(digits)
+                            }
                             .padding(vertical = 8.dp)
                             .testTag("quick-$q"),
                 )
@@ -673,8 +681,16 @@ fun AmountScreen(
         }
         Spacer(Modifier.weight(1f))
         Keypad(
-            onDigit = { d -> if (digits.length < MAX_AMOUNT_DIGITS && !(digits.isEmpty() && d == '0')) digits += d },
-            onDelete = { digits = digits.dropLast(1) },
+            onDigit = { d ->
+                if (digits.length < MAX_AMOUNT_DIGITS && !(digits.isEmpty() && d == '0')) {
+                    digits += d
+                    onDraft(digits)
+                }
+            },
+            onDelete = {
+                digits = digits.dropLast(1)
+                onDraft(digits)
+            },
         )
         VerticalGap(12)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(amount) }, enabled = amount >= 1)

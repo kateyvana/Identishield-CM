@@ -86,6 +86,7 @@ fun errorMessage(error: EnrolError): String =
             EnrolError.DEVICE_REFUSED -> R.string.error_device_refused
             EnrolError.UNLOCK_CANCELLED -> R.string.error_unlock_cancelled
             EnrolError.CONFIRM_MISMATCH -> R.string.error_confirm_mismatch
+            EnrolError.PROCESS_RESTARTED -> R.string.error_process_restarted
             EnrolError.UNEXPECTED -> R.string.error_unexpected
         },
     )

@@ -67,6 +67,7 @@
     <string name="error_device_refused">Ce téléphone ne peut pas protéger votre compte. Vous pouvez continuer à utiliser MoMo par USSD.</string>
     <string name="error_unlock_cancelled">Déverrouillage annulé. Réessayez.</string>
     <string name="error_connection_lost">Connexion perdue. Recommencez.</string>
+    <string name="error_process_restarted">Le téléphone a fermé l\'application pendant la liaison. Entrez à nouveau votre PIN pour reprendre là où vous étiez.</string>
 
     <!-- E-07, précondition (D3) : verrouillage d'écran requis -->
     <string name="screen_lock_title">Verrouillage d\'écran requis</string>

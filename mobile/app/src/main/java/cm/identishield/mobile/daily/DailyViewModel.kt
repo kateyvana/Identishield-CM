@@ -1,8 +1,11 @@
 package cm.identishield.mobile.daily
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import cm.identishield.mobile.data.Account
 import cm.identishield.mobile.data.ApiResult
 import cm.identishield.mobile.data.DailyRepository
@@ -77,14 +80,18 @@ sealed interface DailyStep {
         val items: List<Transaction>,
     ) : DailyStep // E-19
 
+    /** [draft] : numéro en cours de saisie, restitué après rotation, mort du processus ou expiration de session (D4). */
     data class Beneficiary(
         val recents: List<Transaction>,
         val problem: Problem? = null,
+        val draft: String = "",
     ) : DailyStep // E-12
 
+    /** [draft] : chiffres du montant en cours de saisie (D4). */
     data class Amount(
         val holder: Holder,
         val balanceXaf: Long,
+        val draft: String = "",
     ) : DailyStep // E-13
 
     data class Confirm(
@@ -130,6 +137,7 @@ class DailyViewModel(
     private val device: BoundDeviceStore,
     private val session: SessionHolder,
     scope: CoroutineScope? = null,
+    private val savedState: SavedStateHandle? = null, // D4 : position du flux C, jamais un secret
 ) : ViewModel() {
     private val scope: CoroutineScope = scope ?: viewModelScope
     private val _step = MutableStateFlow<DailyStep>(DailyStep.Starting)
@@ -137,6 +145,11 @@ class DailyViewModel(
 
     private var account: Account? = null // solde affiché en E-13 ; jamais persisté
     private var inFlight = false
+
+    init {
+        // D4 : chaque écran du flux C note sa position (bénéficiaire, montant ; jamais le PIN ni le jeton).
+        this.scope.launch { step.collect { rememberPosition(it) } }
+    }
 
     /**
      * E-01 → E-10, ou E-11 directement si une session vient d'être ouverte (fin du flux A).
@@ -184,7 +197,10 @@ class DailyViewModel(
 
     // ---- E-11, E-19 : lectures avec le jeton ---------------------------------------------------
 
-    fun goHome() = withToken { openHome(it) }
+    fun goHome() {
+        clearPosition() // retour volontaire à l'accueil : la saisie en cours est abandonnée (D4)
+        withToken { openHome(it) }
+    }
 
     fun openHistory() =
         withToken { token ->
@@ -233,6 +249,18 @@ class DailyViewModel(
                 ApiResult.Unreachable -> _step.value = current.copy(problem = Problem(DailyError.UNREACHABLE))
             }
         }
+    }
+
+    /** E-12 : le numéro tapé, gardé dans l'état (D4). */
+    fun updateBeneficiaryDraft(value: String) {
+        val s = _step.value as? DailyStep.Beneficiary ?: return
+        _step.value = s.copy(draft = value)
+    }
+
+    /** E-13 : les chiffres tapés, gardés dans l'état (D4). */
+    fun updateAmountDraft(value: String) {
+        val s = _step.value as? DailyStep.Amount ?: return
+        _step.value = s.copy(draft = value)
     }
 
     /** E-13 → E-14. Le solde n'est qu'indicatif : le serveur refuse un solde insuffisant (SPEC §7.4). */
@@ -384,7 +412,9 @@ class DailyViewModel(
         if (a is ApiResult.Ok && t is ApiResult.Ok) {
             account = a.value
             session.accountId = a.value.accountId // signature des réponses aux alertes (flux F)
+            val position = savedPosition() // lue AVANT l'accueil, qui l'efface
             _step.value = DailyStep.Home(a.value, t.value.items)
+            if (position != null) resume(token, position, t.value.items)
         } else {
             readFailed(if (a !is ApiResult.Ok) a else t)
         }
@@ -403,6 +433,65 @@ class DailyViewModel(
         } else {
             lock(problem)
         }
+    }
+
+    // ---- D4 : position du flux C, restituée après reconnexion ------------------------------------
+
+    private data class Position(
+        val stage: String,
+        val msisdn: String,
+        val amount: String,
+    )
+
+    private fun rememberPosition(step: DailyStep) {
+        val saved = savedState ?: return
+        val position =
+            when (step) {
+                is DailyStep.Beneficiary -> Position(STAGE_BENEFICIARY, step.draft, "")
+                is DailyStep.Amount -> Position(STAGE_AMOUNT, step.holder.msisdn, step.draft)
+                is DailyStep.Confirm -> Position(STAGE_CONFIRM, step.holder.msisdn, step.amountXaf.toString())
+                is DailyStep.Authorize -> Position(STAGE_AUTHORIZE, step.holder.msisdn, step.amountXaf.toString())
+                // Verrou et attente : la position est gardée pour la reprise ; tout autre écran l'efface.
+                is DailyStep.Unlock, DailyStep.Opening, DailyStep.Starting -> return
+                else -> null
+            }
+        saved[KEY_STAGE] = position?.stage
+        saved[KEY_MSISDN] = position?.msisdn
+        saved[KEY_AMOUNT] = position?.amount
+    }
+
+    private fun clearPosition() {
+        val saved = savedState ?: return
+        saved[KEY_STAGE] = null
+        saved[KEY_MSISDN] = null
+        saved[KEY_AMOUNT] = null
+    }
+
+    private fun savedPosition(): Position? {
+        val saved = savedState ?: return null
+        val stage = saved.get<String>(KEY_STAGE) ?: return null
+        return Position(stage, saved.get<String>(KEY_MSISDN).orEmpty(), saved.get<String>(KEY_AMOUNT).orEmpty())
+    }
+
+    /** La saisie reprend là où la session s'est perdue ; le titulaire est redemandé au serveur (jamais conservé). */
+    private suspend fun resume(
+        token: String,
+        position: Position,
+        transactions: List<Transaction>,
+    ) {
+        if (position.stage == STAGE_BENEFICIARY) {
+            _step.value = DailyStep.Beneficiary(recentBeneficiaries(transactions), draft = position.msisdn)
+            return
+        }
+        val holder = (repository.holder(token, position.msisdn) as? ApiResult.Ok)?.value ?: return
+        val amount = position.amount.toLongOrNull()
+        _step.value =
+            when {
+                position.stage == STAGE_AMOUNT -> DailyStep.Amount(holder, account?.balanceXaf ?: 0, draft = position.amount)
+                amount == null -> return
+                position.stage == STAGE_CONFIRM -> DailyStep.Confirm(holder, amount)
+                else -> DailyStep.Authorize(holder, amount) // le PIN est redemandé : il n'est jamais gardé
+            }
     }
 
     private fun decisionStep(
@@ -477,7 +566,10 @@ class DailyViewModel(
         private val session: SessionHolder,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = DailyViewModel(repository, keys, device, session) as T
+        override fun <T : ViewModel> create(
+            modelClass: Class<T>,
+            extras: CreationExtras,
+        ): T = DailyViewModel(repository, keys, device, session, savedState = extras.createSavedStateHandle()) as T
     }
 
     companion object {
@@ -495,6 +587,13 @@ class DailyViewModel(
         const val REASON_INSUFFICIENT_FUNDS = "INSUFFICIENT_FUNDS"
         const val REASON_DECISION_REJECTED = "DECISION_REJECTED"
         private const val HTTP_BAD_REQUEST = 400
+        private const val KEY_STAGE = "flowC.stage"
+        private const val KEY_MSISDN = "flowC.msisdn"
+        private const val KEY_AMOUNT = "flowC.amount"
+        private const val STAGE_BENEFICIARY = "BENEFICIARY"
+        private const val STAGE_AMOUNT = "AMOUNT"
+        private const val STAGE_CONFIRM = "CONFIRM"
+        private const val STAGE_AUTHORIZE = "AUTHORIZE"
         private const val HTTP_UNAUTHORIZED = 401
         private const val HTTP_NOT_FOUND = 404
 
