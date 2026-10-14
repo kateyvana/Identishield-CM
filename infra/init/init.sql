@@ -131,6 +131,41 @@ CREATE TABLE pdp.nonce (
     consumed_at timestamptz
 );
 
+-- A1 : etat de confiance du compte (ISC-SAD v1.4 §7.5, §9.2 trust_state et trust_transition ;
+-- arbitrages A1-1 a A1-7 de REGISTRE_DECISIONS). Une ligne par compte qui s'est enrole ou a
+-- connu un evenement ; sans ligne, le compte est TRUSTED (A1-5). LOCKED est hors du mois 4 (T-05) :
+-- la contrainte le refuse. Champs ajoutes au §9.2 : current_imsi (A1-1), probation_until conserve
+-- pendant un gel (A1-2), freeze_cause et freeze_until (A1-3), reenrol_frozen_until (A1-4).
+CREATE TABLE pdp.trust_state (
+    account_id           text        PRIMARY KEY,
+    state                text        NOT NULL CHECK (state IN ('TRUSTED', 'PROBATION', 'FROZEN')),
+    since                timestamptz NOT NULL,   -- fourni par l'app (ED-04) ; aucun DEFAULT d'horloge
+    reference_imsi       text,                   -- glossaire SRS v1.5 ; A1-1, A1-5, A1-6
+    current_imsi         text,                   -- dernier IMSI notifie
+    probation_until      timestamptz,            -- echeance CAR_IMSI d'origine (A1-2)
+    freeze_cause         text CHECK (freeze_cause IN ('FREEZE_DECISION', 'NOT_ME')),
+    freeze_until         timestamptz,            -- TTL_FREEZE ; jamais pour NOT_ME (A1-3)
+    reenrol_frozen_until timestamptz,            -- REENROL_FREEZE (A1-4)
+    CHECK ((state = 'FROZEN') = (freeze_cause IS NOT NULL)),
+    CHECK ((freeze_cause IS NOT DISTINCT FROM 'FREEZE_DECISION') = (freeze_until IS NOT NULL)),
+    CHECK ((state = 'PROBATION') <= (probation_until IS NOT NULL))
+);
+
+-- Historique des transitions (EF-13 : chaque transition avec sa cause), en ecriture seule pour le
+-- role applicatif ; chaque ligne a sa jumelle dans le journal d'audit chaine (A1-7).
+CREATE TABLE pdp.trust_transition (
+    id          bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    account_id  text        NOT NULL,
+    from_state  text        NOT NULL,
+    to_state    text        NOT NULL,
+    event       text        NOT NULL CHECK (event IN ('TRUST_PROBATION_ENTERED',
+                    'TRUST_PROBATION_EXPIRED', 'TRUST_FROZEN', 'TRUST_UNFROZEN')),
+    cause       text        NOT NULL CHECK (cause IN ('IMSI_CHANGE', 'CAR_IMSI_EXPIRED',
+                    'FREEZE_DECISION', 'NOT_ME', 'TTL_FREEZE_EXPIRED', 'RELEASE')),
+    occurred_at timestamptz NOT NULL    -- instant de l'evenement ou de l'echeance (ADR-019)
+);
+CREATE INDEX trust_transition_account ON pdp.trust_transition (account_id, id);
+
 -- ======================= Privileges (ISC-SAD §10.1) =======================
 -- core : le service coeur gere ses propres entites.
 GRANT USAGE ON SCHEMA core TO isc_core_app;
@@ -149,6 +184,11 @@ GRANT SELECT, INSERT ON pdp.audit_entry TO isc_pdp_app;
 GRANT SELECT, INSERT, UPDATE ON pdp.device, pdp.nonce TO isc_pdp_app;
 GRANT USAGE ON SEQUENCE pdp.audit_entry_seq_seq TO isc_pdp_app;  -- USAGE sans UPDATE => setval refuse
 -- Aucun GRANT sur pdp.chain_head : le role applicatif n'y accede pas.
+-- A1 : etat de confiance en SELECT, INSERT, UPDATE (jamais DELETE) ; historique des transitions
+-- en SELECT + INSERT seulement : le role applicatif ne peut ni le reecrire ni l'effacer.
+GRANT SELECT, INSERT, UPDATE ON pdp.trust_state TO isc_pdp_app;
+GRANT SELECT, INSERT ON pdp.trust_transition TO isc_pdp_app;
+GRANT USAGE ON SEQUENCE pdp.trust_transition_id_seq TO isc_pdp_app;
 
 -- OB-3 : aucune fonction du schema pdp executable par PUBLIC. Defense contre une
 -- fonction SECURITY DEFINER exposee par le defaut PUBLIC de PostgreSQL —

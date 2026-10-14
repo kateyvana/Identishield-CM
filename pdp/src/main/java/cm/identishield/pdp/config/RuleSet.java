@@ -18,10 +18,29 @@ public record RuleSet(String version, Map<String, Object> parameters) {
 
   /** ES-10 : durée de validité d'un nonce de signature (NONCE_TTL, durée ISO). */
   public Duration nonceTtl() {
-    Object v = parameters == null ? null : parameters.get("NONCE_TTL");
+    return duration("NONCE_TTL");
+  }
+
+  /** ES-01b : carence post-changement d'IMSI, durée de la PROBATION. */
+  public Duration carImsi() {
+    return duration("CAR_IMSI");
+  }
+
+  /** Durée d'un gel issu d'une décision FREEZE (A1-3). */
+  public Duration ttlFreeze() {
+    return duration("TTL_FREEZE");
+  }
+
+  /** ES-27 : gel des ré-enrôlements après « ce n'est pas moi ». */
+  public Duration reenrolFreeze() {
+    return duration("REENROL_FREEZE");
+  }
+
+  private Duration duration(String name) {
+    Object v = parameters == null ? null : parameters.get(name);
     if (v instanceof CharSequence s) {
       return Duration.parse(s);
     }
-    throw new IllegalStateException("NONCE_TTL absent du jeu de règles versionné");
+    throw new IllegalStateException(name + " absent du jeu de règles versionné");
   }
 }
