@@ -332,7 +332,7 @@ components:
           maximum: 100
         requiredAction:
           type: string
-          enum: [SIGNATURE, DEFER, CONTACT_CONFIRMATION, NONE]
+          enum: [SIGNATURE, DEFER, NONE]
         triggeredRules:
           type: array
           items:
