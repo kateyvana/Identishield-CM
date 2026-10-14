@@ -77,6 +77,7 @@
     <string name="recovery_warning">Sans cette clé, vous ne pourrez pas lier un nouveau téléphone si celui-ci est perdu, volé ou cassé. Ne la photographiez pas. Ne l\'envoyez à personne.</string>
     <string name="recovery_last_display">Dernier affichage : cette clé ne vous sera plus jamais montrée.</string>
     <string name="recovery_written">Je l\'ai écrite sur papier</string>
+    <string name="recovery_code_a11y">Clé de récupération affichée à l\'écran. Pour votre sécurité, elle n\'est pas lue par les services d\'accessibilité : recopiez-la depuis l\'écran.</string>
 
     <!-- E-09 Confirmation -->
     <string name="confirm_title">Vérifions votre copie</string>

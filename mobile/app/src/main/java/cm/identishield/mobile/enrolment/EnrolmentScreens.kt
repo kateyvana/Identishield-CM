@@ -397,7 +397,9 @@ fun RecoveryKeyScreen(
     step: EnrolStep.RecoveryKey,
     onWritten: () -> Unit,
 ) {
-    // Texte non sélectionnable (MOB-S-06).
+    // Texte non sélectionnable (MOB-S-06). D2 : la clé est retirée de l'arbre d'accessibilité
+    // (FLAG_SECURE bloque les pixels, pas le texte) ; compromis lecteurs d'écran documenté (README).
+    val hiddenFromReaders = stringResource(R.string.recovery_code_a11y)
     Page(EnrolTags.RECOVERY, secure = true) {
         BackHeader(stringResource(R.string.recovery_title), onBack = null)
         VerticalGap(16)
@@ -422,7 +424,10 @@ fun RecoveryKeyScreen(
                     .background(Color.White)
                     .border(1.dp, Navy, RoundedCornerShape(16.dp))
                     .padding(vertical = 20.dp)
-                    .testTag("recovery-code"),
+                    .clearAndSetSemantics {
+                        testTag = "recovery-code"
+                        contentDescription = hiddenFromReaders
+                    },
         ) {
             groupRecoveryCode(step.code).forEach { line ->
                 Text(line, fontFamily = FontFamily.Monospace, fontSize = 26.sp, color = Ink, letterSpacing = 2.sp)
