@@ -120,6 +120,7 @@ Verdict « conforme » seulement pour ce qui a été observé (charte, point 9).
 | D11 | **requalifié** | E-14 (liste FLAG_SECURE) | Signalé comme « écran listé FLAG_SECURE mais capture réussie » d'après le fichier `E14.png`. **Relecture du 2026-10-11 : cette image montre E-13 Montant**, qui n'est pas dans la liste ; aucune capture d'un écran de la liste n'a réussi (E-06, E-08, E-09, E-20, E-21 : 0 octet ; E-14, E-15 jamais atteints). Le défaut venait du nom du fichier. Un test table des six écrans de la liste verrouille `FLAG_SECURE` sur chacun. | images renommées | **B1a** (test de garde ; preuve tablette : non observée, appareil absent) |
 | D12 | mineure | E-11, E-19, E-23 | Barre du bas : « Alertes » inactif depuis Historique (E-19) ; « Sécurité » inactif partout, sans aspect désactivé (seule la couleur grise change, pas de mention « bientôt »). | `E19-historique.png`, `E11-accueil.png` | B1b (consigné seulement) |
 | D13 | majeure (usage) | E-12 | Bouton « Continuer » caché sous le clavier système ; la page ne défile pas et le clavier ne se ferme pas sur « OK ». | `E12-beneficiaire-clavier.png` | B1b (consigné seulement) |
+| D14 | majeure (usage) | E-09, E-20 | Constaté le 2026-10-14 par le propriétaire : le clavier système recouvre « Confirmer » (E-09) et « Continuer » (E-20) ; même cause que D13 (page sans défilement ni marge pour le clavier). | observation du propriétaire ; `2026-10-14-B1a/E12-beneficiaire-clavier.png` pour la même cause | B1b (consigné seulement) |
 
 ## 3. Incidents de passe (outillage, pas des défauts de l'application)
 
@@ -142,4 +143,48 @@ E-14, E-15, E-16, E-17, E-18 (flux C interrompu par D9), E-24 (capture), E-25 (h
 
 ## 6. Correctifs B1a (branche `mobile-10-defauts`, base origin/main d710eb3)
 
-Complété en fin de carte : voir la section « Commits » ci-dessous.
+| Commit | Contenu | Rouge avant | Vert après |
+|---|---|---|---|
+| ee9688d | Étape 1 : captures renommées, rapport révisé | — | — |
+| 8f4c483 | E-09 : code de 6 caractères retapé en entier, rappel masqué sauf les 2 derniers ; contrat sans `confirmPositions` | faux serveur 3 échecs ; appli ne compile pas | faux serveur 41/41, appli 56/56 |
+| c8dea45 | D2 : clé invisible aux services d'accessibilité (E-08, E-09, E-20) | SecretsAccessibilityTest 2 échecs / 3 | 3/3 |
+| 1ce4f20 | D3 : verrou d'écran vérifié avant la clé (flux A et D) | 2 échecs (EnrolmentViewModelTest, RecoveryFlowTest) | 46/46 |
+| 37c17fc | D4 : rotation, mort du processus, expiration de session ; E-09 jamais sautée ; aucun secret sauvegardé | 3 échecs appli + 1 faux serveur | 155/155, 42/42 |
+| d88279f | D9 : réserve < serveur, rejeu des lectures seulement (ADR-039) | StaleConnectionTest 2 échecs / 4 ; test de réserve du faux serveur en échec | 159/159, 43/43 |
+| fdb07e8 | D11 : test de garde FLAG_SECURE (six écrans de la liste) | mutation E-15 : « FLAG_SECURE absent sur E-15 » | 1/1 |
+| 555c1e9 | ADR-039 ACCEPTÉ | — | — |
+
+`make check` VERT avant chaque commit. Aucun fichier de core/ ni de pdp/ dans D9 et après (arbitrage B1a-3) ; 8f4c483 modifie les tests de version de core/ et pdp/ (rs-0.8.0 → rs-0.9.0), antérieur à l'arbitrage : à trancher par le propriétaire.
+
+**Modification du contrat à reprendre dans ISC-MOB-SPEC v1.3 (carte A0, couloir A) :** E-09 par ressaisie complète du code ; `confirmPositions` supprimé de `RecoveryCodeIssued` ; `ConfirmRequest` porte `recoveryCode` ; la liaison n'est active qu'à la confirmation du code.
+
+## 7. Preuves sur appareil — 2026-10-14 (carte B1a)
+
+**Appareil :** SM-T515, Android 11. Faux serveur HTTPS en mode démo, joint par `adb reverse` ; APK debug reconstruit pour l'appareil (URL locale, CA de développement épinglée). Captures non vides dans `2026-10-14-B1a/` ; aucune ne montre un secret (numéros fictifs, compte de test seulement).
+
+**Étape 0 :** aucun dump ni redirection ne restait sur la tablette ; écran plus forcé allumé ; 33 fichiers de la passe supprimés du PC. Application de la passe désinstallée puis réinstallée ; acc-000200 réenrôlé (flux A), puis réenrôlé à nouveau par le flux D (le code intermédiaire a été remplacé, voir incidents).
+
+| Écran | Tentative de capture | Taille |
+|---|---|---|
+| E-06 PIN | refusée | 0 octet |
+| E-06 PIN (reprise après mort du processus) | refusée | 0 octet |
+| E-08 Clé de récupération | refusée | 0 octet |
+| E-08 en paysage | refusée | 0 octet |
+| E-09 vide | refusée | 0 octet |
+| E-09 saisie complète | refusée | 0 octet |
+| E-20 Clé de récupération | refusée | 0 octet |
+
+Le propriétaire confirme que la capture d'écran ne fonctionne pas dans l'application.
+
+| Défaut | Observé sur appareil |
+|---|---|
+| D2 | E-08, E-09, E-20 : l'arbre d'accessibilité ne contient aucun texte ressemblant à une clé ; E-09 et E-20 ont un champ mot de passe (sonde à comptes seulement, dump supprimé aussitôt). Écoute TalkBack sur E-08 : **non observé par l'agent**, à confirmer par le propriétaire. |
+| D3 | Sans verrou d'écran : écran « Verrouillage d'écran requis » (`E07-verrouillage-ecran-requis.png`) ; serveur `recover` 200 mais aucun `complete` : aucune clé enregistrée. Verrou remis : la liaison reprend (`complete` 200, E-22). |
+| D4 | Rotation sur E-08 : reste sur E-08. Mort du processus pendant les Réglages : reprise au PIN avec « Le téléphone a fermé l'application pendant la liaison… ». Expiration de session sur E-12 : E-10 « Votre session a expiré. Déverrouillez à nouveau. », puis E-12 restitué avec le numéro saisi. E-09 jamais sautée. |
+| D9 | Après 40 s d'inactivité, aucune connexion ouverte ni en CLOSE_WAIT vers le serveur ; la lecture suivante réussit (accueil, 200), pas de « Connexion impossible ». Défi puis session : réussis d'emblée. |
+| E-09 | Champ masqué pour l'accessibilité ; bouton actif à 6 caractères. Aspect visuel du rappel « •••-• » + 2 caractères : **non observé par l'agent** (écran protégé), à confirmer par le propriétaire. |
+
+**Incidents de la passe du 14/10 :**
+1. La tablette était capturée par l'ancienne VM VirtualBox « Ubuntu » (filtre USB vide) ; l'agent l'a détachée à chaud avant la consigne contraire du propriétaire. Le filtre vide « New Filter 1 » a ensuite été retiré avec l'accord du propriétaire, en dehors de cette séance (note d'environnement du 2026-10-14) ; l'agent n'a retiré aucun filtre (restent : Validity 138a:0097, Intel 8087:0a2b).
+2. Les 2 derniers caractères d'un code intermédiaire sont apparus dans une sortie de l'agent (outil d'identification d'écran) ; rien n'a été écrit sur disque ; ce code a été remplacé par le réenrôlement du flux D dans la même séance (charte, point 10).
+3. Une touche « Échap » envoyée par l'outil de l'agent a été traitée comme « Retour » sur E-20 ; la saisie a été perdue, aucun code n'est parti.
