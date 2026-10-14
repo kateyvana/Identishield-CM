@@ -81,8 +81,8 @@ ruleset:
     POLL_BACKGROUND: PT15M # arrière-plan : minimum des tâches périodiques Android (ISC-MOB-SPEC §9.4)
     APP_NETWORK_TIMEOUT: PT10S # délai d'expiration réseau de l'application (MOB-NF-03) ; lu à la construction
     # Connexions persistantes (ADR-039, D9) : l'application rend une connexion inactive AVANT que le serveur ne la ferme.
-    APP_CONN_KEEPALIVE: PT20S # réserve de connexion de l'application ; DOIT être < SERVER_CONN_KEEPALIVE (vérifié à la construction) ; proposé, à valider par le propriétaire
-    SERVER_CONN_KEEPALIVE: PT30S # fermeture d'une connexion inactive par le serveur (faux serveur ; cœur : carte B3) ; proposé, à valider par le propriétaire
+    APP_CONN_KEEPALIVE: PT20S # réserve de connexion de l'application ; DOIT être < SERVER_CONN_KEEPALIVE (vérifié à la construction) ; accepté par le propriétaire (ADR-039)
+    SERVER_CONN_KEEPALIVE: PT30S # fermeture d'une connexion inactive par le serveur (faux serveur ; cœur : carte B3) ; accepté par le propriétaire (ADR-039)
     QUICK_AMOUNTS: # montants rapides de l'écran Montant (E-13), en FCFA ; décidé par le propriétaire (M-07) ; lu à la construction
       - 5000
       - 10000
