@@ -3,6 +3,7 @@ package cm.identishield.mobile.data
 import cm.identishield.mobile.BuildConfig
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import okhttp3.ConnectionPool
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Response
@@ -54,6 +55,9 @@ interface EnrolmentRepository {
     suspend fun account(sessionToken: String): ApiResult<Account>
 }
 
+/** Connexions inactives gardées en réserve : l'application parle à un seul serveur. */
+private const val MAX_IDLE_CONNECTIONS = 2
+
 /** JSON strict : un champ hors contrat est refusé (additionalProperties: false du contrat). */
 val ContractJson =
     Json {
@@ -74,6 +78,10 @@ fun buildMobileApi(
             // coupée sur une connexion réutilisée, ce qui rejouerait un envoi d'argent déjà reçu.
             // Amendement d'ADR-037 (M-07).
             .retryOnConnectionFailure(false)
+            // ADR-039 (D9) : une connexion inactive est rendue AVANT que le serveur ne la ferme
+            // (APP_CONN_KEEPALIVE < SERVER_CONN_KEEPALIVE) ; les lectures seules sont rejouées une fois.
+            .connectionPool(ConnectionPool(MAX_IDLE_CONNECTIONS, BuildConfig.APP_CONN_KEEPALIVE_SECONDS, TimeUnit.SECONDS))
+            .addInterceptor(ReadRetryInterceptor())
             .build(),
 ): MobileApi =
     Retrofit

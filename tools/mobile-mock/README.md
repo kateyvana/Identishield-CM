@@ -18,6 +18,7 @@ Faux serveur de **développement** de l'application mobile. Il sert les 18 route
   - Le certificat est émis par une **CA de DÉVELOPPEMENT** distincte (`gen-dev-tls.sh`), jamais par la CA du bac à sable. Cette CA et les clés vivent dans `.tls/`, ignoré par git.
   - La CA porte le marqueur `OU=ISC-DEV-MOBILE-MOCK`. L'application la **refuse pour un build release**.
   - La poignée de main TLS se fait par connexion : un client muet ne bloque pas les autres.
+  - **HTTP/1.1, connexions persistantes** fermées après `SERVER_CONN_KEEPALIVE` d'inactivité (ADR-039, D9) ; l'application rend les siennes avant (`APP_CONN_KEEPALIVE`).
   - Écoute sur `127.0.0.1` par défaut.
 - **ES-22 :** un compte inexistant et un PIN faux reçoivent le même code et le même corps, mais **pas forcément le même temps de réponse**.
 - **Non simulés :** le freinage de la recherche du nom du titulaire (MT-06), l'anti-force-brute du PIN (QM-14, décision ouverte) et l'expiration du nonce.
@@ -33,7 +34,7 @@ make mobile-mock MOBILE_MOCK_PORT=9000         # autre port
 make mobile-mock MOBILE_MOCK_DEMO=1            # mode démo : l'OTP de test est renvoyé par /enrolment/start
 ```
 
-Les paramètres nommés (REENROL_ATTEMPTS, LOCK_BASE, LOCK_MAX, ALERT_REENROL, CAP_PROB, OTP, OTP_ATTEMPTS, CODE_LENGTH, ENROL_TTL, APP_SESSION_TTL, DEFER, REENROL_FREEZE) sont lus dans `config/ruleset.yaml`, jamais écrits en dur. Chaque requête est validée par le contrat lui-même : un corps hors contrat reçoit `400 REQUEST_INVALID`.
+Les paramètres nommés (SERVER_CONN_KEEPALIVE, REENROL_ATTEMPTS, LOCK_BASE, LOCK_MAX, ALERT_REENROL, CAP_PROB, OTP, OTP_ATTEMPTS, CODE_LENGTH, ENROL_TTL, APP_SESSION_TTL, DEFER, REENROL_FREEZE) sont lus dans `config/ruleset.yaml`, jamais écrits en dur. Chaque requête est validée par le contrat lui-même : un corps hors contrat reçoit `400 REQUEST_INVALID`.
 
 ## Fixtures (`fixtures.json`, fictives)
 

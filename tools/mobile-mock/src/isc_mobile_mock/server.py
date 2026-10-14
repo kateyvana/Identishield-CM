@@ -66,6 +66,7 @@ class Params:
         self.code_length = int(p["CODE_LENGTH"])
         self.enrol_ttl = duration(p["ENROL_TTL"])
         self.session_ttl = duration(p["APP_SESSION_TTL"])
+        self.server_keepalive = duration(p["SERVER_CONN_KEEPALIVE"])  # ADR-039
         self.defer = duration(p["DEFER"])
         self.reenrol_freeze = duration(p["REENROL_FREEZE"])
 
@@ -633,6 +634,11 @@ class MockApp:
 def make_handler(app: MockApp):
     class Handler(BaseHTTPRequestHandler):
         server_version = "isc-mobile-mock"
+        # ADR-039 (D9) : HTTP/1.1, connexions persistantes, fermées après SERVER_CONN_KEEPALIVE
+        # d'inactivité (StreamRequestHandler applique `timeout` à la socket). L'application rend les
+        # siennes avant (APP_CONN_KEEPALIVE) : plus de connexion morte réutilisée par le téléphone.
+        protocol_version = "HTTP/1.1"
+        timeout = app.state.p.server_keepalive.total_seconds()
 
         def _serve(self):
             length = int(self.headers.get("Content-Length") or 0)
@@ -653,6 +659,10 @@ def make_handler(app: MockApp):
         do_GET = do_POST = do_DELETE = _serve
 
         def log_message(self, fmt, *args):  # jamais de PIN, d'OTP, de clé ni de numéro (MOB-S-11)
+            if (
+                len(args) < 2
+            ):  # erreur de transport (délai d'inactivité ADR-039) : rien à journaliser
+                return
             print(f"{self.command} {getattr(self, '_template', None) or '?'} -> {args[1]}")
 
     return Handler

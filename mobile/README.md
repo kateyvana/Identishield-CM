@@ -92,6 +92,7 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 - **Jamais de renvoi automatique** (SPEC §7.4, amendement M-07 d'ADR-037, PROPOSÉ) :
   - `retryOnConnectionFailure(false)` sur tout le client ;
   - une réponse perdue après l'envoi donne l'issue « inconnue » (E-18, « Vérifiez votre historique »), sans aucun renvoi.
+- **Connexions persistantes (ADR-039, D9) :** l'application garde une connexion inactive moins longtemps que le serveur (`APP_CONN_KEEPALIVE` < `SERVER_CONN_KEEPALIVE`, vérifié à la construction). Après une panne de connexion, seules les **lectures** sont rejouées, une fois, sur une connexion neuve : tous les `GET` et le ticket `POST /nonce`. Aucune action (session, enrôlement, envoi, annulation, réponse d'alerte) n'est jamais rejouée.
 - **Un seul appel serveur à la fois :** un double appui n'envoie qu'un seul envoi, et le retour arrière est bloqué pendant l'appel.
 - **Données locales :** seuls le numéro et le `deviceId` sont conservés (préférences privées, sauvegarde désactivée), jamais le solde, le nom, le PIN ni le jeton. Le jeton de session ne vit qu'en mémoire.
 - **Erreurs :**
