@@ -39,6 +39,20 @@
 | T-08 | 2026-10-11 | **Aucune carte mobile n'est acceptée sur les seuls tests JVM** : preuve sur appareil réel obligatoire. | EN VIGUEUR | `CLAUDE.md` §10 règle 1 ; décision du tech lead, consignée ici (2026-10-11) |
 | T-09 | 2026-10-11 | **Réseau de l'application** : réserve de connexion plus courte côté application que côté serveur ; rejeu automatique des lectures seulement, jamais d'une action ; si le résultat d'une action est incertain, l'application interroge le serveur. | EN VIGUEUR | son ADR sera fourni avec la carte B1a (ticket #43) ; décision du tech lead, consignée ici (2026-10-11) |
 
+## 2 bis. Arbitrages de la machine à états, carte A1
+
+Arbitrages du tech lead du 2026-10-14, rendus sur les contradictions relevées par la carte A1 (ticket #35) avant tout code.
+
+| # | Date | Arbitrage | Statut | Source |
+|---|---|---|---|---|
+| A1-1 | 2026-10-14 | **Sortie de PROBATION** : CAR_IMSI expiré sans incident → TRUSTED, et l'IMSI courant devient l'IMSI de référence. Le constat « attaquant patient » d'ISC-AMD-01 (constat 3, repris par ADR-029) visait CAR_ENROL, retiré ; il ne s'applique pas à CAR_IMSI. | EN VIGUEUR | ISC-SAD v1.4 §7.5 ; glossaire d'ISC-SRS-FR v1.5 (« IMSI de référence ») ; ISC-TM v1.4, T-AC-04 ; arbitrage du tech lead, consigné ici (2026-10-14) |
+| A1-2 | 2026-10-14 | **Sortie de FROZEN et probation en cours** : la sortie de FROZEN (levée ou expiration) rend l'état en vigueur avant le gel. Une période CAR_IMSI en cours n'est ni consommée ni remise à zéro par le gel : son échéance d'origine est conservée. Gelé pendant la probation → PROBATION jusqu'à la fin prévue ; TRUSTED seulement si cette fin est déjà passée. Motif : sinon un gel de 24 h (TTL_FREEZE) effacerait 47 h de probation (attaquant patient, T-05). Précise ISC-SAD v1.4 §7.5 (« expiration → TRUSTED »), qui contredisait ES-01b. | EN VIGUEUR | ISC-SAD v1.4 §7.5 ; ISC-SRS-FR v1.5 ES-01b ; arbitrage du tech lead, consigné ici (2026-10-14) |
+| A1-3 | 2026-10-14 | **Gel issu de « ce n'est pas moi »** : il n'expire jamais tout seul ; levée explicite seulement (ES-08). TTL_FREEZE ne s'applique qu'au gel issu d'une décision FREEZE sur transaction. Les deux origines de gel sont distinguées en base (colonne de cause) et testées séparément. | EN VIGUEUR | ISC-SAD v1.4 §7.5 ; ISC-MOB-SPEC v1.3 §9.2 (« levée par l'opérateur ») ; arbitrage du tech lead, consigné ici (2026-10-14) |
+| A1-4 | 2026-10-14 | **« Ce n'est pas moi » selon l'alerte** : alerte de changement de SIM → FROZEN complet et ré-enrôlements gelés (REENROL_FREEZE) ; alerte de tentative de ré-enrôlement → ré-enrôlements gelés uniquement, l'état du compte ne change pas. Motif : la tentative a échoué et le titulaire garde sa clé ACTIVE ; geler tout le compte punirait le titulaire qui se défend. ES-27 et ISC-SAD v1.4 §7.5 ne distinguaient pas les deux alertes ; cet arbitrage les précise. | EN VIGUEUR | ISC-SRS-FR v1.5 ES-27 ; ISC-SAD v1.4 §7.5 ; ISC-MOB-SPEC v1.3 §8.3, §9.2 ; arbitrage du tech lead, consigné ici (2026-10-14) |
+| A1-5 | 2026-10-14 | **État initial** : TRUSTED ; IMSI de référence = IMSI observé au premier enrôlement. | EN VIGUEUR | arbitrage du tech lead, consigné ici (2026-10-14) |
+| A1-6 | 2026-10-14 | **Changement d'IMSI pendant FROZEN** : IMSI de référence et échéance CAR_IMSI mis à jour, l'état reste FROZEN ; à la sortie, A1-2 s'applique. | EN VIGUEUR | arbitrage du tech lead, consigné ici (2026-10-14) |
+| A1-7 | 2026-10-14 | **Événements d'audit des transitions** : TRUST_PROBATION_ENTERED, TRUST_PROBATION_EXPIRED, TRUST_FROZEN, TRUST_UNFROZEN, enregistrés dans `pdp.trust_transition` (fromState, toState, cause). | EN VIGUEUR | ISC-SAD v1.4 §9.2 (`trust_transition`) ; arbitrage du tech lead, consigné ici (2026-10-14) |
+
 ## 3. Règles permanentes
 
 | # | Règle | Source |
