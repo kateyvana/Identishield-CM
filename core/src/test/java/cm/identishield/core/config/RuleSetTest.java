@@ -28,7 +28,7 @@ class RuleSetTest {
   @Test
   void loadsVersionAndCapProbFromVersionedConfig() throws IOException {
     RuleSet rs = load();
-    assertEquals("rs-0.8.0", rs.version()); // bump calibration T3-07 (après rs-0.7.0)
+    assertEquals("rs-0.9.0", rs.version()); // bump STEP_UP_POLICY.app = DEFER (après rs-0.8.0)
     assertEquals(25000L, rs.capProbDailyXaf(), "CAP_PROB.dailyXaf = valeur v1 d'ISC-TM §7");
   }
 }
