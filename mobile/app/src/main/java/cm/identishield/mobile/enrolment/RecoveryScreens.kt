@@ -370,7 +370,7 @@ fun DeviceIncompatibleScreen(onQuit: () -> Unit) {
 // ---- communs ------------------------------------------------------------------------------------
 
 @Composable
-private fun ColumnScope.Disc(
+internal fun ColumnScope.Disc(
     glyph: String,
     color: Color,
 ) {
@@ -385,7 +385,7 @@ private fun ColumnScope.Disc(
 }
 
 @Composable
-private fun Title(text: String) =
+internal fun Title(text: String) =
     Text(
         text,
         color = Ink,

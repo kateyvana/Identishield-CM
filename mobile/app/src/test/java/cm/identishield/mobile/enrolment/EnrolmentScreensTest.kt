@@ -148,6 +148,22 @@ class EnrolmentScreensTest {
         assertEquals(1, starts)
     }
 
+    /** D3 : l'écran dit la cause (pas de verrou) et l'action (réglages), charte points 3 et 4. */
+    @Test
+    fun e07_screenLockRequired_explainsCauseAndAction_andLeadsToSettings() {
+        var settings = 0
+        var done = 0
+        show { ScreenLockRequiredScreen(EnrolStep.ScreenLockRequired(stillMissing = true), onOpenSettings = { settings++ }, onConfigured = { done++ }) }
+        compose.onNodeWithText("Verrouillage d'écran requis").assertIsDisplayed()
+        compose.onNodeWithText("Ouvrez les réglages de sécurité", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("still-missing").assertIsDisplayed()
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("lock-configured").performClick()
+        assertEquals(1, settings)
+        assertEquals(1, done)
+        assertFalse("écran explicatif sans secret", secureFlagSet())
+    }
+
     @Test
     fun e08_recoveryKey_isCaptureProtected_groupedForPaper() {
         var written = false

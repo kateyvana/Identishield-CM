@@ -16,6 +16,7 @@ import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.InsecureKeyStorageException
 import cm.identishield.mobile.security.LocalUnlock
 import cm.identishield.mobile.security.RecoveryThrottle
+import cm.identishield.mobile.security.ScreenLock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +74,11 @@ sealed interface EnrolStep {
         val error: EnrolError? = null,
     ) : EnrolStep // E-07
 
+    /** E-07, précondition (D3) : aucun verrouillage d'écran, donc aucune clé possible ; écran explicatif. */
+    data class ScreenLockRequired(
+        val stillMissing: Boolean = false,
+    ) : EnrolStep
+
     data class RecoveryKey(
         val code: String,
         val lastDisplay: Boolean,
@@ -117,6 +123,7 @@ class EnrolmentViewModel(
     private val boundDevice: BoundDeviceStore? = null, // numéro + device_id pour le flux B (M-07)
     private val session: SessionHolder? = null, // jeton ouvert en E-09, repris par le flux B (M-07)
     private val throttle: RecoveryThrottle? = null, // délai croissant local du flux D (M-08) ; absent = refus
+    private val screenLock: ScreenLock = ScreenLock { true }, // D3 : précondition vérifiée avant la clé
 ) : ViewModel() {
     private val scope: CoroutineScope = scope ?: viewModelScope
     private val _step = MutableStateFlow<EnrolStep>(EnrolStep.Welcome)
@@ -237,7 +244,7 @@ class EnrolmentViewModel(
             when (val r = repository.verifyOtp(id, otp)) {
                 is ApiResult.Ok -> {
                     attestationChallenge = r.value.attestationChallenge
-                    _step.value = EnrolStep.Securing(SecuringStage.CREATING_KEY)
+                    _step.value = securingEntry()
                 }
                 is ApiResult.Refused ->
                     _step.value =
@@ -258,6 +265,10 @@ class EnrolmentViewModel(
      */
     fun secureDevice(unlock: LocalUnlock) {
         if (_step.value !is EnrolStep.Securing) return
+        if (!screenLock.isConfigured()) { // D3 : jamais de clé sans verrou d'écran ; l'écran explique quoi faire
+            _step.value = EnrolStep.ScreenLockRequired()
+            return
+        }
         val challengeB64 = attestationChallenge ?: return begin() // jamais de clé sans OTP validé
         val id = enrolmentId ?: return begin()
         exclusive {
@@ -364,7 +375,7 @@ class EnrolmentViewModel(
                     gate.recordSuccess()
                     rebinding = true
                     attestationChallenge = r.value.attestationChallenge // ES-25 : liaison après validation
-                    _step.value = EnrolStep.Securing(SecuringStage.CREATING_KEY)
+                    _step.value = securingEntry()
                 }
                 is ApiResult.Refused ->
                     _step.value =
@@ -380,6 +391,17 @@ class EnrolmentViewModel(
                 ApiResult.Unreachable -> _step.value = EnrolStep.Recovery(EnrolError.UNREACHABLE)
             }
         }
+    }
+
+    /** E-07 n'est atteint que si le verrou d'écran existe (D3) ; sinon l'écran explicatif, sans créer de clé. */
+    private fun securingEntry(): EnrolStep =
+        if (screenLock.isConfigured()) EnrolStep.Securing(SecuringStage.CREATING_KEY) else EnrolStep.ScreenLockRequired()
+
+    /** Retour des réglages, ou « C'est fait » : on revérifie le verrou ; la clé ne naît qu'après (D3). */
+    fun screenLockConfigured() {
+        if (_step.value !is EnrolStep.ScreenLockRequired) return
+        _step.value =
+            if (screenLock.isConfigured()) EnrolStep.Securing(SecuringStage.CREATING_KEY) else EnrolStep.ScreenLockRequired(stillMissing = true)
     }
 
     /** Attente restante sur cet appareil (E-21), lue sur l'horloge injectée. */
@@ -472,10 +494,11 @@ class EnrolmentViewModel(
         private val boundDevice: BoundDeviceStore,
         private val session: SessionHolder,
         private val throttle: RecoveryThrottle,
+        private val screenLock: ScreenLock,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            EnrolmentViewModel(repository, keys, boundDevice = boundDevice, session = session, throttle = throttle) as T
+            EnrolmentViewModel(repository, keys, boundDevice = boundDevice, session = session, throttle = throttle, screenLock = screenLock) as T
     }
 
     companion object {

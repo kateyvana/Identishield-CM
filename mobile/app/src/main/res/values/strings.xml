@@ -68,6 +68,16 @@
     <string name="error_unlock_cancelled">Déverrouillage annulé. Réessayez.</string>
     <string name="error_connection_lost">Connexion perdue. Recommencez.</string>
 
+    <!-- E-07, précondition (D3) : verrouillage d'écran requis -->
+    <string name="screen_lock_title">Verrouillage d\'écran requis</string>
+    <string name="screen_lock_body">Pour que ce téléphone devienne la clé de votre compte, il doit être protégé par un verrouillage d\'écran (code, schéma ou mot de passe). Sans ce verrou, la clé ne peut pas être créée dans la puce.</string>
+    <string name="screen_lock_step_1">1. Ouvrez les réglages de sécurité du téléphone</string>
+    <string name="screen_lock_step_2">2. Définissez un code, un schéma ou un mot de passe</string>
+    <string name="screen_lock_step_3">3. Revenez dans l\'application : la liaison reprend ici</string>
+    <string name="screen_lock_still_missing">Aucun verrouillage d\'écran détecté. Configurez-le dans les réglages, puis revenez.</string>
+    <string name="screen_lock_open_settings">Ouvrir les réglages</string>
+    <string name="screen_lock_done">C\'est fait, continuer</string>
+
     <!-- E-08 Clé de récupération -->
     <string name="recovery_title">Votre clé de récupération</string>
     <string name="recovery_intro_bold">Écrivez-la sur papier, maintenant.</string>

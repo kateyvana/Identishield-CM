@@ -15,6 +15,7 @@ import cm.identishield.mobile.security.BoundDeviceStore
 import cm.identishield.mobile.security.DeviceKeyManager
 import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.InsecureKeyStorageException
+import cm.identishield.mobile.security.ScreenLock
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -359,6 +360,32 @@ class EnrolmentViewModelTest {
         vm.confirmCode(CODE)
         assertEquals("jeton", session.token)
         assertFalse(vm.holdsSecrets())
+    }
+
+    private class FakeScreenLock(
+        var configured: Boolean,
+    ) : ScreenLock {
+        override fun isConfigured() = configured
+    }
+
+    /** D3 (charte, points 3 et 4) : sans verrou d'écran, aucune clé ; l'écran explique ; reprise une fois le verrou posé. */
+    @Test
+    fun d3_withoutScreenLock_noKeyIsCreated_theScreenExplains_andBindingResumesOnceTheLockExists() {
+        val lock = FakeScreenLock(configured = false)
+        val vm = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), screenLock = lock)
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        assertEquals("précondition vérifiée AVANT la clé", EnrolStep.ScreenLockRequired(), vm.step.value)
+        vm.secureDevice(unlockOk) // ignoré : jamais de clé sans verrou
+        assertEquals(0, keys.generateCalls)
+        vm.screenLockConfigured() // retour des réglages, verrou toujours absent
+        assertEquals(EnrolStep.ScreenLockRequired(stillMissing = true), vm.step.value)
+        lock.configured = true
+        vm.screenLockConfigured()
+        assertEquals(EnrolStep.Securing(SecuringStage.CREATING_KEY), vm.step.value)
+        vm.secureDevice(unlockOk)
+        assertEquals(1, keys.generateCalls)
+        assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = false), vm.step.value)
     }
 
     @Test

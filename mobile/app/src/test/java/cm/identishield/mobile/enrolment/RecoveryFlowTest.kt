@@ -20,6 +20,7 @@ import cm.identishield.mobile.security.LocalUnlock
 import cm.identishield.mobile.security.MemoryThrottleStore
 import cm.identishield.mobile.security.MutableClock
 import cm.identishield.mobile.security.RecoveryThrottle
+import cm.identishield.mobile.security.ScreenLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
@@ -131,15 +132,29 @@ class RecoveryFlowTest {
     private val session = SessionHolder()
     private val unlockOk = LocalUnlock { s, p -> s.update(p).let { s.sign() } }
 
-    private fun vm(withThrottle: Boolean = true) =
-        EnrolmentViewModel(
-            server,
-            keys,
-            CoroutineScope(Dispatchers.Unconfined),
-            boundDevice = remembered,
-            session = session,
-            throttle = if (withThrottle) throttle else null,
-        )
+    private fun vm(
+        withThrottle: Boolean = true,
+        screenLock: ScreenLock = ScreenLock { true },
+    ) = EnrolmentViewModel(
+        server,
+        keys,
+        CoroutineScope(Dispatchers.Unconfined),
+        boundDevice = remembered,
+        session = session,
+        throttle = if (withThrottle) throttle else null,
+        screenLock = screenLock,
+    )
+
+    /** D3 vaut aussi pour le flux D : sans verrou d'écran, ni suppression ni création de clé. */
+    @Test
+    fun d3_fluxD_requiresTheScreenLock_beforeTouchingAnyKey() {
+        val vm = vm(screenLock = ScreenLock { false })
+        untilRecovery(vm)
+        vm.submitRecoveryCode(OLD_CODE)
+        assertEquals(EnrolStep.ScreenLockRequired(), vm.step.value)
+        vm.secureDevice(unlockOk)
+        assertTrue("ni delete ni generate sans verrou", keys.log.isEmpty())
+    }
 
     private fun untilRecovery(vm: EnrolmentViewModel) {
         vm.beginWithNumber(NUMBER)

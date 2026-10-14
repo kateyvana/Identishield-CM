@@ -1,7 +1,9 @@
 package cm.identishield.mobile
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -49,6 +51,7 @@ import cm.identishield.mobile.enrolment.ReboundScreen
 import cm.identishield.mobile.enrolment.RecoveryScreen
 import cm.identishield.mobile.enrolment.RecoveryWaitScreen
 import cm.identishield.mobile.enrolment.RecoveryKeyScreen
+import cm.identishield.mobile.enrolment.ScreenLockRequiredScreen
 import cm.identishield.mobile.enrolment.SecuringScreen
 import cm.identishield.mobile.enrolment.WelcomeScreen
 import cm.identishield.mobile.launch.LaunchScreen
@@ -56,6 +59,7 @@ import cm.identishield.mobile.launch.LaunchState
 import cm.identishield.mobile.launch.LaunchViewModel
 import cm.identishield.mobile.security.AndroidKeystoreDeviceKeyManager
 import cm.identishield.mobile.security.BiometricLocalUnlock
+import cm.identishield.mobile.security.KeyguardScreenLock
 import cm.identishield.mobile.security.LocalUnlock
 import cm.identishield.mobile.security.PrefsBoundDeviceStore
 import cm.identishield.mobile.security.PrefsThrottleStore
@@ -95,7 +99,7 @@ class MainActivity : FragmentActivity() {
     }
     private val launchViewModel: LaunchViewModel by viewModels { LaunchViewModel.Factory(keys) }
     private val enrolmentViewModel: EnrolmentViewModel by viewModels {
-        EnrolmentViewModel.Factory(RetrofitEnrolmentRepository(api), keys, boundDevice, session, throttle)
+        EnrolmentViewModel.Factory(RetrofitEnrolmentRepository(api), keys, boundDevice, session, throttle, KeyguardScreenLock(applicationContext))
     }
     private val dailyViewModel: DailyViewModel by viewModels {
         DailyViewModel.Factory(RetrofitDailyRepository(api), keys, boundDevice, session)
@@ -134,9 +138,16 @@ class MainActivity : FragmentActivity() {
                     Build.MODEL,
                     boundMsisdn = { boundDevice.load()?.msisdn },
                     onQuit = ::finish,
+                    onOpenSecuritySettings = { startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) },
                 )
             }
         }
+    }
+
+    /** Retour des réglages (D3) : la précondition « verrou d'écran » est revérifiée, la liaison reprend. */
+    override fun onResume() {
+        super.onResume()
+        enrolmentViewModel.screenLockConfigured()
     }
 
     private fun prompt(
@@ -160,6 +171,7 @@ fun AppRoot(
     deviceModel: String,
     boundMsisdn: () -> String?,
     onQuit: () -> Unit,
+    onOpenSecuritySettings: () -> Unit,
 ) {
     val launchState by launch.state.collectAsState()
     val enrolStep by enrolment.step.collectAsState()
@@ -180,7 +192,7 @@ fun AppRoot(
             daily.leaveForReenrolment()
         }
     } else {
-        EnrolmentRoot(enrolment, enrolStep, unlocks, deviceModel, onQuit)
+        EnrolmentRoot(enrolment, enrolStep, unlocks, deviceModel, onQuit, onOpenSecuritySettings)
     }
 }
 
@@ -191,6 +203,7 @@ private fun EnrolmentRoot(
     unlocks: Unlocks,
     deviceModel: String,
     onQuit: () -> Unit,
+    onOpenSecuritySettings: () -> Unit,
 ) {
     val canGoBack =
         step is EnrolStep.Number || step is EnrolStep.Pin || step is EnrolStep.Otp ||
@@ -209,6 +222,7 @@ private fun EnrolmentRoot(
             } else {
                 SecuringScreen(step, onSecure = { enrolment.secureDevice(unlocks.securing) }, onRestart = enrolment::begin)
             }
+        is EnrolStep.ScreenLockRequired -> ScreenLockRequiredScreen(step, onOpenSecuritySettings, enrolment::screenLockConfigured)
         is EnrolStep.RecoveryKey -> RecoveryKeyScreen(step, enrolment::keyWrittenDown)
         is EnrolStep.Confirm -> ConfirmKeyScreen(step, BuildConfig.CODE_LENGTH, enrolment::confirmCode)
         is EnrolStep.Home -> CheckingScreen() // relais vers le flux B (AppRoot)

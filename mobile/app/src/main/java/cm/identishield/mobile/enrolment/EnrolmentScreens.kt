@@ -65,6 +65,7 @@ object EnrolTags {
     const val OTP = "E-05"
     const val PIN = "E-06"
     const val SECURING = "E-07"
+    const val SCREEN_LOCK = "E-07-verrou" // précondition D3
     const val RECOVERY = "E-08"
     const val CONFIRM = "E-09"
     const val HOME = "E-11"
@@ -388,6 +389,46 @@ fun SecuringScreen(
                 tag = "securing-retry",
             )
         }
+    }
+}
+
+// ---- E-07, précondition : verrouillage d'écran requis (D3) -------------------------------------
+
+/**
+ * La clé exige le déverrouillage local (MOB-S-03) : sans verrouillage d'écran, la puce refuse de la
+ * créer. L'application le constate AVANT d'essayer, dit pourquoi et mène aux réglages (charte 3, 4).
+ */
+@Composable
+fun ScreenLockRequiredScreen(
+    step: EnrolStep.ScreenLockRequired,
+    onOpenSettings: () -> Unit,
+    onConfigured: () -> Unit,
+) {
+    Page(EnrolTags.SCREEN_LOCK) {
+        VerticalGap(24)
+        Disc("🔒", Amber)
+        VerticalGap(20)
+        Title(stringResource(R.string.screen_lock_title))
+        VerticalGap(12)
+        BodyText(stringResource(R.string.screen_lock_body))
+        VerticalGap(16)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.White)
+                .border(1.dp, Hairline, RoundedCornerShape(20.dp))
+                .padding(20.dp),
+        ) {
+            listOf(R.string.screen_lock_step_1, R.string.screen_lock_step_2, R.string.screen_lock_step_3).forEach {
+                Text(stringResource(it), color = Ink, fontSize = 17.sp, modifier = Modifier.padding(vertical = 8.dp))
+            }
+        }
+        if (step.stillMissing) ErrorText(stringResource(R.string.screen_lock_still_missing), tag = "still-missing")
+        Spacer(Modifier.weight(1f))
+        PrimaryButton(stringResource(R.string.screen_lock_open_settings), onOpenSettings, tag = "open-settings")
+        VerticalGap(12)
+        SecondaryButton(stringResource(R.string.screen_lock_done), onConfigured, tag = "lock-configured")
     }
 }
 
