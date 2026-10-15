@@ -33,6 +33,7 @@ ruleset:
     THR_HIGH: # seuil « montant élevé » : min(absoluteXaf ; medianFactor × médiane 30 j)
       absoluteXaf: 50000
       medianFactor: 3
+      medianWindow: P30D # fenêtre de la médiane (ISC-TM v1.4 §7 « médiane des trente derniers jours ») ; clé ajoutée par la carte A2 (REGISTRE_DECISIONS T-12)
     THR_4EYES: # seuil quatre-yeux SOC
       xaf: 100000
     TTL_FREEZE: PT24H # TTL de gel, puis annulation
