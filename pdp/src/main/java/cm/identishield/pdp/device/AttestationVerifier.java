@@ -1,8 +1,8 @@
 package cm.identishield.pdp.device;
 
-import cm.identishield.pdp.device.Der.MalformedDerException;
-import cm.identishield.pdp.device.Der.Tlv;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.cert.CertificateFactory;
@@ -11,6 +11,13 @@ import java.security.interfaces.ECPublicKey;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Encoding;
+import org.bouncycastle.asn1.ASN1Enumerated;
+import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Primitive;
+import org.bouncycastle.asn1.ASN1Sequence;
 import org.springframework.stereotype.Component;
 
 /**
@@ -81,63 +88,94 @@ public class AttestationVerifier {
     if (extension == null) {
       return Outcome.NO_ATTESTATION_EXTENSION;
     }
-    List<Tlv> description;
+    KeyDescription description;
     try {
       description = keyDescription(extension);
-    } catch (MalformedDerException e) {
+    } catch (MalformedExtensionException e) {
       return Outcome.MALFORMED_EXTENSION;
     }
-    int attestationLevel = Der.smallNonNegative(description.get(1));
-    int keyLevel = Der.smallNonNegative(description.get(3));
-    if (!hardware(attestationLevel) || !hardware(keyLevel)) {
+    if (!hardware(description.attestationLevel()) || !hardware(description.keyLevel())) {
       return Outcome.SOFTWARE_KEY;
     }
-    byte[] challenge = description.get(4).value();
+    byte[] challenge = description.challenge();
     if (expectedChallenge == null || !MessageDigest.isEqual(challenge, expectedChallenge)) {
       return Outcome.CHALLENGE_MISMATCH;
     }
     return Outcome.VALID;
   }
 
+  /** Ce que la vérification retient de KeyDescription. */
+  private record KeyDescription(int attestationLevel, int keyLevel, byte[] challenge) {}
+
+  /** Extension présente mais hors de la structure KeyDescription attendue, ou pas en DER strict. */
+  private static final class MalformedExtensionException extends Exception {
+    MalformedExtensionException(String message) {
+      super(message);
+    }
+  }
+
   /**
    * KeyDescription ::= SEQUENCE { attestationVersion INTEGER, attestationSecurityLevel ENUMERATED,
    * keyMintVersion INTEGER, keyMintSecurityLevel ENUMERATED, attestationChallenge OCTET STRING,
    * uniqueId OCTET STRING, softwareEnforced AuthorizationList, hardwareEnforced AuthorizationList
-   * }. La valeur d'extension est un OCTET STRING qui enveloppe cette SEQUENCE.
+   * }. La valeur d'extension est un OCTET STRING qui enveloppe cette SEQUENCE. Lue par BouncyCastle
+   * (ADR-040), en DER STRICT : chaque niveau doit être exactement son propre encodage DER.
    */
-  private static List<Tlv> keyDescription(byte[] extensionValue) {
-    Tlv wrapper = Der.single(extensionValue);
-    if (wrapper.tag() != Der.OCTET_STRING) {
-      throw new MalformedDerException("extension value is not an OCTET STRING");
+  private static KeyDescription keyDescription(byte[] extensionValue)
+      throws MalformedExtensionException {
+    ASN1Primitive wrapper = strictDer(extensionValue);
+    if (!(wrapper instanceof ASN1OctetString octets)) {
+      throw new MalformedExtensionException("extension value is not an OCTET STRING");
     }
-    Tlv sequence = Der.single(wrapper.value());
-    if (sequence.tag() != Der.SEQUENCE) {
-      throw new MalformedDerException("KeyDescription is not a SEQUENCE");
+    ASN1Primitive inner = strictDer(octets.getOctets());
+    if (!(inner instanceof ASN1Sequence sequence)) {
+      throw new MalformedExtensionException("KeyDescription is not a SEQUENCE");
     }
-    List<Tlv> fields = Der.elements(sequence.value());
-    int[] expected = {
-      Der.INTEGER,
-      Der.ENUMERATED,
-      Der.INTEGER,
-      Der.ENUMERATED,
-      Der.OCTET_STRING,
-      Der.OCTET_STRING,
-      Der.SEQUENCE,
-      Der.SEQUENCE
-    };
-    if (fields.size() != KEY_DESCRIPTION_FIELDS) {
-      throw new MalformedDerException("KeyDescription must have 8 fields");
+    if (sequence.size() != KEY_DESCRIPTION_FIELDS) {
+      throw new MalformedExtensionException("KeyDescription must have 8 fields");
     }
-    for (int i = 0; i < expected.length; i++) {
-      if (fields.get(i).tag() != expected[i]) {
-        throw new MalformedDerException("unexpected tag in KeyDescription field " + i);
+    ASN1Encodable[] f = sequence.toArray();
+    if (!(f[0] instanceof ASN1Integer attestationVersion)
+        || !(f[1] instanceof ASN1Enumerated attestationLevel)
+        || !(f[2] instanceof ASN1Integer keyMintVersion)
+        || !(f[3] instanceof ASN1Enumerated keyLevel)
+        || !(f[4] instanceof ASN1OctetString challenge)
+        || !(f[5] instanceof ASN1OctetString)
+        || !(f[6] instanceof ASN1Sequence)
+        || !(f[7] instanceof ASN1Sequence)) {
+      throw new MalformedExtensionException("unexpected type in KeyDescription");
+    }
+    smallNonNegative(attestationVersion.getValue());
+    smallNonNegative(keyMintVersion.getValue());
+    return new KeyDescription(
+        smallNonNegative(attestationLevel.getValue()),
+        smallNonNegative(keyLevel.getValue()),
+        challenge.getOctets());
+  }
+
+  /**
+   * Un seul objet ASN.1 qui couvre tout le tampon (BouncyCastle refuse les octets en trop), et dont
+   * l'encodage DER est EXACTEMENT le tampon reçu : refuse ainsi longueurs indéfinies ou non
+   * minimales, entiers non minimaux, chaînes construites (BER).
+   */
+  private static ASN1Primitive strictDer(byte[] encoded) throws MalformedExtensionException {
+    try {
+      ASN1Primitive primitive = ASN1Primitive.fromByteArray(encoded);
+      if (!MessageDigest.isEqual(primitive.getEncoded(ASN1Encoding.DER), encoded)) {
+        throw new MalformedExtensionException("not canonical DER");
       }
+      return primitive;
+    } catch (IOException | RuntimeException e) {
+      throw new MalformedExtensionException("unreadable ASN.1: " + e.getClass().getSimpleName());
     }
-    Der.smallNonNegative(fields.get(0));
-    Der.smallNonNegative(fields.get(1));
-    Der.smallNonNegative(fields.get(2));
-    Der.smallNonNegative(fields.get(3));
-    return fields;
+  }
+
+  /** INTEGER ou ENUMERATED positif tenant sur 31 bits (comme le lecteur maison qu'il remplace). */
+  private static int smallNonNegative(BigInteger value) throws MalformedExtensionException {
+    if (value.signum() < 0 || value.bitLength() > Integer.SIZE - 1) {
+      throw new MalformedExtensionException("not a small non-negative integer");
+    }
+    return value.intValue();
   }
 
   private static boolean hardware(int level) {
