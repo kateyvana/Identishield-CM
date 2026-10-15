@@ -175,6 +175,18 @@ class EvaluateSignatureTest {
   }
 
   @Test
+  void trustedContactProof_isOutOfContract_andNothingIsJournaled() throws Exception {
+    // Contact de confiance ABANDONNÉ (REGISTRE_DECISIONS P-01) : la valeur n'est plus au contrat.
+    String trustedContact =
+        body(D1, 25000, sign(CHAIN)).replace("\"SIGNATURE\"", "\"TRUSTED_CONTACT\"");
+    http.perform(post("/evaluate").contentType(MediaType.APPLICATION_JSON).content(trustedContact))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("CONTRACT_VIOLATION"));
+    assertEquals(0, journal.size());
+    verify(nonces, never()).consume(anyString(), anyString());
+  }
+
+  @Test
   void nonce_isIssuedForTheAccount_withUtcTimestamps() throws Exception {
     NonceStore issuing = mock(NonceStore.class);
     when(issuing.issue("acc-000123"))

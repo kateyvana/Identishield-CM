@@ -17,7 +17,7 @@
 # La version DOIT figurer dans chaque décision /evaluate (EF-11 ruleSetVersion,
 # EF-17). Toute modification d'un paramètre s'accompagne d'un incrément de version.
 ruleset:
-  version: rs-0.8.0 # bump : calibration T3-07 PROVISOIRE (SCORE, W, STEP_UP_POLICY, NIGHT_ZONE, CAP_FAILCLOSED ; sémantique CAP_PROB précisée ; numérotée rs-0.6.0 sur la branche t3-07, renumérotée à l'intégration) ; rs-0.7.0 = NONCE_TTL (M-09) ; rs-0.6.0 = QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
+  version: rs-0.9.0 # bump : STEP_UP_POLICY.app = DEFER (décision du tech lead, REGISTRE_DECISIONS T-10) ; rs-0.8.0 = calibration T3-07 PROVISOIRE (SCORE, W, STEP_UP_POLICY, NIGHT_ZONE, CAP_FAILCLOSED ; sémantique CAP_PROB précisée ; numérotée rs-0.6.0 sur la branche t3-07, renumérotée à l'intégration) ; rs-0.7.0 = NONCE_TTL (M-09) ; rs-0.6.0 = QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
   parameters:
     CAR_IMSI: PT72H # carence post-changement d'IMSI (72 h, état PROBATION)
     # CAR_ENROL (PT48H, carence post-ré-enrôlement) : RETIRÉ — SRS v1.3, ISC-TM v1.2 §7, ES-03c ; retiré ici par ISC-AMD-02 v1.1
@@ -33,6 +33,7 @@ ruleset:
     THR_HIGH: # seuil « montant élevé » : min(absoluteXaf ; medianFactor × médiane 30 j)
       absoluteXaf: 50000
       medianFactor: 3
+      medianWindow: P30D # fenêtre de la médiane (ISC-TM v1.4 §7 « médiane des trente derniers jours ») ; clé ajoutée par la carte A2 (REGISTRE_DECISIONS T-12)
     THR_4EYES: # seuil quatre-yeux SOC
       xaf: 100000
     TTL_FREEZE: PT24H # TTL de gel, puis annulation
@@ -57,7 +58,8 @@ ruleset:
       vel: 70 # ES-05c : dépassement de VEL (l'une des deux clauses) ; seul = FREEZE
       night: 25 # ES-05d, ISC-TM AC-06 : sortie dans NIGHT ; 15 serait inerte (T3-07)
     STEP_UP_POLICY: # ES-06 résolu — décision du propriétaire du 06/10 (ADR-016) : USSD = BLOQUER
-      app: SIGNATURE # STEP_UP résolu par signature du dispositif lié (preuve), puis réévaluation
+      app: DEFER # ~~SIGNATURE~~ (rs-0.8.0) : STEP_UP applicatif = exécution différée de DEFER, annulable (ISC-MOB-SPEC E-17) ;
+      # une confirmation par un appareil potentiellement volé n'est pas une protection — décision du tech lead (REGISTRE_DECISIONS T-10)
       ussd: CANCEL # aucun renforcement possible sur USSD -> CANCELLED (scénario « plafond » de T3-07)
     OTP: # OTP à usage unique (EF-03) : forme et durée sont des PARAMÈTRES, pas des constantes
       length: 6 # chiffres décimaux
