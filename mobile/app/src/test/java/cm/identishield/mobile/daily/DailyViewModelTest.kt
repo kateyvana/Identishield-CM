@@ -319,6 +319,23 @@ class DailyViewModelTest {
         assertEquals(DailyStep.Sent(JEAN, 25000, "tr-42"), vm.step.value)
     }
 
+    /**
+     * Rejeu (décision du propriétaire du 2026-10-10, carte B2) : le PDP refuse un nonce déjà consommé
+     * (409 NONCE_CONSUMED, contrat evaluate) ; le cœur en fait la décision REJECTED du contrat mobile.
+     * L'appli l'affiche comme « Opération rejetée » (E-18), jamais comme une erreur générique, et ne
+     * renvoie rien.
+     */
+    // @covers ES-10
+    @Test
+    fun replayedNonce_isPresentedAsRejected_onE18_andNeverResent() {
+        repo.transferResult = ApiResult.Ok(TransferResponse("tr-42", "REJECTED", "REJECTED", "DECISION_REJECTED", null, 152300))
+        val vm = opened()
+        untilAuthorize(vm)
+        vm.authorize(PIN, unlockOk)
+        assertEquals(DailyStep.Stopped(Outcome.REJECTED), vm.step.value)
+        assertEquals("un seul envoi : jamais de renvoi", 1, repo.transfers.size)
+    }
+
     @Test
     fun theFourDecisions_eachHaveTheirScreen() {
         val decisions =
