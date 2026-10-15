@@ -1,12 +1,14 @@
 package cm.identishield.mobile.enrolment
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import cm.identishield.mobile.data.Account
 import cm.identishield.mobile.data.ApiResult
 import cm.identishield.mobile.data.CompleteRequest
-import cm.identishield.mobile.data.ConfirmCharacter
 import cm.identishield.mobile.data.ConfirmRequest
 import cm.identishield.mobile.data.EnrolmentRepository
 import cm.identishield.mobile.data.SessionHolder
@@ -17,6 +19,7 @@ import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.InsecureKeyStorageException
 import cm.identishield.mobile.security.LocalUnlock
 import cm.identishield.mobile.security.RecoveryThrottle
+import cm.identishield.mobile.security.ScreenLock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +43,7 @@ enum class EnrolError {
     DEVICE_REFUSED, // puce logicielle ou attestation refusée : E-27b (M-08)
     UNLOCK_CANCELLED,
     CONFIRM_MISMATCH,
+    PROCESS_RESTARTED, // D4 : le téléphone a fermé l'application ; on reprend au PIN, numéro conservé
     UNEXPECTED,
 }
 
@@ -74,13 +78,19 @@ sealed interface EnrolStep {
         val error: EnrolError? = null,
     ) : EnrolStep // E-07
 
+    /** E-07, précondition (D3) : aucun verrouillage d'écran, donc aucune clé possible ; écran explicatif. */
+    data class ScreenLockRequired(
+        val stillMissing: Boolean = false,
+    ) : EnrolStep
+
     data class RecoveryKey(
         val code: String,
         val lastDisplay: Boolean,
     ) : EnrolStep // E-08
 
+    /** E-09 : [codeTail] = les [CODE_VISIBLE_TAIL] derniers caractères du code émis, pour le rappel masqué. */
     data class Confirm(
-        val positions: List<Int>,
+        val codeTail: String,
         val error: EnrolError? = null,
     ) : EnrolStep // E-09
 
@@ -117,6 +127,8 @@ class EnrolmentViewModel(
     private val boundDevice: BoundDeviceStore? = null, // numéro + device_id pour le flux B (M-07)
     private val session: SessionHolder? = null, // jeton ouvert en E-09, repris par le flux B (M-07)
     private val throttle: RecoveryThrottle? = null, // délai croissant local du flux D (M-08) ; absent = refus
+    private val screenLock: ScreenLock = ScreenLock { true }, // D3 : précondition vérifiée avant la clé
+    private val savedState: SavedStateHandle? = null, // D4 : position du parcours seulement, jamais un secret
 ) : ViewModel() {
     private val scope: CoroutineScope = scope ?: viewModelScope
     private val _step = MutableStateFlow<EnrolStep>(EnrolStep.Welcome)
@@ -136,8 +148,42 @@ class EnrolmentViewModel(
     private data class IssuedCode(
         val enrolmentId: String,
         val code: String,
-        val positions: List<Int>,
     )
+
+    init {
+        restorePosition()
+        // Chaque changement d'écran note la position (D4) ; collecté dans le scope du ViewModel.
+        this.scope.launch { step.collect { rememberPosition(it) } }
+    }
+
+    /**
+     * D4 : seuls l'étape et le numéro sont sauvegardés. Le PIN, l'OTP, la clé de récupération, le défi
+     * et l'identifiant d'enrôlement ne le sont JAMAIS : ce dernier permettrait de lier un appareil.
+     * Après la mort du processus, on reprend donc au PIN, numéro conservé, avec un message clair.
+     */
+    private fun rememberPosition(step: EnrolStep) {
+        val saved = savedState ?: return
+        val stage =
+            when (step) {
+                EnrolStep.Welcome, is EnrolStep.Home -> null
+                is EnrolStep.Number -> STAGE_NUMBER
+                else -> if (msisdn != null) STAGE_PIN else STAGE_NUMBER
+            }
+        saved[KEY_STAGE] = stage
+        saved[KEY_MSISDN] = if (stage == STAGE_PIN) msisdn else null
+    }
+
+    private fun restorePosition() {
+        val saved = savedState ?: return
+        when (saved.get<String>(KEY_STAGE)) {
+            STAGE_NUMBER -> _step.value = EnrolStep.Number()
+            STAGE_PIN ->
+                saved.get<String>(KEY_MSISDN)?.let { number ->
+                    msisdn = number
+                    _step.value = EnrolStep.Pin(number, EnrolError.PROCESS_RESTARTED)
+                }
+        }
+    }
 
     fun begin() {
         _step.value = EnrolStep.Number()
@@ -238,7 +284,7 @@ class EnrolmentViewModel(
             when (val r = repository.verifyOtp(id, otp)) {
                 is ApiResult.Ok -> {
                     attestationChallenge = r.value.attestationChallenge
-                    _step.value = EnrolStep.Securing(SecuringStage.CREATING_KEY)
+                    _step.value = securingEntry()
                 }
                 is ApiResult.Refused ->
                     _step.value =
@@ -259,6 +305,10 @@ class EnrolmentViewModel(
      */
     fun secureDevice(unlock: LocalUnlock) {
         if (_step.value !is EnrolStep.Securing) return
+        if (!screenLock.isConfigured()) { // D3 : jamais de clé sans verrou d'écran ; l'écran explique quoi faire
+            _step.value = EnrolStep.ScreenLockRequired()
+            return
+        }
         val challengeB64 = attestationChallenge ?: return begin() // jamais de clé sans OTP validé
         val id = enrolmentId ?: return begin()
         exclusive {
@@ -298,7 +348,7 @@ class EnrolmentViewModel(
                     val number = msisdn
                     val deviceId = r.value.deviceId
                     if (number != null && deviceId != null) boundDevice?.save(BoundDevice(number, deviceId))
-                    recovery = IssuedCode(r.value.enrolmentId, r.value.recoveryCode, r.value.confirmPositions)
+                    recovery = IssuedCode(r.value.enrolmentId, r.value.recoveryCode)
                     _step.value =
                         if (rebinding && number != null) {
                             EnrolStep.Rebound(number) // E-22, puis la nouvelle clé (E-08)
@@ -365,7 +415,7 @@ class EnrolmentViewModel(
                     gate.recordSuccess()
                     rebinding = true
                     attestationChallenge = r.value.attestationChallenge // ES-25 : liaison après validation
-                    _step.value = EnrolStep.Securing(SecuringStage.CREATING_KEY)
+                    _step.value = securingEntry()
                 }
                 is ApiResult.Refused ->
                     _step.value =
@@ -381,6 +431,17 @@ class EnrolmentViewModel(
                 ApiResult.Unreachable -> _step.value = EnrolStep.Recovery(EnrolError.UNREACHABLE)
             }
         }
+    }
+
+    /** E-07 n'est atteint que si le verrou d'écran existe (D3) ; sinon l'écran explicatif, sans créer de clé. */
+    private fun securingEntry(): EnrolStep =
+        if (screenLock.isConfigured()) EnrolStep.Securing(SecuringStage.CREATING_KEY) else EnrolStep.ScreenLockRequired()
+
+    /** Retour des réglages, ou « C'est fait » : on revérifie le verrou ; la clé ne naît qu'après (D3). */
+    fun screenLockConfigured() {
+        if (_step.value !is EnrolStep.ScreenLockRequired) return
+        _step.value =
+            if (screenLock.isConfigured()) EnrolStep.Securing(SecuringStage.CREATING_KEY) else EnrolStep.ScreenLockRequired(stillMissing = true)
     }
 
     /** Attente restante sur cet appareil (E-21), lue sur l'horloge injectée. */
@@ -406,21 +467,20 @@ class EnrolmentViewModel(
         _step.value = EnrolStep.RecoveryKey(issued.code, lastDisplay = false)
     }
 
-    /** E-08 → E-09 : « Je l'ai écrite sur papier ». */
+    /** E-08 → E-09 : « Je l'ai écrite sur papier ». Seule la fin du code part à l'écran (rappel masqué). */
     fun keyWrittenDown() {
         val issued = recovery ?: return
-        _step.value = EnrolStep.Confirm(issued.positions)
+        _step.value = EnrolStep.Confirm(issued.code.takeLast(CODE_VISIBLE_TAIL))
     }
 
-    /** E-09 : 4 caractères demandés par le serveur ; en cas d'erreur, la clé est réaffichée une fois. */
-    fun confirmCharacters(characters: Map<Int, String>) {
+    /**
+     * E-09 (décision du propriétaire du 2026-10-10, méthode « carte bancaire ») : le code COMPLET est
+     * retapé et vérifié par le serveur contre son haché ; en cas d'erreur, la clé est réaffichée une fois.
+     */
+    fun confirmCode(code: String) {
         val issued = recovery ?: return
         val current = _step.value as? EnrolStep.Confirm ?: return
-        val request =
-            ConfirmRequest(
-                enrolmentId = issued.enrolmentId,
-                characters = issued.positions.map { ConfirmCharacter(it, characters[it].orEmpty().uppercase()) },
-            )
+        val request = ConfirmRequest(enrolmentId = issued.enrolmentId, recoveryCode = code.uppercase().filter { it.isLetterOrDigit() })
         exclusive {
             when (val r = repository.confirm(request)) {
                 is ApiResult.Ok -> loadHome(r.value.sessionToken)
@@ -474,15 +534,35 @@ class EnrolmentViewModel(
         private val boundDevice: BoundDeviceStore,
         private val session: SessionHolder,
         private val throttle: RecoveryThrottle,
+        private val screenLock: ScreenLock,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            EnrolmentViewModel(repository, keys, boundDevice = boundDevice, session = session, throttle = throttle) as T
+        override fun <T : ViewModel> create(
+            modelClass: Class<T>,
+            extras: CreationExtras,
+        ): T =
+            EnrolmentViewModel(
+                repository,
+                keys,
+                boundDevice = boundDevice,
+                session = session,
+                throttle = throttle,
+                screenLock = screenLock,
+                savedState = extras.createSavedStateHandle(),
+            ) as T
     }
 
     companion object {
         /** Plan de numérotation camerounais : 9 chiffres (forme seulement ; plage côté serveur). */
         const val NATIONAL_NUMBER_LENGTH = 9
+
+        private const val KEY_STAGE = "enrolment.stage"
+        private const val KEY_MSISDN = "enrolment.msisdn"
+        private const val STAGE_NUMBER = "NUMBER"
+        private const val STAGE_PIN = "PIN"
+
+        /** Caractères de la clé laissés lisibles (rappel E-09, saisie E-09/E-20) : décision du propriétaire, 2026-10-10. */
+        const val CODE_VISIBLE_TAIL = 2
         const val NEXT_OTP = "OTP"
         const val NEXT_RECOVERY = "RECOVERY"
         const val REASON_CREDENTIALS = "CREDENTIALS_INVALID"

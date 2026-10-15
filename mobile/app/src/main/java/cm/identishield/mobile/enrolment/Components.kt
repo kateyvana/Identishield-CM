@@ -295,5 +295,5 @@ fun formatXaf(amount: Long): String =
         .joinToString(" ")
         .reversed()
 
-/** Clé de récupération groupée par 4 pour la recopie sur papier (maquette E-08). */
-fun groupRecoveryCode(code: String): List<String> = code.chunked(4).chunked(2).map { it.joinToString("-") }
+/** Clé de récupération groupée par [CODE_GROUP] pour la recopie sur papier (maquette E-08) : « K7M-2QX ». */
+fun groupRecoveryCode(code: String): List<String> = code.chunked(CODE_GROUP).chunked(2).map { it.joinToString("-") }

@@ -22,6 +22,7 @@ import cm.identishield.mobile.security.DeviceKeyInvalidatedException
 import cm.identishield.mobile.security.DeviceKeyManager
 import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.LocalUnlock
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -174,6 +175,48 @@ class DailyViewModelTest {
         vm.chooseBeneficiary("677000456")
         vm.submitAmount(25000)
         vm.confirmTransfer()
+    }
+
+    /**
+     * D4 (c) : la session expire au milieu d'un envoi ; après reconnexion, la saisie (bénéficiaire,
+     * montant) est restituée, y compris après la mort du processus ; aucun secret n'est sauvegardé.
+     */
+    @Test
+    fun d4_sessionExpiryMidTransfer_restoresTheTypedBeneficiaryAndAmount_andSavesNoSecret() {
+        val saved = SavedStateHandle()
+        val vm = DailyViewModel(repo, keys, store, session, CoroutineScope(Dispatchers.Unconfined), savedState = saved)
+        vm.start()
+        vm.unlock(PIN, unlockOk)
+        vm.startSend()
+        vm.updateBeneficiaryDraft("677000456")
+        vm.sessionLost() // 401 : retour à E-10
+        assertTrue(vm.step.value is DailyStep.Unlock)
+        vm.unlock(PIN, unlockOk)
+        assertEquals(DailyStep.Beneficiary(DailyViewModel.recentBeneficiaries(TXS), draft = "677000456"), vm.step.value)
+        vm.chooseBeneficiary("677000456")
+        vm.updateAmountDraft("25000")
+        vm.sessionLost()
+        // mort du processus : ViewModel neuf, jeton perdu, même état sauvegardé
+        val revived = DailyViewModel(repo, keys, store, SessionHolder(), CoroutineScope(Dispatchers.Unconfined), savedState = saved)
+        revived.start()
+        revived.unlock(PIN, unlockOk)
+        assertEquals(DailyStep.Amount(JEAN, ACCOUNT.balanceXaf, draft = "25000"), revived.step.value)
+        val stored = saved.keys().map { saved.get<Any?>(it).toString() }
+        listOf(PIN, "jeton", CHALLENGE).forEach { secret -> assertTrue("secret « $secret » sauvegardé", stored.none { it.contains(secret) }) }
+    }
+
+    @Test
+    fun d4_goingHomeOnPurpose_abandonsTheDraft() {
+        val saved = SavedStateHandle()
+        val vm = DailyViewModel(repo, keys, store, session, CoroutineScope(Dispatchers.Unconfined), savedState = saved)
+        vm.start()
+        vm.unlock(PIN, unlockOk)
+        vm.startSend()
+        vm.updateBeneficiaryDraft("677000456")
+        vm.back() // retour volontaire à l'accueil
+        vm.sessionLost()
+        vm.unlock(PIN, unlockOk)
+        assertTrue("pas de reprise après un abandon volontaire", vm.step.value is DailyStep.Home)
     }
 
     // ---- flux B --------------------------------------------------------------------------------

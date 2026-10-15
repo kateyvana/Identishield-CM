@@ -17,7 +17,7 @@
 # La version DOIT figurer dans chaque décision /evaluate (EF-11 ruleSetVersion,
 # EF-17). Toute modification d'un paramètre s'accompagne d'un incrément de version.
 ruleset:
-  version: rs-0.9.0 # bump : STEP_UP_POLICY.app = DEFER (décision du tech lead, REGISTRE_DECISIONS T-10) ; rs-0.8.0 = calibration T3-07 PROVISOIRE (SCORE, W, STEP_UP_POLICY, NIGHT_ZONE, CAP_FAILCLOSED ; sémantique CAP_PROB précisée ; numérotée rs-0.6.0 sur la branche t3-07, renumérotée à l'intégration) ; rs-0.7.0 = NONCE_TTL (M-09) ; rs-0.6.0 = QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
+  version: rs-0.9.0 # bump mois 4 : STEP_UP_POLICY.app = DEFER (REGISTRE_DECISIONS T-10, ADR-016-A) ; THR_HIGH.medianWindow ajouté (T-12) ; CODE_LENGTH 20 → 6 (carte B1a) ; APP_CONN_KEEPALIVE et SERVER_CONN_KEEPALIVE ajoutés (ADR-039) ; rs-0.8.0 = calibration T3-07 PROVISOIRE (SCORE, W, STEP_UP_POLICY, NIGHT_ZONE, CAP_FAILCLOSED ; sémantique CAP_PROB précisée ; numérotée rs-0.6.0 sur la branche t3-07, renumérotée à l'intégration) ; rs-0.7.0 = NONCE_TTL (M-09) ; rs-0.6.0 = QUICK_AMOUNTS (M-07) ; rs-0.5.0 = APP_NETWORK_TIMEOUT (correctif M-06) ; rs-0.4.0 = OTP_RESEND_DELAY (M-06) ; rs-0.3.0 = ré-enrôlement et application mobile (ISC-AMD-02 v1.1)
   parameters:
     CAR_IMSI: PT72H # carence post-changement d'IMSI (72 h, état PROBATION)
     # CAR_ENROL (PT48H, carence post-ré-enrôlement) : RETIRÉ — SRS v1.3, ISC-TM v1.2 §7, ES-03c ; retiré ici par ISC-AMD-02 v1.1
@@ -74,7 +74,7 @@ ruleset:
     ALERT_REENROL: # seuil d'alerte console par compte (ES-24), sans aucune restriction du compte
       count: 5
       window: PT1H
-    CODE_LENGTH: 20 # longueur du code de récupération (ADR-029) ; fixée par le propriétaire (ISC-AMD-02) ; à calibrer
+    CODE_LENGTH: 6 # longueur du code de récupération (ADR-029) ; 20 → 6 : décision du propriétaire du 10/10 (carte B1a), code retapé en entier sur E-09
     # Application mobile (SRS v1.4 §0, ISC-MOB-SPEC v1.1 §14) — valeurs PROPOSÉES, à calibrer, à valider par le propriétaire
     REENROL_FREEZE: PT24H # gel des ré-enrôlements après « ce n'est pas moi » (proposé : aligné sur TTL_FREEZE)
     ENROL_TTL: PT10M # expiration d'un enrôlement entamé (proposé : 2 × OTP.ttl)
@@ -82,6 +82,9 @@ ruleset:
     POLL_FOREGROUND: PT30S # interrogation des alertes, application au premier plan (proposé)
     POLL_BACKGROUND: PT15M # arrière-plan : minimum des tâches périodiques Android (ISC-MOB-SPEC §9.4)
     APP_NETWORK_TIMEOUT: PT10S # délai d'expiration réseau de l'application (MOB-NF-03) ; lu à la construction
+    # Connexions persistantes (ADR-039, D9) : l'application rend une connexion inactive AVANT que le serveur ne la ferme.
+    APP_CONN_KEEPALIVE: PT20S # réserve de connexion de l'application ; DOIT être < SERVER_CONN_KEEPALIVE (vérifié à la construction) ; accepté par le propriétaire (ADR-039)
+    SERVER_CONN_KEEPALIVE: PT30S # fermeture d'une connexion inactive par le serveur (faux serveur ; cœur : carte B3) ; accepté par le propriétaire (ADR-039)
     QUICK_AMOUNTS: # montants rapides de l'écran Montant (E-13), en FCFA ; décidé par le propriétaire (M-07) ; lu à la construction
       - 5000
       - 10000

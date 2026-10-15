@@ -5,10 +5,13 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -145,29 +148,52 @@ class EnrolmentScreensTest {
         assertEquals(1, starts)
     }
 
+    /** D3 : l'écran dit la cause (pas de verrou) et l'action (réglages), charte points 3 et 4. */
+    @Test
+    fun e07_screenLockRequired_explainsCauseAndAction_andLeadsToSettings() {
+        var settings = 0
+        var done = 0
+        show { ScreenLockRequiredScreen(EnrolStep.ScreenLockRequired(stillMissing = true), onOpenSettings = { settings++ }, onConfigured = { done++ }) }
+        compose.onNodeWithText("Verrouillage d'écran requis").assertIsDisplayed()
+        compose.onNodeWithText("Ouvrez les réglages de sécurité", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("still-missing").assertIsDisplayed()
+        compose.onNodeWithTag("open-settings").performClick()
+        compose.onNodeWithTag("lock-configured").performClick()
+        assertEquals(1, settings)
+        assertEquals(1, done)
+        assertFalse("écran explicatif sans secret", secureFlagSet())
+    }
+
     @Test
     fun e08_recoveryKey_isCaptureProtected_groupedForPaper() {
         var written = false
-        show { RecoveryKeyScreen(EnrolStep.RecoveryKey("K7M2QX9RT4WZ8HNB3CFV", lastDisplay = true), onWritten = { written = true }) }
+        show { RecoveryKeyScreen(EnrolStep.RecoveryKey("K7M2QX", lastDisplay = true), onWritten = { written = true }) }
         assertTrue("MOB-S-05 : capture bloquée sur E-08", secureFlagSet())
-        compose.onNodeWithText("K7M2-QX9R").assertIsDisplayed()
-        compose.onNodeWithText("3CFV", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("recovery-code").assertIsDisplayed()
         compose.onNodeWithTag("last-display").assertIsDisplayed()
         compose.onNodeWithTag("written").performClick()
         assertTrue(written)
     }
 
+    /** Décision du propriétaire du 2026-10-10 : rappel masqué sauf les 2 derniers caractères, puis ressaisie complète. */
     @Test
-    fun e09_confirm_isCaptureProtected_andRequiresTheFourCharacters() {
-        var sent: Map<Int, String>? = null
-        val positions = listOf(3, 7, 12, 16)
-        show { ConfirmKeyScreen(EnrolStep.Confirm(positions), onConfirm = { sent = it }) }
+    fun e09_confirm_isCaptureProtected_remindsOnlyTheTail_andSubmitsTheWholeCode() {
+        var sent: String? = null
+        val length = BuildConfig.CODE_LENGTH
+        show { ConfirmKeyScreen(EnrolStep.Confirm("7K"), length, onConfirm = { sent = it }) }
         assertTrue("MOB-S-05 : capture bloquée sur E-09", secureFlagSet())
-        compose.onNodeWithText("Caractère n° 12").assertIsDisplayed()
+        assertEquals("exactement les 2 derniers caractères, rien d'autre", "•••-•7K", codeReminder(length, "7K"))
+        compose
+            .onNodeWithTag("code-reminder")
+            .assertIsDisplayed()
+            .assertContentDescriptionEquals("Rappel : votre clé se termine par 7 K")
+        compose.onAllNodesWithText("•••-•7K").assertCountEquals(0) // le rappel est retiré de l'arbre d'accessibilité (D2)
         compose.onNodeWithTag("confirm").assertIsNotEnabled()
-        positions.forEach { compose.onNodeWithTag("char-$it").performTextInput("m") }
+        compose.onNodeWithTag("confirm-input").performTextInput("k7pq3")
+        compose.onNodeWithTag("confirm").assertIsNotEnabled()
+        compose.onNodeWithTag("confirm-input").performTextInput("m")
         compose.onNodeWithTag("confirm").assertIsEnabled().performClick()
-        assertEquals(positions.associateWith { "M" }, sent)
+        assertEquals("le code complet, normalisé", "K7PQ3M", sent)
     }
 
     @Test
@@ -195,9 +221,9 @@ class EnrolmentScreensTest {
         var confirm by mutableStateOf(false)
         show {
             if (confirm) {
-                ConfirmKeyScreen(EnrolStep.Confirm(listOf(1, 2, 3, 4)), onConfirm = {})
+                ConfirmKeyScreen(EnrolStep.Confirm("QX"), BuildConfig.CODE_LENGTH, onConfirm = {})
             } else {
-                RecoveryKeyScreen(EnrolStep.RecoveryKey("K7M2QX9RT4WZ8HNB3CFV", lastDisplay = false), onWritten = {})
+                RecoveryKeyScreen(EnrolStep.RecoveryKey("K7M2QX", lastDisplay = false), onWritten = {})
             }
         }
         compose.onNodeWithTag("capture-blocked").assertIsDisplayed()
