@@ -13,11 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,20 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -64,23 +52,6 @@ object RecoveryTags {
     const val INCOMPATIBLE = "E-27b"
 }
 
-/** Tirets tous les 4 caractères, à l'affichage seulement : la valeur saisie reste brute. */
-internal object RecoveryGrouping : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val raw = text.text
-        return TransformedText(
-            AnnotatedString(raw.chunked(GROUP).joinToString("-")),
-            object : OffsetMapping {
-                override fun originalToTransformed(offset: Int) = offset + if (offset == 0) 0 else (offset - 1) / GROUP
-
-                override fun transformedToOriginal(offset: Int) = (offset - offset / (GROUP + 1)).coerceAtMost(raw.length)
-            },
-        )
-    }
-
-    private const val GROUP = 4
-}
-
 /** « 04:00 », ou « 1:04:00 » au-delà d'une heure. */
 fun formatWait(remaining: Duration): String {
     val total = remaining.seconds + if (remaining.nano > 0) 1 else 0
@@ -93,9 +64,10 @@ fun formatWait(remaining: Duration): String {
 // ---- E-20 Clé de récupération 🔒 -----------------------------------------------------------------
 
 /**
- * La clé est saisie en clair à l'écran (capture bloquée, MOB-S-05), sans copier-coller (MOB-S-06),
- * sans apprentissage du clavier (clavier « mot de passe ») ; elle part au serveur et n'est gardée
- * nulle part. Le message d'échec est le même pour tout le monde (ES-22).
+ * La clé est saisie dans le champ commun [CodeField] (capture bloquée, MOB-S-05 ; sans copier-coller,
+ * MOB-S-06 ; clavier « mot de passe » ; masquée sauf la fin ; champ mot de passe pour l'accessibilité,
+ * D2) ; elle part au serveur et n'est gardée nulle part. Le message d'échec est le même pour tout le
+ * monde (ES-22).
  */
 @Composable
 fun RecoveryScreen(
@@ -134,29 +106,7 @@ fun RecoveryScreen(
         VerticalGap(20)
         Text(stringResource(R.string.recovery_label), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         VerticalGap(8)
-        CompositionLocalProvider(LocalTextToolbar provides NoTextToolbar) {
-            BasicTextField(
-                value = code,
-                onValueChange = { v -> code = v.uppercase().filter { it.isLetterOrDigit() }.take(codeLength) },
-                singleLine = true,
-                visualTransformation = RecoveryGrouping,
-                textStyle = TextStyle(fontSize = 22.sp, color = Ink, fontFamily = FontFamily.Monospace),
-                keyboardOptions =
-                    KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Characters,
-                        autoCorrectEnabled = false,
-                        keyboardType = KeyboardType.Password,
-                    ),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White)
-                        .border(1.dp, Hairline, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 20.dp, vertical = 18.dp)
-                        .testTag("recovery-input"),
-            )
-        }
+        CodeField(code, { code = it }, codeLength, "recovery-input")
         VerticalGap(8)
         BodyText(stringResource(R.string.recovery_no_sms))
         step.error?.let { ErrorText(errorMessage(it)) }
@@ -420,7 +370,7 @@ fun DeviceIncompatibleScreen(onQuit: () -> Unit) {
 // ---- communs ------------------------------------------------------------------------------------
 
 @Composable
-private fun ColumnScope.Disc(
+internal fun ColumnScope.Disc(
     glyph: String,
     color: Color,
 ) {
@@ -435,7 +385,7 @@ private fun ColumnScope.Disc(
 }
 
 @Composable
-private fun Title(text: String) =
+internal fun Title(text: String) =
     Text(
         text,
         color = Ink,

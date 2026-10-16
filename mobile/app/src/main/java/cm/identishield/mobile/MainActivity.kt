@@ -1,7 +1,9 @@
 package cm.identishield.mobile
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -49,6 +51,7 @@ import cm.identishield.mobile.enrolment.ReboundScreen
 import cm.identishield.mobile.enrolment.RecoveryScreen
 import cm.identishield.mobile.enrolment.RecoveryWaitScreen
 import cm.identishield.mobile.enrolment.RecoveryKeyScreen
+import cm.identishield.mobile.enrolment.ScreenLockRequiredScreen
 import cm.identishield.mobile.enrolment.SecuringScreen
 import cm.identishield.mobile.enrolment.WelcomeScreen
 import cm.identishield.mobile.launch.LaunchScreen
@@ -56,6 +59,7 @@ import cm.identishield.mobile.launch.LaunchState
 import cm.identishield.mobile.launch.LaunchViewModel
 import cm.identishield.mobile.security.AndroidKeystoreDeviceKeyManager
 import cm.identishield.mobile.security.BiometricLocalUnlock
+import cm.identishield.mobile.security.KeyguardScreenLock
 import cm.identishield.mobile.security.LocalUnlock
 import cm.identishield.mobile.security.PrefsBoundDeviceStore
 import cm.identishield.mobile.security.PrefsThrottleStore
@@ -95,7 +99,7 @@ class MainActivity : FragmentActivity() {
     }
     private val launchViewModel: LaunchViewModel by viewModels { LaunchViewModel.Factory(keys) }
     private val enrolmentViewModel: EnrolmentViewModel by viewModels {
-        EnrolmentViewModel.Factory(RetrofitEnrolmentRepository(api), keys, boundDevice, session, throttle)
+        EnrolmentViewModel.Factory(RetrofitEnrolmentRepository(api), keys, boundDevice, session, throttle, KeyguardScreenLock(applicationContext))
     }
     private val dailyViewModel: DailyViewModel by viewModels {
         DailyViewModel.Factory(RetrofitDailyRepository(api), keys, boundDevice, session)
@@ -114,7 +118,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         applyTouchProtection() // MOB-S-07
-        launchViewModel.check()
+        launchViewModel.checkOnce()
         val unlocks =
             Unlocks(
                 securing = prompt(R.string.securing_prompt_title, R.string.securing_prompt_subtitle),
@@ -134,9 +138,16 @@ class MainActivity : FragmentActivity() {
                     Build.MODEL,
                     boundMsisdn = { boundDevice.load()?.msisdn },
                     onQuit = ::finish,
+                    onOpenSecuritySettings = { startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) },
                 )
             }
         }
+    }
+
+    /** Retour des réglages (D3) : la précondition « verrou d'écran » est revérifiée, la liaison reprend. */
+    override fun onResume() {
+        super.onResume()
+        enrolmentViewModel.screenLockConfigured()
     }
 
     private fun prompt(
@@ -160,6 +171,7 @@ fun AppRoot(
     deviceModel: String,
     boundMsisdn: () -> String?,
     onQuit: () -> Unit,
+    onOpenSecuritySettings: () -> Unit,
 ) {
     val launchState by launch.state.collectAsState()
     val enrolStep by enrolment.step.collectAsState()
@@ -169,10 +181,13 @@ fun AppRoot(
         return
     }
     val enrolled = enrolStep is EnrolStep.Home // fin du flux A ou D : la session est ouverte
+    // D4 (b) : un enrôlement en cours garde la main, même si la clé existe déjà dans la puce (après
+    // E-07) : la copie de la clé de récupération (E-08, E-09) ne peut jamais être sautée.
+    val enrolling = enrolStep !is EnrolStep.Welcome && !enrolled
     LaunchedEffect(launchState, enrolled) {
         if (launchState == LaunchState.KeyPresent || enrolled) daily.start()
     }
-    val inDaily = enrolled || (launchState == LaunchState.KeyPresent && dailyStep != DailyStep.NotBound)
+    val inDaily = enrolled || (!enrolling && launchState == LaunchState.KeyPresent && dailyStep != DailyStep.NotBound)
     if (inDaily) {
         DailyRoot(daily, dailyStep, alerts, unlocks, deviceModel, boundMsisdn) { msisdn ->
             // E-27a « Sécuriser à nouveau » : flux D, numéro mémorisé ; le SERVEUR dira RECOVERY.
@@ -180,7 +195,7 @@ fun AppRoot(
             daily.leaveForReenrolment()
         }
     } else {
-        EnrolmentRoot(enrolment, enrolStep, unlocks, deviceModel, onQuit)
+        EnrolmentRoot(enrolment, enrolStep, unlocks, deviceModel, onQuit, onOpenSecuritySettings)
     }
 }
 
@@ -191,6 +206,7 @@ private fun EnrolmentRoot(
     unlocks: Unlocks,
     deviceModel: String,
     onQuit: () -> Unit,
+    onOpenSecuritySettings: () -> Unit,
 ) {
     val canGoBack =
         step is EnrolStep.Number || step is EnrolStep.Pin || step is EnrolStep.Otp ||
@@ -209,8 +225,9 @@ private fun EnrolmentRoot(
             } else {
                 SecuringScreen(step, onSecure = { enrolment.secureDevice(unlocks.securing) }, onRestart = enrolment::begin)
             }
+        is EnrolStep.ScreenLockRequired -> ScreenLockRequiredScreen(step, onOpenSecuritySettings, enrolment::screenLockConfigured)
         is EnrolStep.RecoveryKey -> RecoveryKeyScreen(step, enrolment::keyWrittenDown)
-        is EnrolStep.Confirm -> ConfirmKeyScreen(step, enrolment::confirmCharacters)
+        is EnrolStep.Confirm -> ConfirmKeyScreen(step, BuildConfig.CODE_LENGTH, enrolment::confirmCode)
         is EnrolStep.Home -> CheckingScreen() // relais vers le flux B (AppRoot)
         is EnrolStep.Recovery ->
             RecoveryScreen(step, BuildConfig.CODE_LENGTH, enrolment::submitRecoveryCode, enrolment::lostKey, enrolment::back)
@@ -300,8 +317,8 @@ private fun DailyRoot(
                 onAlert = alerts::open,
             )
         is DailyStep.History -> HistoryScreen(step, onBack = daily::back, onHome = daily::goHome, onSend = daily::startSend)
-        is DailyStep.Beneficiary -> BeneficiaryScreen(step, daily::chooseBeneficiary, daily::back)
-        is DailyStep.Amount -> AmountScreen(step, BuildConfig.QUICK_AMOUNTS_XAF.toList(), daily::submitAmount, daily::back)
+        is DailyStep.Beneficiary -> BeneficiaryScreen(step, daily::chooseBeneficiary, daily::back, daily::updateBeneficiaryDraft)
+        is DailyStep.Amount -> AmountScreen(step, BuildConfig.QUICK_AMOUNTS_XAF.toList(), daily::submitAmount, daily::back, daily::updateAmountDraft)
         is DailyStep.Confirm -> ReviewScreen(step, daily::confirmTransfer, onCancel = daily::goHome, onBack = daily::back)
         is DailyStep.Authorize -> AuthorizeScreen(step, { pin -> daily.authorize(pin, unlocks.transfer) }, daily::back)
         is DailyStep.Sent -> SentScreen(step, deviceModel, daily::goHome)

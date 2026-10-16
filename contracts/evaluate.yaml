@@ -161,7 +161,7 @@ paths:
             example:
               actorId: analyst-01
               proof: case-4711
-              justification: identité du titulaire vérifiée par contact de confiance
+              justification: identité du titulaire vérifiée en agence, pièce d'identité présentée
       responses:
         '200':
           description: Approbation enregistrée ; état courant du gel retourné.
@@ -308,7 +308,7 @@ components:
           description: Nonce émis par GET /nonce ; 128 bits hex, usage unique (ES-10).
         proofType:
           type: string
-          enum: [SIGNATURE, TRUSTED_CONTACT, NONE]
+          enum: [SIGNATURE, NONE]
 
     EvaluateResponse:
       type: object
@@ -332,7 +332,7 @@ components:
           maximum: 100
         requiredAction:
           type: string
-          enum: [SIGNATURE, DEFER, CONTACT_CONFIRMATION, NONE]
+          enum: [SIGNATURE, DEFER, NONE]
         triggeredRules:
           type: array
           items:

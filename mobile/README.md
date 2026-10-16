@@ -69,7 +69,9 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
   - la clé de récupération n'est jamais persistée ;
   - une clé locale est détruite si le déverrouillage est annulé, si l'enregistrement échoue, ou si le Keystore lève une erreur (panne, clé invalidée). Il n'y a jamais de plantage ni de clé orpheline qu'E-01 prendrait pour un appareil lié.
 - **Un seul appel serveur à la fois :** un double appui n'envoie qu'une requête. Un OTP à usage unique ne peut donc pas être rejoué pour ramener E-07 à E-05.
+- **D3 (charte, points 3 et 4) :** la précondition « verrouillage d'écran configuré » est vérifiée **avant** de créer la clé (`ScreenLock`, `KeyguardManager.isDeviceSecure`). Sans verrou : écran explicatif (cause et action), lien vers les réglages de sécurité, revérification au retour ; aucune clé n'est créée tant que le verrou manque. Vaut pour les flux A et D.
 - **MOB-S-05 :** capture d'écran bloquée (`FLAG_SECURE`) sur E-06, E-08 et E-09, avec la pastille « 🔒 capture bloquée » des maquettes. `Page(secure = true)` pose les deux ensemble, jamais l'un sans l'autre.
+- **D2 (charte, point 6) :** `FLAG_SECURE` bloque les pixels, pas le texte : les services d'accessibilité (et `uiautomator`) lisent l'arbre sémantique. La clé affichée sur E-08 et le rappel d'E-09 sont **retirés de cet arbre** (`clearAndSetSemantics`) ; les champs de saisie d'E-09 et d'E-20 sont déclarés **mot de passe** et masqués sauf leurs 2 derniers caractères. **Compromis documenté pour les lecteurs d'écran :** un usager malvoyant n'entend jamais la clé ; il la lit à l'écran (zoom système) ou se fait aider hors application ; le rappel d'E-09 annonce seulement ses 2 derniers caractères, déjà visibles.
 - **MOB-S-06 :** ni copier ni coller. Le PIN et l'OTP passent par un pavé numérique (aucun champ texte) ; la clé est affichée en texte non sélectionnable ; sur E-09, la barre de texte est neutralisée.
 - **MOB-S-07 :** les touches sont filtrées quand une autre fenêtre recouvre l'application.
 - **Paramètres nommés :** `OTP_RESEND_DELAY` et `APP_NETWORK_TIMEOUT` (MOB-NF-03) sont lus dans `config/ruleset.yaml` **à la construction** (BuildConfig). Aucune de ces valeurs n'est écrite dans le code.
@@ -90,6 +92,7 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 - **Jamais de renvoi automatique** (SPEC §7.4, amendement M-07 d'ADR-037, PROPOSÉ) :
   - `retryOnConnectionFailure(false)` sur tout le client ;
   - une réponse perdue après l'envoi donne l'issue « inconnue » (E-18, « Vérifiez votre historique »), sans aucun renvoi.
+- **Connexions persistantes (ADR-039, D9) :** l'application garde une connexion inactive moins longtemps que le serveur (`APP_CONN_KEEPALIVE` < `SERVER_CONN_KEEPALIVE`, vérifié à la construction). Après une panne de connexion, seules les **lectures** sont rejouées, une fois, sur une connexion neuve : tous les `GET` et le ticket `POST /nonce`. Aucune action (session, enrôlement, envoi, annulation, réponse d'alerte) n'est jamais rejouée.
 - **Un seul appel serveur à la fois :** un double appui n'envoie qu'un seul envoi, et le retour arrière est bloqué pendant l'appel.
 - **Données locales :** seuls le numéro et le `deviceId` sont conservés (préférences privées, sauvegarde désactivée), jamais le solde, le nom, le PIN ni le jeton. Le jeton de session ne vit qu'en mémoire.
 - **Erreurs :**
@@ -134,8 +137,8 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 | E-05 | Pas de compte à rebours « Il expire dans 4:52 » | Le contrat n'expose pas l'expiration de l'OTP ; le serveur fait autorité (`OTP_EXPIRED`) |
 | E-04, E-07 | Pas de bande « MODE DÉMO » | Le mode démonstration s'active dans E-25 (carte M-08) |
 | E-07 | Une erreur d'appareil (puce logicielle, attestation refusée) s'affiche sur E-07 | E-27 est hors périmètre (carte M-08) |
-| E-08 | La clé est groupée par 4 sur autant de lignes que nécessaire : 20 caractères (`CODE_LENGTH`), là où la maquette en montre 12 | `CODE_LENGTH` vient du jeu de règles |
-| E-09 | Après une seconde erreur, l'application reste sur E-09 avec « Caractères incorrects » | La maquette dit « affichée une dernière fois » ; la suite n'est pas spécifiée (rotation : E-25, M-08) |
+| E-08 | ~~La clé est groupée par 4 sur autant de lignes que nécessaire : 20 caractères (`CODE_LENGTH`), là où la maquette en montre 12~~ B1a : 6 caractères (`CODE_LENGTH`), groupés par 3 (« K7M-2QX ») | Décision du propriétaire du 2026-10-10 ; `CODE_LENGTH` vient du jeu de règles |
+| E-09 | B1a (décision du propriétaire du 2026-10-10, méthode « carte bancaire ») : rappel du code masqué sauf ses 2 derniers caractères (« •••-•7K »), puis ressaisie **complète** dans un champ mot de passe ; le code entier part une fois au serveur (`recoveryCode`), qui le vérifie contre son haché salé ; plus de positions tirées au hasard. Après une seconde erreur, l'application reste sur E-09 avec « Clé incorrecte » | ISC-MOB-SPEC v1.2 §10 (« 4 caractères ») à reprendre dans la v1.3 (carte A0) ; la suite après la seconde erreur n'est pas spécifiée |
 | E-11 | ~~Tuiles affichées sans action ; pas de bandeau d'alerte ni de dernières opérations~~ M-07 : Envoyer et Historique actifs, dernières opérations (deux lignes, depuis `/transactions`) ; Alertes et Sécurité grisées ; pas de bandeau d'alerte | Alertes et Sécurité : M-08 |
 | E-11 | ~~Pas de barre de navigation du bas~~ M-07 : barre présente ; Alertes et Sécurité inactives | M-08 |
 | E-11 | « Alertes » sans compteur de non-lus | Les alertes relèvent du flux F (M-08) |
@@ -155,7 +158,7 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 | E-18 | Variante « Envoi non confirmé » (réponse perdue après l'envoi), avec « Voir l'historique » | SPEC §7.4 : jamais de renvoi, l'historique fait foi |
 | E-19 | Seulement les champs du contrat : nom (sinon numéro), date du serveur, Envoi ou Réception, montant, statut ; pas de « signé », de canal ni de lieu | Décision du propriétaire (M-07) |
 | E-11 | ~~Pas de bandeau d'alerte ; « Alertes » sans compteur~~ M-08 : bandeau de la première alerte à traiter, compteur sur la tuile | Flux F livré |
-| E-20 | La clé est saisie dans un champ texte (clavier « mot de passe », sans correction ni suggestion), affichée en clair, tirets tous les 4 caractères à l'affichage seulement ; bouton actif à `CODE_LENGTH` caractères | La maquette montre la saisie en cours ; la longueur vient du jeu de règles |
+| E-20 | La clé est saisie dans un champ texte (clavier « mot de passe », sans correction ni suggestion), tirets tous les 3 caractères à l'affichage seulement ; bouton actif à `CODE_LENGTH` caractères | La maquette montre la saisie en cours ; la longueur vient du jeu de règles |
 | E-21 | Compte à rebours réel, calculé sur l'horloge **du téléphone** (c'est un délai local) | Contrairement à E-17, l'échéance est locale : le téléphone fait foi |
 | E-21 | Pas de bouton retour pendant l'attente vers un nouvel essai ; le retour arrière ramène au PIN | L'attente tient quel que soit l'écran : elle est persistée |
 | E-22 | « Ancien téléphone » sans modèle (la maquette montre « Tecno Spark 10 ») ; pas de nom du titulaire | L'application ne connaît ni l'ancien appareil ni le nom avant la session |

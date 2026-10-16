@@ -67,6 +67,17 @@
     <string name="error_device_refused">Ce téléphone ne peut pas protéger votre compte. Vous pouvez continuer à utiliser MoMo par USSD.</string>
     <string name="error_unlock_cancelled">Déverrouillage annulé. Réessayez.</string>
     <string name="error_connection_lost">Connexion perdue. Recommencez.</string>
+    <string name="error_process_restarted">Le téléphone a fermé l\'application pendant la liaison. Entrez à nouveau votre PIN pour reprendre là où vous étiez.</string>
+
+    <!-- E-07, précondition (D3) : verrouillage d'écran requis -->
+    <string name="screen_lock_title">Verrouillage d\'écran requis</string>
+    <string name="screen_lock_body">Pour que ce téléphone devienne la clé de votre compte, il doit être protégé par un verrouillage d\'écran (code, schéma ou mot de passe). Sans ce verrou, la clé ne peut pas être créée dans la puce.</string>
+    <string name="screen_lock_step_1">1. Ouvrez les réglages de sécurité du téléphone</string>
+    <string name="screen_lock_step_2">2. Définissez un code, un schéma ou un mot de passe</string>
+    <string name="screen_lock_step_3">3. Revenez dans l\'application : la liaison reprend ici</string>
+    <string name="screen_lock_still_missing">Aucun verrouillage d\'écran détecté. Configurez-le dans les réglages, puis revenez.</string>
+    <string name="screen_lock_open_settings">Ouvrir les réglages</string>
+    <string name="screen_lock_done">C\'est fait, continuer</string>
 
     <!-- E-08 Clé de récupération -->
     <string name="recovery_title">Votre clé de récupération</string>
@@ -77,14 +88,18 @@
     <string name="recovery_warning">Sans cette clé, vous ne pourrez pas lier un nouveau téléphone si celui-ci est perdu, volé ou cassé. Ne la photographiez pas. Ne l\'envoyez à personne.</string>
     <string name="recovery_last_display">Dernier affichage : cette clé ne vous sera plus jamais montrée.</string>
     <string name="recovery_written">Je l\'ai écrite sur papier</string>
+    <string name="recovery_code_a11y">Clé de récupération affichée à l\'écran. Pour votre sécurité, elle n\'est pas lue par les services d\'accessibilité : recopiez-la depuis l\'écran.</string>
 
     <!-- E-09 Confirmation -->
     <string name="confirm_title">Vérifions votre copie</string>
-    <string name="confirm_body">Pour vérifier que vous l\'avez bien notée, entrez les caractères demandés.</string>
-    <string name="confirm_row">Caractère n° %1$d</string>
+    <string name="confirm_body">Retapez la clé que vous venez de noter sur papier, en entier. Pour vous aider, voici comment elle se termine.</string>
+    <string name="confirm_reminder_label">RAPPEL</string>
+    <string name="confirm_reminder_a11y">Rappel : votre clé se termine par %1$s</string>
+    <string name="confirm_input_label">VOTRE CLÉ (%1$d caractères)</string>
+    <string name="confirm_masked_hint">Les caractères saisis sont masqués, sauf les deux derniers.</string>
     <string name="confirm_note">En cas d\'erreur, la clé vous sera affichée une dernière fois.</string>
     <string name="confirm_action">Confirmer</string>
-    <string name="error_confirm_mismatch">Caractères incorrects.</string>
+    <string name="error_confirm_mismatch">Clé incorrecte. Vérifiez votre copie papier.</string>
 
     <!-- E-11 Accueil -->
     <string name="home_hello">Bonjour</string>

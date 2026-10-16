@@ -28,6 +28,11 @@ class LaunchViewModel(
         _state.value = if (keyChecker.hasDeviceKey()) LaunchState.KeyPresent else LaunchState.NoKey
     }
 
+    /** D4 (b) : une activité recréée (rotation) ne refait pas E-01 ; seul un ViewModel neuf vérifie. */
+    fun checkOnce() {
+        if (_state.value == LaunchState.Checking) check()
+    }
+
     /** Injection manuelle par constructeur (ADR-037) : pas de cadre d'injection. */
     class Factory(
         private val keyChecker: DeviceKeyChecker,

@@ -120,3 +120,49 @@ def test_silent_client_does_not_block_other_clients(https_mock, dev_tls):
         assert status == 200
     finally:
         silent.close()
+
+
+def test_connections_persist_then_close_after_the_server_keepalive(dev_tls):
+    """ADR-039 (D9) : HTTP/1.1 persistant ; le serveur ferme une connexion inactive après
+    SERVER_CONN_KEEPALIVE (raccourci ici à 1 s pour le test). L'application rend la sienne avant."""
+    import time
+    from datetime import timedelta
+
+    app = server.build(RULESET, CONTRACT, FIXTURES, Clock())
+    app.state.p.server_keepalive = timedelta(seconds=1)
+    httpd = server.serve(app, "127.0.0.1", 0, dev_tls / "mock.crt", dev_tls / "mock.key")
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        trusting = ssl.create_default_context(cafile=str(dev_tls / "dev-ca.crt"))
+        conn = http.client.HTTPSConnection(
+            "127.0.0.1", httpd.server_port, context=trusting, timeout=10
+        )
+        body = json.dumps({"msisdn": "677000200", "pin": PIN})
+        first_socket = None
+        for _ in range(2):
+            conn.request(
+                "POST",
+                "/mobile/v1/enrolment/start",
+                body=body,
+                headers={"Content-Type": "application/json"},
+            )
+            r = conn.getresponse()
+            r.read()
+            assert r.status == 200
+            assert r.version == 11 and not r.will_close  # connexion gardée ouverte
+            first_socket = first_socket or conn.sock
+            assert conn.sock is first_socket  # la même connexion a servi deux fois
+        time.sleep(2)
+        conn.sock.settimeout(5)
+        try:
+            closed = conn.sock.recv(1) == b""  # fin de flux : fermée par le serveur
+        except TimeoutError:
+            closed = False  # rien reçu, rien fermé : la connexion est restée ouverte
+        except (ssl.SSLError, ConnectionError):
+            closed = True
+        assert closed, "le serveur doit fermer la connexion inactive après SERVER_CONN_KEEPALIVE"
+        conn.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()

@@ -29,4 +29,4 @@ public record EvaluateRequest(
     String deviceKeyId,
     String signature,
     @Pattern(regexp = "^[0-9a-f]{32}$", message = "nonce must be 128-bit hex") String nonce,
-    @NotBlank @Pattern(regexp = "SIGNATURE|TRUSTED_CONTACT|NONE") String proofType) {}
+    @NotBlank @Pattern(regexp = "SIGNATURE|NONE") String proofType) {}

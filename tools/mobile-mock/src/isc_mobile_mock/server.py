@@ -66,6 +66,7 @@ class Params:
         self.code_length = int(p["CODE_LENGTH"])
         self.enrol_ttl = duration(p["ENROL_TTL"])
         self.session_ttl = duration(p["APP_SESSION_TTL"])
+        self.server_keepalive = duration(p["SERVER_CONN_KEEPALIVE"])  # ADR-039
         self.defer = duration(p["DEFER"])
         self.reenrol_freeze = duration(p["REENROL_FREEZE"])
 
@@ -143,7 +144,10 @@ class MockState:
         return {"salt": salt, "hash": _hash(salt, _normalise_code(code))}
 
     def _code_matches(self, acc, code):
-        rec = acc["recovery"]
+        return self._hash_matches(acc["recovery"], code)
+
+    @staticmethod
+    def _hash_matches(rec, code):
         return rec is not None and hmac.compare_digest(
             rec["hash"], _hash(rec["salt"], _normalise_code(code))
         )
@@ -222,9 +226,9 @@ class MockState:
         return e
 
     def _issue_code(self, acc, kind, device_id):
+        """Code émis, en attente de confirmation (D4) : rien n'est encore actif sur le compte ; seul
+        un haché salé du code est gardé, dans l'enrôlement, jusqu'à E-09."""
         code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(self.p.code_length))
-        positions = sorted(secrets.SystemRandom().sample(range(1, self.p.code_length + 1), 4))
-        acc["recovery"] = self._protect(code)
         eid = secrets.token_hex(8)
         self.enrolments[eid] = {
             "accountId": acc["accountId"],
@@ -232,10 +236,9 @@ class MockState:
             "stage": "CONFIRM",
             "expires": self.clock() + self.p.enrol_ttl,
             "deviceId": device_id,
-            "positions": positions,
-            "code": code,  # gardé le temps de la confirmation seulement (mémoire volatile du mock)
+            "pendingRecovery": self._protect(code),
         }
-        return {"enrolmentId": eid, "recoveryCode": code, "confirmPositions": positions}
+        return {"enrolmentId": eid, "recoveryCode": code}
 
     def _settle(self, acc):
         """Exécute les opérations différées arrivées à échéance (DEFER)."""
@@ -346,27 +349,28 @@ class MockState:
             if base64.b64decode(raw + "=" * (-len(raw) % 4))[:8] == b"SOFTWARE":  # règle de MOCK
                 _err(422, "DEVICE_UNSUPPORTED")
         acc = self.by_id[e["accountId"]]
-        old = acc["device"]
-        if old is not None:
-            acc["revoked"].add(old)
+        # D4 : l'appareil n'est PAS encore lié ; il le devient à la confirmation du code (E-09).
         device_id = "-".join(secrets.token_hex(n) for n in (4, 2, 2, 2, 6))  # forme UUID, aléatoire
-        acc["device"] = device_id
-        acc["alerted"], acc["failures"] = False, []
         del self.enrolments[body["enrolmentId"]]
-        if old is not None:  # ancien appareil informé, sans action (EF-47, ADR-010)
-            self._alert(acc, "DEVICE_REBOUND", "Un nouveau téléphone a été lié à votre compte.", [])
         issued = self._issue_code(acc, e["kind"], device_id)
         return 200, {**issued, "deviceId": device_id}
 
     def recovery_confirm(self, body, token, origin):
+        # B1a (2026-10-10) : le code COMPLET est retapé une fois et vérifié contre le haché salé.
         e = self._enrolment(body["enrolmentId"], "CONFIRM")
-        given = {c["position"]: c["character"].upper() for c in body["characters"]}
-        if sorted(given) != e["positions"] or any(
-            e["code"][pos - 1] != ch for pos, ch in given.items()
-        ):
+        acc = self.by_id[e["accountId"]]
+        if not self._hash_matches(e["pendingRecovery"], body["recoveryCode"]):
             _err(401, "RECOVERY_INVALID")
+        # D4 : la confirmation ACTIVE la liaison (et révoque l'ancienne) ; elle ne peut pas être sautée.
+        old = acc["device"]
+        if old is not None and old != e["deviceId"]:
+            acc["revoked"].add(old)
+            self._alert(acc, "DEVICE_REBOUND", "Un nouveau téléphone a été lié à votre compte.", [])
+        acc["device"] = e["deviceId"]
+        acc["recovery"] = e["pendingRecovery"]
+        acc["alerted"], acc["failures"] = False, []
         del self.enrolments[body["enrolmentId"]]
-        return 200, self._new_session(self.by_id[e["accountId"]], e["deviceId"])
+        return 200, self._new_session(acc, e["deviceId"])
 
     def session_challenge(self, query, token, origin):
         device_id = query.get("deviceId", [""])[0]
@@ -630,6 +634,11 @@ class MockApp:
 def make_handler(app: MockApp):
     class Handler(BaseHTTPRequestHandler):
         server_version = "isc-mobile-mock"
+        # ADR-039 (D9) : HTTP/1.1, connexions persistantes, fermées après SERVER_CONN_KEEPALIVE
+        # d'inactivité (StreamRequestHandler applique `timeout` à la socket). L'application rend les
+        # siennes avant (APP_CONN_KEEPALIVE) : plus de connexion morte réutilisée par le téléphone.
+        protocol_version = "HTTP/1.1"
+        timeout = app.state.p.server_keepalive.total_seconds()
 
         def _serve(self):
             length = int(self.headers.get("Content-Length") or 0)
@@ -650,6 +659,10 @@ def make_handler(app: MockApp):
         do_GET = do_POST = do_DELETE = _serve
 
         def log_message(self, fmt, *args):  # jamais de PIN, d'OTP, de clé ni de numéro (MOB-S-11)
+            if (
+                len(args) < 2
+            ):  # erreur de transport (délai d'inactivité ADR-039) : rien à journaliser
+                return
             print(f"{self.command} {getattr(self, '_template', None) or '?'} -> {args[1]}")
 
     return Handler

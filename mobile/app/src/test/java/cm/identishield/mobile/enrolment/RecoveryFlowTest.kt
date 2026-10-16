@@ -20,6 +20,7 @@ import cm.identishield.mobile.security.LocalUnlock
 import cm.identishield.mobile.security.MemoryThrottleStore
 import cm.identishield.mobile.security.MutableClock
 import cm.identishield.mobile.security.RecoveryThrottle
+import cm.identishield.mobile.security.ScreenLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
@@ -33,11 +34,10 @@ import java.util.Base64
 
 private const val NUMBER = "677000123"
 private const val PIN = "1234"
-private const val OLD_CODE = "K7PQ3MZX9DHTW2RC8NBV"
-private const val NEW_CODE = "Q4TN8XWM2RKA6ZPC3HBD"
+private const val OLD_CODE = "K7PQ3M" // CODE_LENGTH = 6 (décision du 2026-10-10)
+private const val NEW_CODE = "Q4TN8X"
 private const val DEVICE_ID = "1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
 private val CHALLENGE = ByteArray(16) { (it + 1).toByte() }
-private val POSITIONS = listOf(2, 5, 11, 19)
 
 /** Doublure du serveur pour le flux D. */
 private class FakeRecoveryServer : EnrolmentRepository {
@@ -46,7 +46,7 @@ private class FakeRecoveryServer : EnrolmentRepository {
     var startResult: ApiResult<StartResponse> = ApiResult.Ok(StartResponse(next = "RECOVERY", enrolmentId = "e-d"))
     val recoverResults = ArrayDeque<ApiResult<BindResponse>>()
     var completeResult: ApiResult<RecoveryCodeIssued> =
-        ApiResult.Ok(RecoveryCodeIssued("c-d", NEW_CODE, POSITIONS, deviceId = DEVICE_ID))
+        ApiResult.Ok(RecoveryCodeIssued("c-d", NEW_CODE, deviceId = DEVICE_ID))
 
     override suspend fun start(
         msisdn: String,
@@ -132,15 +132,29 @@ class RecoveryFlowTest {
     private val session = SessionHolder()
     private val unlockOk = LocalUnlock { s, p -> s.update(p).let { s.sign() } }
 
-    private fun vm(withThrottle: Boolean = true) =
-        EnrolmentViewModel(
-            server,
-            keys,
-            CoroutineScope(Dispatchers.Unconfined),
-            boundDevice = remembered,
-            session = session,
-            throttle = if (withThrottle) throttle else null,
-        )
+    private fun vm(
+        withThrottle: Boolean = true,
+        screenLock: ScreenLock = ScreenLock { true },
+    ) = EnrolmentViewModel(
+        server,
+        keys,
+        CoroutineScope(Dispatchers.Unconfined),
+        boundDevice = remembered,
+        session = session,
+        throttle = if (withThrottle) throttle else null,
+        screenLock = screenLock,
+    )
+
+    /** D3 vaut aussi pour le flux D : sans verrou d'écran, ni suppression ni création de clé. */
+    @Test
+    fun d3_fluxD_requiresTheScreenLock_beforeTouchingAnyKey() {
+        val vm = vm(screenLock = ScreenLock { false })
+        untilRecovery(vm)
+        vm.submitRecoveryCode(OLD_CODE)
+        assertEquals(EnrolStep.ScreenLockRequired(), vm.step.value)
+        vm.secureDevice(unlockOk)
+        assertTrue("ni delete ni generate sans verrou", keys.log.isEmpty())
+    }
 
     private fun untilRecovery(vm: EnrolmentViewModel) {
         vm.beginWithNumber(NUMBER)
@@ -212,7 +226,7 @@ class RecoveryFlowTest {
         untilRecovery(vm)
         vm.submitRecoveryCode("AAAA")
         assertEquals(1, throttleStore.state.failures)
-        vm.submitRecoveryCode(OLD_CODE.lowercase().chunked(4).joinToString("-"))
+        vm.submitRecoveryCode(OLD_CODE.lowercase().chunked(3).joinToString("-"))
         assertEquals("normalisée : majuscules, sans tirets", listOf("AAAA", OLD_CODE), server.codesSent)
         assertEquals(EnrolStep.Securing(SecuringStage.CREATING_KEY), vm.step.value)
         vm.secureDevice(unlockOk)
@@ -223,7 +237,7 @@ class RecoveryFlowTest {
         vm.showNewKey()
         assertEquals(EnrolStep.RecoveryKey(NEW_CODE, lastDisplay = false), vm.step.value)
         vm.keyWrittenDown()
-        vm.confirmCharacters(POSITIONS.associateWith { NEW_CODE[it - 1].toString() })
+        vm.confirmCode(NEW_CODE)
         assertTrue(vm.step.value is EnrolStep.Home)
         assertEquals("jeton-d", session.token)
         assertFalse(vm.holdsSecrets())
@@ -244,7 +258,7 @@ class RecoveryFlowTest {
         vm.secureDevice(unlockOk)
         vm.showNewKey()
         vm.keyWrittenDown()
-        vm.confirmCharacters(POSITIONS.associateWith { NEW_CODE[it - 1].toString() })
+        vm.confirmCode(NEW_CODE)
         assertFalse("aucun secret ne survit à l'arrivée sur l'accueil", vm.holdsSecrets())
     }
 

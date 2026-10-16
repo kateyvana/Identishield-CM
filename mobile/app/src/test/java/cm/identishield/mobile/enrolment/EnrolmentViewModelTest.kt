@@ -15,6 +15,8 @@ import cm.identishield.mobile.security.BoundDeviceStore
 import cm.identishield.mobile.security.DeviceKeyManager
 import cm.identishield.mobile.security.GeneratedKey
 import cm.identishield.mobile.security.InsecureKeyStorageException
+import cm.identishield.mobile.security.ScreenLock
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,8 +34,7 @@ import java.util.Base64
 private const val NEW_NUMBER = "677000200"
 private const val PIN = "1234"
 private const val OTP = "246810"
-private const val CODE = "K7M2QX9RT4WZ8HNB3CFV"
-private val POSITIONS = listOf(3, 7, 12, 16)
+private const val CODE = "K7M2QX" // CODE_LENGTH = 6 (décision du 2026-10-10)
 private val CHALLENGE = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
 private val ACCOUNT = Account("acc-000200", NEW_NUMBER, "Compte de test NEUF", 0, "TRUSTED", emptyList())
 
@@ -42,7 +43,7 @@ private class FakeRepository : EnrolmentRepository {
     var startResult: ApiResult<StartResponse> = ApiResult.Ok(StartResponse(next = "OTP", enrolmentId = "e-1"))
     var otpResult: ApiResult<BindResponse> =
         ApiResult.Ok(BindResponse("BIND", Base64.getEncoder().encodeToString(CHALLENGE)))
-    var completeResult: ApiResult<RecoveryCodeIssued> = ApiResult.Ok(RecoveryCodeIssued("c-1", CODE, POSITIONS))
+    var completeResult: ApiResult<RecoveryCodeIssued> = ApiResult.Ok(RecoveryCodeIssued("c-1", CODE))
     val confirmResults = ArrayDeque<ApiResult<SessionResponse>>()
     val calls = mutableListOf<String>()
     var lastComplete: CompleteRequest? = null
@@ -134,8 +135,8 @@ class EnrolmentViewModelTest {
         assertArrayEquals("la clé naît avec le défi du serveur", CHALLENGE, keys.generatedWith)
         assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = false), vm.step.value)
         vm.keyWrittenDown()
-        assertEquals(EnrolStep.Confirm(POSITIONS), vm.step.value)
-        vm.confirmCharacters(POSITIONS.associateWith { CODE[it - 1].toString() })
+        assertEquals("E-09 ne reçoit que la fin du code (rappel masqué)", EnrolStep.Confirm("QX"), vm.step.value)
+        vm.confirmCode(CODE)
         assertEquals(EnrolStep.Home(ACCOUNT), vm.step.value)
         assertEquals(listOf("start", "otp", "complete", "confirm", "account"), repo.calls)
         assertFalse("PIN, clé de récupération et défi sont effacés (P-8, P-9)", vm.holdsSecrets())
@@ -258,25 +259,24 @@ class EnrolmentViewModelTest {
         vm.submitOtp(OTP)
         vm.secureDevice(unlockOk)
         vm.keyWrittenDown()
-        vm.confirmCharacters(POSITIONS.associateWith { "Z" })
+        vm.confirmCode("ZZZZZZ")
         assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = true), vm.step.value)
         vm.keyWrittenDown()
-        vm.confirmCharacters(POSITIONS.associateWith { "Z" })
-        assertEquals(EnrolStep.Confirm(POSITIONS, EnrolError.CONFIRM_MISMATCH), vm.step.value)
+        vm.confirmCode("ZZZZZZ")
+        assertEquals(EnrolStep.Confirm("QX", EnrolError.CONFIRM_MISMATCH), vm.step.value)
     }
 
     @Test
-    fun confirmation_sendsUppercasedCharactersAtTheServerPositions() {
+    fun confirmation_sendsTheWholeCode_normalised() {
         val vm = vm()
         untilOtp(vm)
         vm.submitOtp(OTP)
         vm.secureDevice(unlockOk)
         vm.keyWrittenDown()
-        vm.confirmCharacters(POSITIONS.associateWith { CODE[it - 1].lowercase() })
+        vm.confirmCode(CODE.lowercase().chunked(3).joinToString("-"))
         val sent = repo.lastConfirm!!
         assertEquals("c-1", sent.enrolmentId)
-        assertEquals(POSITIONS, sent.characters.map { it.position })
-        assertEquals(POSITIONS.map { CODE[it - 1].toString() }, sent.characters.map { it.character })
+        assertEquals("majuscules, sans tiret : le code complet, une fois", CODE, sent.recoveryCode)
     }
 
     @Test
@@ -349,7 +349,7 @@ class EnrolmentViewModelTest {
 
     @Test
     fun endOfFlowA_remembersNumberAndDeviceId_andHandsTheSessionToFlowB() {
-        repo.completeResult = ApiResult.Ok(RecoveryCodeIssued("c-1", CODE, POSITIONS, deviceId = "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0"))
+        repo.completeResult = ApiResult.Ok(RecoveryCodeIssued("c-1", CODE, deviceId = "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0"))
         val store = RecordingStore()
         val session = SessionHolder()
         val vm = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), store, session)
@@ -358,9 +358,55 @@ class EnrolmentViewModelTest {
         vm.secureDevice(unlockOk)
         assertEquals("mémorisés dès la liaison", listOf(BoundDevice(NEW_NUMBER, "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0")), store.saved)
         vm.keyWrittenDown()
-        vm.confirmCharacters(POSITIONS.associateWith { CODE[it - 1].toString() })
+        vm.confirmCode(CODE)
         assertEquals("jeton", session.token)
         assertFalse(vm.holdsSecrets())
+    }
+
+    private class FakeScreenLock(
+        var configured: Boolean,
+    ) : ScreenLock {
+        override fun isConfigured() = configured
+    }
+
+    /** D3 (charte, points 3 et 4) : sans verrou d'écran, aucune clé ; l'écran explique ; reprise une fois le verrou posé. */
+    @Test
+    fun d3_withoutScreenLock_noKeyIsCreated_theScreenExplains_andBindingResumesOnceTheLockExists() {
+        val lock = FakeScreenLock(configured = false)
+        val vm = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), screenLock = lock)
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        assertEquals("précondition vérifiée AVANT la clé", EnrolStep.ScreenLockRequired(), vm.step.value)
+        vm.secureDevice(unlockOk) // ignoré : jamais de clé sans verrou
+        assertEquals(0, keys.generateCalls)
+        vm.screenLockConfigured() // retour des réglages, verrou toujours absent
+        assertEquals(EnrolStep.ScreenLockRequired(stillMissing = true), vm.step.value)
+        lock.configured = true
+        vm.screenLockConfigured()
+        assertEquals(EnrolStep.Securing(SecuringStage.CREATING_KEY), vm.step.value)
+        vm.secureDevice(unlockOk)
+        assertEquals(1, keys.generateCalls)
+        assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = false), vm.step.value)
+    }
+
+    /**
+     * D4 (a) : le téléphone tue le processus (retour des Réglages). Le parcours reprend au PIN avec le
+     * numéro ; AUCUN secret n'est dans l'état sauvegardé : ni PIN, ni OTP, ni clé de récupération, ni
+     * contexte d'enrôlement (qui permettrait de lier un appareil), ni défi, ni jeton (charte, point 5).
+     */
+    @Test
+    fun d4_processDeath_resumesAtThePinWithTheNumber_andTheSavedStateHoldsNoSecret() {
+        val saved = SavedStateHandle()
+        val vm = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), savedState = saved)
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = false), vm.step.value)
+        val revived = EnrolmentViewModel(repo, keys, CoroutineScope(Dispatchers.Unconfined), savedState = saved)
+        assertEquals(EnrolStep.Pin(NEW_NUMBER, EnrolError.PROCESS_RESTARTED), revived.step.value)
+        val stored = saved.keys().map { saved.get<Any?>(it).toString() }
+        val secrets = listOf(PIN, OTP, CODE, "e-1", "c-1", Base64.getEncoder().encodeToString(CHALLENGE), "jeton")
+        secrets.forEach { secret -> assertTrue("secret « $secret » dans l'état sauvegardé", stored.none { it.contains(secret) }) }
     }
 
     @Test

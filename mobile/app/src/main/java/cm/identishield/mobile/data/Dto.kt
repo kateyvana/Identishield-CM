@@ -47,20 +47,14 @@ data class CompleteRequest(
 data class RecoveryCodeIssued(
     val enrolmentId: String,
     val recoveryCode: String,
-    val confirmPositions: List<Int>,
     val deviceId: String? = null,
 )
 
-@Serializable
-data class ConfirmCharacter(
-    val position: Int,
-    val character: String,
-)
-
+/** B1a (2026-10-10) : le code complet, retapé une fois ; le serveur le vérifie contre son haché salé. */
 @Serializable
 data class ConfirmRequest(
     val enrolmentId: String,
-    val characters: List<ConfirmCharacter>,
+    val recoveryCode: String,
 )
 
 @Serializable

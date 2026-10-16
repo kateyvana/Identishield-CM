@@ -74,6 +74,14 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"$baseUrl\"")
         buildConfigField("int", "OTP_RESEND_DELAY_SECONDS", rulesetSeconds("OTP_RESEND_DELAY").toString())
         buildConfigField("long", "NETWORK_TIMEOUT_SECONDS", "${rulesetSeconds("APP_NETWORK_TIMEOUT")}L")
+        // ADR-039 (D9) : la réserve de l'application est STRICTEMENT plus courte que celle du serveur.
+        val appKeepAlive = rulesetDurationSeconds("APP_CONN_KEEPALIVE")
+        val serverKeepAlive = rulesetDurationSeconds("SERVER_CONN_KEEPALIVE")
+        if (appKeepAlive >= serverKeepAlive) {
+            throw GradleException("ADR-039 : APP_CONN_KEEPALIVE ($appKeepAlive s) doit être < SERVER_CONN_KEEPALIVE ($serverKeepAlive s)")
+        }
+        buildConfigField("long", "APP_CONN_KEEPALIVE_SECONDS", "${appKeepAlive}L")
+        buildConfigField("long", "SERVER_CONN_KEEPALIVE_SECONDS", "${serverKeepAlive}L")
         val quickAmounts = rulesetLongs("QUICK_AMOUNTS")
         buildConfigField("long[]", "QUICK_AMOUNTS_XAF", quickAmounts.joinToString(", ", "{", "}") { "${it}L" })
         // Flux D (M-08) : délai croissant local, même règle que le serveur (ES-21).

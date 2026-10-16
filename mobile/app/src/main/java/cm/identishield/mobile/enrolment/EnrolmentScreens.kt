@@ -19,11 +19,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,18 +30,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
@@ -66,6 +65,7 @@ object EnrolTags {
     const val OTP = "E-05"
     const val PIN = "E-06"
     const val SECURING = "E-07"
+    const val SCREEN_LOCK = "E-07-verrou" // précondition D3
     const val RECOVERY = "E-08"
     const val CONFIRM = "E-09"
     const val HOME = "E-11"
@@ -86,6 +86,7 @@ fun errorMessage(error: EnrolError): String =
             EnrolError.DEVICE_REFUSED -> R.string.error_device_refused
             EnrolError.UNLOCK_CANCELLED -> R.string.error_unlock_cancelled
             EnrolError.CONFIRM_MISMATCH -> R.string.error_confirm_mismatch
+            EnrolError.PROCESS_RESTARTED -> R.string.error_process_restarted
             EnrolError.UNEXPECTED -> R.string.error_unexpected
         },
     )
@@ -392,13 +393,55 @@ fun SecuringScreen(
     }
 }
 
+// ---- E-07, précondition : verrouillage d'écran requis (D3) -------------------------------------
+
+/**
+ * La clé exige le déverrouillage local (MOB-S-03) : sans verrouillage d'écran, la puce refuse de la
+ * créer. L'application le constate AVANT d'essayer, dit pourquoi et mène aux réglages (charte 3, 4).
+ */
+@Composable
+fun ScreenLockRequiredScreen(
+    step: EnrolStep.ScreenLockRequired,
+    onOpenSettings: () -> Unit,
+    onConfigured: () -> Unit,
+) {
+    Page(EnrolTags.SCREEN_LOCK) {
+        VerticalGap(24)
+        Disc("🔒", Amber)
+        VerticalGap(20)
+        Title(stringResource(R.string.screen_lock_title))
+        VerticalGap(12)
+        BodyText(stringResource(R.string.screen_lock_body))
+        VerticalGap(16)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.White)
+                .border(1.dp, Hairline, RoundedCornerShape(20.dp))
+                .padding(20.dp),
+        ) {
+            listOf(R.string.screen_lock_step_1, R.string.screen_lock_step_2, R.string.screen_lock_step_3).forEach {
+                Text(stringResource(it), color = Ink, fontSize = 17.sp, modifier = Modifier.padding(vertical = 8.dp))
+            }
+        }
+        if (step.stillMissing) ErrorText(stringResource(R.string.screen_lock_still_missing), tag = "still-missing")
+        Spacer(Modifier.weight(1f))
+        PrimaryButton(stringResource(R.string.screen_lock_open_settings), onOpenSettings, tag = "open-settings")
+        VerticalGap(12)
+        SecondaryButton(stringResource(R.string.screen_lock_done), onConfigured, tag = "lock-configured")
+    }
+}
+
 // ---- E-08 Clé de récupération -------------------------------------------------------------------
 @Composable
 fun RecoveryKeyScreen(
     step: EnrolStep.RecoveryKey,
     onWritten: () -> Unit,
 ) {
-    // Texte non sélectionnable (MOB-S-06).
+    // Texte non sélectionnable (MOB-S-06). D2 : la clé est retirée de l'arbre d'accessibilité
+    // (FLAG_SECURE bloque les pixels, pas le texte) ; compromis lecteurs d'écran documenté (README).
+    val hiddenFromReaders = stringResource(R.string.recovery_code_a11y)
     Page(EnrolTags.RECOVERY, secure = true) {
         BackHeader(stringResource(R.string.recovery_title), onBack = null)
         VerticalGap(16)
@@ -423,7 +466,10 @@ fun RecoveryKeyScreen(
                     .background(Color.White)
                     .border(1.dp, Navy, RoundedCornerShape(16.dp))
                     .padding(vertical = 20.dp)
-                    .testTag("recovery-code"),
+                    .clearAndSetSemantics {
+                        testTag = "recovery-code"
+                        contentDescription = hiddenFromReaders
+                    },
         ) {
             groupRecoveryCode(step.code).forEach { line ->
                 Text(line, fontFamily = FontFamily.Monospace, fontSize = 26.sp, color = Ink, letterSpacing = 2.sp)
@@ -462,65 +508,58 @@ internal object NoTextToolbar : TextToolbar {
     ) = Unit
 }
 
+/**
+ * Décision du propriétaire du 2026-10-10 (méthode « carte bancaire ») : rappel du code émis, masqué
+ * sauf ses derniers caractères ([EnrolmentViewModel.CODE_VISIBLE_TAIL]), puis ressaisie COMPLÈTE dans
+ * un champ mot de passe. L'écran ne reçoit que la fin du code : le reste ne quitte pas le ViewModel.
+ * Le rappel est retiré de l'arbre d'accessibilité (D2) ; seule sa fin, déjà visible, est annoncée.
+ */
 @Composable
 fun ConfirmKeyScreen(
     step: EnrolStep.Confirm,
-    onConfirm: (Map<Int, String>) -> Unit,
+    codeLength: Int,
+    onConfirm: (String) -> Unit,
 ) {
-    val typed = remember(step.positions) { mutableStateMapOf<Int, String>() }
+    var typed by remember(step.codeTail) { mutableStateOf("") }
+    val reminderSpoken = stringResource(R.string.confirm_reminder_a11y, step.codeTail.toList().joinToString(" "))
     Page(EnrolTags.CONFIRM, secure = true) {
         BackHeader(stringResource(R.string.confirm_title), onBack = null)
         VerticalGap(16)
         BodyText(stringResource(R.string.confirm_body))
         VerticalGap(20)
-        CompositionLocalProvider(LocalTextToolbar provides NoTextToolbar) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White)
-                        .border(1.dp, Hairline, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-            ) {
-                step.positions.forEachIndexed { i, position ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 14.dp),
-                    ) {
-                        Text(stringResource(R.string.confirm_row, position), color = Ink, fontSize = 18.sp, modifier = Modifier.weight(1f))
-                        BasicTextField(
-                            value = typed[position].orEmpty(),
-                            onValueChange = { v -> typed[position] = v.takeLast(1).uppercase() },
-                            singleLine = true,
-                            textStyle = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink, textAlign = TextAlign.End),
-                            keyboardOptions =
-                                KeyboardOptions(
-                                    keyboardType = KeyboardType.Ascii,
-                                    capitalization = KeyboardCapitalization.Characters,
-                                    autoCorrectEnabled = false,
-                                ),
-                            modifier =
-                                Modifier
-                                    .size(width = 48.dp, height = 36.dp)
-                                    .testTag("char-$position"),
-                        )
-                    }
-                    if (i < step.positions.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(Hairline))
-                }
-            }
-        }
-        VerticalGap(12)
+        Text(stringResource(R.string.confirm_reminder_label), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        VerticalGap(8)
+        Text(
+            codeReminder(codeLength, step.codeTail),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 26.sp,
+            letterSpacing = 2.sp,
+            color = Ink,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Navy.copy(alpha = 0.06f))
+                    .padding(vertical = 14.dp)
+                    .clearAndSetSemantics {
+                        testTag = "code-reminder"
+                        contentDescription = reminderSpoken
+                    },
+        )
+        VerticalGap(20)
+        Text(stringResource(R.string.confirm_input_label, codeLength), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        VerticalGap(8)
+        CodeField(typed, { typed = it }, codeLength, "confirm-input")
+        VerticalGap(8)
+        BodyText(stringResource(R.string.confirm_masked_hint))
         BodyText(stringResource(R.string.confirm_note))
         step.error?.let { ErrorText(errorMessage(it)) }
         Spacer(Modifier.weight(1f))
         PrimaryButton(
             stringResource(R.string.confirm_action),
-            { onConfirm(typed.toMap()) },
-            enabled = step.positions.all { !typed[it].isNullOrEmpty() },
+            { onConfirm(typed) },
+            enabled = typed.length == codeLength,
             tag = "confirm",
         )
     }
