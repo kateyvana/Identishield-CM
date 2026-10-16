@@ -23,8 +23,8 @@ import org.slf4j.LoggerFactory;
  *   <li><b>Chaine ET nom</b> : le {@link SSLContext} verifie la chaine du serveur (ancre CA), et
  *       {@code endpointIdentificationAlgorithm=HTTPS} verifie le nom (SAN) — les deux (OB-6).
  *   <li><b>Delai</b> de 800 ms a la connexion et par requete.
- *   <li><b>Disjoncteur</b> devant les appels, et <b>fail-closed</b> au-dessus de CAP_PROB quand le
- *       PDP est indisponible (ES-11).
+ *   <li><b>Disjoncteur</b> devant les appels, et <b>fail-closed</b> au-dessus de CAP_FAILCLOSED
+ *       quand le PDP est indisponible (ES-11).
  * </ul>
  */
 public final class PdpClient {
@@ -41,7 +41,11 @@ public final class PdpClient {
   private final ObjectMapper json;
 
   public PdpClient(
-      PdpClientProperties props, long capProbXaf, SSLContext ssl, Clock clock, ObjectMapper json) {
+      PdpClientProperties props,
+      long capFailClosedXaf,
+      SSLContext ssl,
+      Clock clock,
+      ObjectMapper json) {
     this.props = props;
     this.json = json;
     SSLParameters params = new SSLParameters();
@@ -55,7 +59,7 @@ public final class PdpClient {
             .build();
     this.breaker =
         new CircuitBreaker(props.breaker().failureThreshold(), props.breaker().cooldownMs(), clock);
-    this.policy = new FailClosedPolicy(capProbXaf);
+    this.policy = new FailClosedPolicy(capFailClosedXaf);
   }
 
   /**
@@ -97,10 +101,12 @@ public final class PdpClient {
     }
     Outcome outcome = policy.onPdpUnavailable(amountXaf);
     if (outcome == Outcome.REFUSED_FAIL_CLOSED) {
-      log.warn("PDP indisponible : sortie de {} XAF REFUSEE (> CAP_PROB), fail-closed", amountXaf);
+      log.warn(
+          "PDP indisponible : sortie de {} XAF REFUSEE (> CAP_FAILCLOSED), fail-closed", amountXaf);
     } else {
       log.warn(
-          "PDP indisponible : sortie de {} XAF autorisee en mode DEGRADE (<= CAP_PROB)", amountXaf);
+          "PDP indisponible : sortie de {} XAF autorisee en mode DEGRADE (<= CAP_FAILCLOSED)",
+          amountXaf);
     }
     return outcome;
   }

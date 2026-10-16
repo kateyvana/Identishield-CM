@@ -28,8 +28,8 @@ import org.springframework.stereotype.Service;
  * (ISC-SKEL §2), identique pour les six types (P2P + cash-in, cash-out, marchand, facture, crédit)
  * : créer la transaction PENDING_DECISION (+ decisionId généré en base) -> POST /evaluate en mTLS
  * -> appliquer la décision (ALLOW => mouvement de solde + EXECUTED). Si le PDP est indisponible,
- * politique fail-closed (ES-11) sur les SORTIES uniquement : refus au-dessus de CAP_PROB, mode
- * dégradé en dessous ; une entrée (CASH_IN) passe toujours en mode dégradé, quel que soit le
+ * politique fail-closed (ES-11) sur les SORTIES uniquement : refus au-dessus de CAP_FAILCLOSED,
+ * mode dégradé en dessous ; une entrée (CASH_IN) passe toujours en mode dégradé, quel que soit le
  * montant (ES-11 ne vise que les sorties — décision 15/09, correction SRS à venir).
  *
  * <p>Aucune règle ni machine à états de confiance au mois 2. currentImsi est résolu depuis le HLR
@@ -90,9 +90,9 @@ public class TransferService {
    * (EF-05) — chemin unique pour les six types. Créer la transaction PENDING_DECISION (+ decisionId
    * généré en base) -> POST /evaluate en mTLS -> appliquer la décision. ALLOW => commit (débit ou
    * crédit selon la direction) + EXECUTED ; refus explicite => REJECTED. PDP indisponible =>
-   * fail-closed (ES-11) sur les SORTIES : refus au-dessus de CAP_PROB, dégradé en dessous ; une
-   * entrée (CASH_IN) passe toujours en dégradé. Aucun type ne modifie un solde avant d'avoir appelé
-   * /evaluate.
+   * fail-closed (ES-11) sur les SORTIES : refus au-dessus de CAP_FAILCLOSED, dégradé en dessous ;
+   * une entrée (CASH_IN) passe toujours en dégradé. Aucun type ne modifie un solde avant d'avoir
+   * appelé /evaluate.
    *
    * <p>{@code counterparty} remplit le champ {@code beneficiaryId} requis par le contrat : le
    * bénéficiaire (P2P) ou l'identifiant de la contrepartie externe simulée (agent, marchand,
@@ -138,13 +138,15 @@ public class TransferService {
     // vise que les sorties. Décision du propriétaire (15/09), correction ES-11 à remonter au SRS :
     // voir docs/03-revues/2026-09-15-correction-es-11-fail-closed-sorties-seulement.md.
     if (type.isOutflow()) {
-      Outcome policy = new FailClosedPolicy(ruleSet.capProbDailyXaf()).onPdpUnavailable(amountXaf);
+      Outcome policy = new FailClosedPolicy(ruleSet.capFailClosedXaf()).onPdpUnavailable(amountXaf);
       if (policy == Outcome.REFUSED_FAIL_CLOSED) {
         transactions.markRejected(tx.id());
         log.warn(
-            "PDP indisponible : {} de {} XAF REFUSE (> CAP_PROB), fail-closed", type, amountXaf);
+            "PDP indisponible : {} de {} XAF REFUSE (> CAP_FAILCLOSED), fail-closed",
+            type,
+            amountXaf);
         return TransferResult.rejected(
-            tx.decisionId(), "fail-closed : PDP indisponible, montant > CAP_PROB");
+            tx.decisionId(), "fail-closed : PDP indisponible, montant > CAP_FAILCLOSED");
       }
     }
     log.warn("PDP indisponible : {} de {} XAF appliqué en mode DEGRADE", type, amountXaf);

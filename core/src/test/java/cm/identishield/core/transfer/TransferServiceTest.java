@@ -39,13 +39,13 @@ class TransferServiceTest {
 
   private static final String FROM = "677000001";
   private static final String BENEF = "677000002";
-  private static final long CAP_PROB = 25_000;
+  private static final long CAP_FAILCLOSED = 25_000;
 
   private final AccountRepository accounts = Mockito.mock(AccountRepository.class);
   private final TransactionRepository transactions = Mockito.mock(TransactionRepository.class);
   private final PdpClient pdp = Mockito.mock(PdpClient.class);
   private final RuleSet ruleSet =
-      new RuleSet("rs-0.1.0", Map.of("CAP_PROB", Map.of("dailyXaf", 25000)));
+      new RuleSet("rs-0.1.0", Map.of("CAP_FAILCLOSED", Map.of("xaf", 25000)));
   private final HlrService hlr = Mockito.mock(HlrService.class);
   private final NotificationService notifications = Mockito.mock(NotificationService.class);
   private final LayerMode layerMode = Mockito.mock(LayerMode.class);
@@ -86,10 +86,10 @@ class TransferServiceTest {
   }
 
   @Test
-  void pdpUnavailableAboveCapProbIsRefusedFailClosed() {
+  void pdpUnavailableAboveCapFailClosedIsRefusedFailClosed() {
     when(pdp.evaluate(anyString())).thenReturn(EvaluateOutcome.unavailable());
 
-    TransferResult r = service.transferP2P(FROM, BENEF, CAP_PROB + 1, "USSD");
+    TransferResult r = service.transferP2P(FROM, BENEF, CAP_FAILCLOSED + 1, "USSD");
 
     assertEquals(TransferResult.State.REJECTED, r.state());
     verify(transactions).markRejected(pending.id());
@@ -97,13 +97,13 @@ class TransferServiceTest {
   }
 
   @Test
-  void pdpUnavailableAtOrBelowCapProbRunsDegraded() {
+  void pdpUnavailableAtOrBelowCapFailClosedRunsDegraded() {
     when(pdp.evaluate(anyString())).thenReturn(EvaluateOutcome.unavailable());
 
-    TransferResult r = service.transferP2P(FROM, BENEF, CAP_PROB, "USSD");
+    TransferResult r = service.transferP2P(FROM, BENEF, CAP_FAILCLOSED, "USSD");
 
     assertEquals(TransferResult.State.EXECUTED_DEGRADED, r.state());
-    verify(accounts).debit(eq(sender.id()), eq(CAP_PROB));
+    verify(accounts).debit(eq(sender.id()), eq(CAP_FAILCLOSED));
   }
 
   /** La requête /evaluate porte l'IMSI courant du HLR et JAMAIS le motif d'une réattribution. */

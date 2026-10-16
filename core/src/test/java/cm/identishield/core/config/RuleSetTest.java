@@ -33,4 +33,11 @@ class RuleSetTest {
     assertEquals("rs-0.9.0", rs.version());
     assertEquals(25000L, rs.capProbDailyXaf(), "CAP_PROB.dailyXaf = valeur v1 d'ISC-TM §7");
   }
+
+  // @covers ES-11
+  @Test
+  void capFailClosedComesFromTheVersionedConfig_es11() throws IOException {
+    // ES-11 ratifié (2026-10-15) : le seuil fail-closed est CAP_FAILCLOSED, distinct de CAP_PROB.
+    assertEquals(50000L, load().capFailClosedXaf(), "CAP_FAILCLOSED.xaf = calibration T3-07");
+  }
 }
