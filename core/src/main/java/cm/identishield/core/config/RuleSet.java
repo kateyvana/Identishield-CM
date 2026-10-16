@@ -37,6 +37,29 @@ public record RuleSet(String version, Map<String, Object> parameters) {
     throw new IllegalStateException("CAP_FAILCLOSED.xaf absent du jeu de règles versionné");
   }
 
+  /**
+   * ES-06 : résolution d'un STEP_UP sur un canal, depuis STEP_UP_POLICY.{@code channelKey} (app ou
+   * ussd) du jeu de règles (ADR-016 §3, ADR-016-A).
+   */
+  public String stepUpPolicy(String channelKey) {
+    if (parameters != null
+        && parameters.get("STEP_UP_POLICY") instanceof Map<?, ?> m
+        && m.get(channelKey) instanceof CharSequence s) {
+      return s.toString();
+    }
+    throw new IllegalStateException(
+        "STEP_UP_POLICY." + channelKey + " absent du jeu de règles versionné");
+  }
+
+  /** Délai d'une exécution différée (STEP_UP résolu par DEFER), depuis DEFER du jeu de règles. */
+  public Duration defer() {
+    Object v = parameters == null ? null : parameters.get("DEFER");
+    if (v instanceof CharSequence s) {
+      return Duration.parse(s);
+    }
+    throw new IllegalStateException("DEFER absent du jeu de règles versionné");
+  }
+
   /** Carence post-changement d'IMSI (fenêtre PROBATION), depuis CAR_IMSI du jeu de règles. */
   public Duration carImsi() {
     Object v = parameters == null ? null : parameters.get("CAR_IMSI");

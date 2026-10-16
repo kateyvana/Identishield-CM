@@ -17,7 +17,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +88,58 @@ public class TransferService {
   }
 
   /**
+   * Exécute les opérations différées échues du compte (ADR-016-A : exécution à l'échéance sauf
+   * annulation). Évaluée à la lecture (ADR-019), sans ordonnanceur : à chaque nouvelle opération du
+   * compte, et par tout appelant qui consulte ses opérations différées (route mobile, couloir B).
+   */
+  public List<TransferResult> settleDeferred(String msisdn) {
+    return settle(account(msisdn), clock.instant());
+  }
+
+  /**
+   * Annule une opération différée du compte, seulement avant son échéance (E-17). Faux si elle
+   * n'est plus annulable (échue, déjà exécutée ou annulée) ou n'appartient pas au compte.
+   */
+  public boolean cancelDeferred(String msisdn, String decisionId) {
+    return transactions.cancelDeferred(account(msisdn).id(), decisionId, clock.instant());
+  }
+
+  private Account account(String msisdn) {
+    return accounts
+        .findByMsisdn(msisdn)
+        .orElseThrow(() -> new IllegalArgumentException("compte inconnu : " + msisdn));
+  }
+
+  private List<TransferResult> settle(Account account, Instant now) {
+    List<TransferResult> done = new ArrayList<>();
+    for (TransactionRepository.DeferredTransaction d :
+        transactions.findDueDeferred(account.id(), now)) {
+      if (transactions.claimDueDeferred(d.id(), now)) {
+        done.add(
+            commit(
+                new PendingTransaction(d.id(), d.decisionId()),
+                account,
+                OperationType.valueOf(d.type()),
+                d.beneficiaryId(),
+                d.amountXaf(),
+                TransferResult.State.EXECUTED));
+      }
+    }
+    return done;
+  }
+
+  /** STEP_UP (ES-06) : USSD -> CANCELLED, application -> DEFERRED jusqu'à now + DEFER. */
+  private TransferResult resolveStepUp(PendingTransaction tx, String channel, Instant now) {
+    if (new StepUpResolver(ruleSet).forChannel(channel) == StepUpResolver.Resolution.CANCEL) {
+      transactions.markCancelled(tx.id());
+      return TransferResult.cancelled(tx.decisionId(), "STEP_UP annulé (STEP_UP_POLICY)");
+    }
+    Instant executeAt = now.plus(ruleSet.defer());
+    transactions.markDeferred(tx.id(), executeAt);
+    return TransferResult.deferred(tx.decisionId(), executeAt);
+  }
+
+  /**
    * Exécute une opération de N'IMPORTE QUEL type (EF-04) en passant par le PDP AVANT tout commit
    * (EF-05) — chemin unique pour les six types. Créer la transaction PENDING_DECISION (+ decisionId
    * généré en base) -> POST /evaluate en mTLS -> appliquer la décision. ALLOW => commit (débit ou
@@ -100,11 +154,10 @@ public class TransferService {
    */
   public TransferResult operate(
       String msisdn, OperationType type, long amountXaf, String counterparty, String channel) {
-    Account initiator =
-        accounts
-            .findByMsisdn(msisdn)
-            .orElseThrow(() -> new IllegalArgumentException("compte inconnu : " + msisdn));
+    Account initiator = account(msisdn);
     Instant now = clock.instant();
+    // Les opérations différées échues du compte s'exécutent avant toute nouvelle opération (A3).
+    settle(initiator, now);
     PendingTransaction tx =
         transactions.createPending(
             initiator.id(), type.name(), amountXaf, counterparty, channel, now);
@@ -127,6 +180,10 @@ public class TransferService {
       if (outcome.isAllow()) {
         return commit(tx, initiator, type, counterparty, amountXaf, TransferResult.State.EXECUTED);
       }
+      if (outcome.isStepUp()) {
+        return resolveStepUp(tx, channel, now);
+      }
+      // FREEZE (le compte est gelé par le PDP, A1) ou REJECTED : la transaction est bloquée.
       transactions.markRejected(tx.id());
       return TransferResult.rejected(tx.decisionId(), "decision=" + outcome.decision());
     }
