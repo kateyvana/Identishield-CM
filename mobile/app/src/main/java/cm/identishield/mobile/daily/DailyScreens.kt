@@ -7,67 +7,104 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import cm.identishield.mobile.R
 import cm.identishield.mobile.data.Account
 import cm.identishield.mobile.data.Alert
 import cm.identishield.mobile.data.DeferredOperation
 import cm.identishield.mobile.data.Transaction
-import cm.identishield.mobile.enrolment.BackHeader
+import cm.identishield.mobile.enrolment.AmountText
 import cm.identishield.mobile.enrolment.BodyText
+import cm.identishield.mobile.enrolment.Callout
+import cm.identishield.mobile.enrolment.CenteredInput
+import cm.identishield.mobile.enrolment.DangerButton
+import cm.identishield.mobile.enrolment.Disc
 import cm.identishield.mobile.enrolment.ErrorText
-import cm.identishield.mobile.enrolment.Hairline
+import cm.identishield.mobile.enrolment.HairlineDivider
 import cm.identishield.mobile.enrolment.HorizontalGap
+import cm.identishield.mobile.enrolment.InputBox
 import cm.identishield.mobile.enrolment.Keypad
 import cm.identishield.mobile.enrolment.Page
+import cm.identishield.mobile.enrolment.Pill
 import cm.identishield.mobile.enrolment.PinDots
 import cm.identishield.mobile.enrolment.PrimaryButton
-import cm.identishield.mobile.enrolment.Secondary
 import cm.identishield.mobile.enrolment.SecondaryButton
+import cm.identishield.mobile.enrolment.SectionLabel
+import cm.identishield.mobile.enrolment.SurfaceCard
+import cm.identishield.mobile.enrolment.TextAction
+import cm.identishield.mobile.enrolment.Title
 import cm.identishield.mobile.enrolment.VerticalGap
-import cm.identishield.mobile.enrolment.WarningBox
 import cm.identishield.mobile.enrolment.formatMsisdn
 import cm.identishield.mobile.enrolment.formatXaf
 import cm.identishield.mobile.enrolment.maskMsisdn
 import cm.identishield.mobile.ui.theme.Amber
+import cm.identishield.mobile.ui.theme.AmountType
+import cm.identishield.mobile.ui.theme.Background
+import cm.identishield.mobile.ui.theme.Border
+import cm.identishield.mobile.ui.theme.DISABLED_ALPHA
 import cm.identishield.mobile.ui.theme.Danger
+import cm.identishield.mobile.ui.theme.Dimens
 import cm.identishield.mobile.ui.theme.Ink
 import cm.identishield.mobile.ui.theme.Navy
+import cm.identishield.mobile.ui.theme.NavyTint
+import cm.identishield.mobile.ui.theme.PillShape
 import cm.identishield.mobile.ui.theme.ProtectedGreen
+import cm.identishield.mobile.ui.theme.Spacing
+import cm.identishield.mobile.ui.theme.Surface
+import cm.identishield.mobile.ui.theme.TextSecondary
+import cm.identishield.mobile.ui.theme.Tone
+import cm.identishield.mobile.ui.useNavigationRail
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -97,6 +134,9 @@ const val RECENT_BENEFICIARIES_SHOWN = 2
 const val MAX_AMOUNT_DIGITS = 12
 
 private val FRENCH = Locale.FRENCH
+
+/** Masque du solde caché (œil barré) : aucune information sur le montant. */
+private const val HIDDEN_BALANCE = "••••••"
 
 /** « 2026-10-01T16:42:00Z » → « 1 oct. à 17:42 » (heure du téléphone) ; texte brut si illisible. */
 fun formatWhen(
@@ -161,37 +201,143 @@ fun UnlockScreen(
 ) {
     var pin by remember(step) { mutableStateOf("") }
     Page(DailyTags.UNLOCK) {
-        VerticalGap(16)
+        VerticalGap(Spacing.L)
         Image(
             painter = painterResource(R.drawable.logo_mark),
             contentDescription = stringResource(R.string.launch_logo_description),
             modifier =
                 Modifier
-                    .size(96.dp)
+                    .size(Dimens.Disc)
                     .align(Alignment.CenterHorizontally),
         )
-        VerticalGap(16)
+        VerticalGap(Spacing.L)
         Text(
             maskMsisdn(step.msisdn),
-            fontSize = 20.sp,
-            color = Secondary,
+            style = MaterialTheme.typography.titleLarge,
+            color = TextSecondary,
             textAlign = TextAlign.Center,
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .testTag("masked-number"),
         )
-        VerticalGap(16)
-        Text(stringResource(R.string.unlock_pin), fontSize = 20.sp, color = Secondary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        VerticalGap(16)
+        VerticalGap(Spacing.L)
+        Text(
+            stringResource(R.string.unlock_pin),
+            style = MaterialTheme.typography.titleLarge,
+            color = Ink,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        VerticalGap(Spacing.L)
         PinDots(pin.length)
-        VerticalGap(16)
+        VerticalGap(Spacing.L)
         BodyText(stringResource(R.string.unlock_then), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         step.problem?.let { ErrorText(problemText(it)) }
         Spacer(Modifier.weight(1f))
         Keypad(onDigit = { pin += it }, onDelete = { pin = pin.dropLast(1) })
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         PrimaryButton(stringResource(R.string.action_continue), { onUnlock(pin) }, enabled = pin.isNotEmpty())
+    }
+}
+
+// ---- Navigation principale ---------------------------------------------------------------------
+
+enum class NavTab { HOME, SEND, HISTORY, ALERTS }
+
+private class NavDestination(
+    val icon: Int,
+    val label: Int,
+    val selected: Boolean,
+    val onClick: (() -> Unit)?,
+    val tag: String,
+) {
+    /** L'onglet courant reste actif ; un onglet sans action est INDISPONIBLE (jamais un lien mort). */
+    val enabled get() = selected || onClick != null
+}
+
+/**
+ * Navigation des maquettes (E-11, E-19, E-23) : barre basse en largeur compacte, rail latéral au-delà
+ * ([useNavigationRail]). Cinq destinations ; Sécurité (E-25, hors périmètre) et toute destination sans
+ * action sont indisponibles : opacité réduite, aucun effet au toucher, annoncées « désactivées ».
+ */
+@Composable
+fun NavScaffold(
+    selected: NavTab,
+    onHome: (() -> Unit)?,
+    onSend: (() -> Unit)?,
+    onHistory: (() -> Unit)?,
+    onAlerts: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    val destinations =
+        listOf(
+            NavDestination(R.drawable.ic_home, R.string.home_home, selected == NavTab.HOME, onHome, "nav-home"),
+            NavDestination(R.drawable.ic_send, R.string.home_send, selected == NavTab.SEND, onSend, "nav-send"),
+            NavDestination(R.drawable.ic_history, R.string.home_history, selected == NavTab.HISTORY, onHistory, "nav-history"),
+            NavDestination(R.drawable.ic_alerts, R.string.home_alerts, selected == NavTab.ALERTS, onAlerts, "nav-alerts"),
+            NavDestination(R.drawable.ic_security, R.string.home_security, false, null, "nav-security"),
+        )
+    if (useNavigationRail()) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .background(Background),
+        ) {
+            NavigationRail(containerColor = Surface, modifier = Modifier.testTag("nav-rail")) {
+                destinations.forEach { d ->
+                    NavigationRailItem(
+                        selected = d.selected,
+                        onClick = d.onClick ?: {},
+                        enabled = d.enabled,
+                        icon = { Icon(painterResource(d.icon), contentDescription = null) },
+                        label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall) },
+                        colors =
+                            NavigationRailItemDefaults.colors(
+                                selectedIconColor = Navy,
+                                selectedTextColor = Navy,
+                                indicatorColor = NavyTint,
+                                unselectedIconColor = TextSecondary,
+                                unselectedTextColor = TextSecondary,
+                            ),
+                        modifier = Modifier.testTag(d.tag),
+                    )
+                }
+            }
+            Box(Modifier.weight(1f)) { content() }
+        }
+    } else {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(Background),
+        ) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .consumeWindowInsets(WindowInsets.navigationBars),
+            ) { content() }
+            NavigationBar(containerColor = Surface, modifier = Modifier.testTag("bottom-nav")) {
+                destinations.forEach { d ->
+                    NavigationBarItem(
+                        selected = d.selected,
+                        onClick = d.onClick ?: {},
+                        enabled = d.enabled,
+                        icon = { Icon(painterResource(d.icon), contentDescription = null) },
+                        label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall, maxLines = 1) },
+                        colors =
+                            NavigationBarItemDefaults.colors(
+                                selectedIconColor = Navy,
+                                selectedTextColor = Navy,
+                                indicatorColor = NavyTint,
+                                unselectedIconColor = TextSecondary,
+                                unselectedTextColor = TextSecondary,
+                            ),
+                        modifier = Modifier.testTag(d.tag),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -215,62 +361,218 @@ fun DailyHomeScreen(
     onAlerts: (() -> Unit)? = null,
     onAlert: ((Alert) -> Unit)? = null,
 ) {
-    Page(DailyTags.HOME) {
-        Column(
-            Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
-        ) {
-            VerticalGap(16)
-            BalanceCard(account, deviceModel)
-            VerticalGap(16)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                Tile(R.string.home_send, "↗", onSend, "tile-send", Modifier.weight(1f))
-                Tile(R.string.home_history, "≡", onHistory, "tile-history", Modifier.weight(1f))
-                Tile(R.string.home_alerts, "🔔", onAlerts, "tile-alerts", Modifier.weight(1f), count = pendingAlerts.size)
-                Tile(R.string.home_security, "🛡", null, "tile-security", Modifier.weight(1f))
-            }
+    NavScaffold(NavTab.HOME, onHome = null, onSend = onSend, onHistory = onHistory, onAlerts = onAlerts) {
+        Page(DailyTags.HOME, hero = { HomeHero(account, deviceModel, onSend, onHistory, onAlerts, pendingAlerts.size) }) {
             problem?.let { ErrorText(problemText(it)) }
             pendingAlerts.firstOrNull()?.let { alert ->
-                VerticalGap(16)
+                VerticalGap(Spacing.S)
                 AlertBanner(alert) { onAlert?.invoke(alert) }
             }
             if (account.deferredOperations.isNotEmpty()) {
-                VerticalGap(16)
-                Card(R.string.home_deferred, "deferred") {
-                    account.deferredOperations.forEach { op ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable(enabled = onDeferred != null) { onDeferred?.invoke(op) }
-                                    .padding(vertical = 10.dp)
-                                    .testTag("deferred-${op.transferId}"),
-                        ) {
+                VerticalGap(Spacing.XL)
+                SectionTitle(stringResource(R.string.home_deferred))
+                account.deferredOperations.forEach { op ->
+                    VerticalGap(Spacing.S)
+                    SurfaceCard(
+                        Modifier
+                            .clickable(enabled = onDeferred != null) { onDeferred?.invoke(op) }
+                            .testTag("deferred-${op.transferId}"),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     stringResource(R.string.home_deferred_item, formatXaf(op.amountXaf), formatMsisdn(op.beneficiaryMsisdn)),
-                                    color = Ink,
-                                    fontSize = 16.sp,
+                                    color = Navy,
+                                    style = MaterialTheme.typography.titleMedium,
                                 )
-                                Text(formatWhen(op.executeAt, zone), color = Secondary, fontSize = 14.sp)
+                                Text(formatWhen(op.executeAt, zone), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                             }
-                            Pill(stringResource(R.string.action_cancel), Danger)
+                            HorizontalGap(Spacing.S)
+                            Pill(stringResource(R.string.action_cancel), Tone.DANGER)
                         }
                     }
                 }
             }
             if (transactions.isNotEmpty()) {
-                VerticalGap(16)
-                Card(R.string.home_recent, "recent") {
-                    transactions.take(RECENT_OPERATIONS_SHOWN).forEach { TransactionRow(it, zone) }
+                VerticalGap(Spacing.XL)
+                SectionTitle(stringResource(R.string.home_recent))
+                transactions.take(RECENT_OPERATIONS_SHOWN).forEach {
+                    VerticalGap(Spacing.S)
+                    TransactionCard(it, zone)
                 }
             }
         }
-        BottomNav(NavTab.HOME, onHome = null, onSend = onSend, onHistory = onHistory, onAlerts = onAlerts)
     }
 }
+
+/**
+ * En-tête bleu nuit pleine largeur (sous la barre d'état, bord bas arrondi) portant le nom de
+ * l'application ; la carte du solde en chevauche le bas.
+ */
+@Composable
+private fun HomeHero(
+    account: Account,
+    deviceModel: String,
+    onSend: (() -> Unit)?,
+    onHistory: (() -> Unit)?,
+    onAlerts: (() -> Unit)?,
+    pendingAlerts: Int,
+) {
+    Box(Modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(bottomStart = Spacing.XXL, bottomEnd = Spacing.XXL))
+                .background(Navy)
+                .statusBarsPadding()
+                .padding(bottom = Dimens.HeroOverlap)
+                .heightIn(min = Dimens.HeaderBar),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                stringResource(R.string.app_name),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Surface,
+            )
+        }
+        Box(
+            Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = Dimens.HeaderBar)
+                .widthIn(max = Dimens.ContentMaxWidth)
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.XL),
+        ) { BalanceCard(account, deviceModel, onSend, onHistory, onAlerts, pendingAlerts) }
+    }
+}
+
+@Composable
+private fun BalanceCard(
+    account: Account,
+    deviceModel: String,
+    onSend: (() -> Unit)?,
+    onHistory: (() -> Unit)?,
+    onAlerts: (() -> Unit)?,
+    pendingAlerts: Int,
+) {
+    // Visible à l'ouverture ; le choix n'est jamais enregistré (décision B-UI, point 10).
+    var hidden by rememberSaveable { mutableStateOf(false) }
+    val hiddenLabel = stringResource(R.string.balance_hidden)
+    SurfaceCard(Modifier.testTag("balance-card"), contentPadding = PaddingValues(top = Spacing.L)) {
+        Column(Modifier.padding(horizontal = Spacing.L)) {
+            Text(stringResource(R.string.home_wallet), style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+            VerticalGap(Spacing.XS)
+            Text(account.holderName, style = MaterialTheme.typography.titleMedium, color = Ink, modifier = Modifier.testTag("holder"))
+            Text(stringResource(R.string.home_number, formatMsisdn(account.msisdn)), style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            VerticalGap(Spacing.M)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
+                    if (hidden) {
+                        AmountText(
+                            HIDDEN_BALANCE,
+                            AmountType.Hero,
+                            Navy,
+                            Modifier
+                                .weight(1f, fill = false)
+                                .semantics { contentDescription = hiddenLabel }
+                                .testTag("balance"),
+                        )
+                    } else {
+                        AmountText(
+                            formatXaf(account.balanceXaf),
+                            AmountType.Hero,
+                            Navy,
+                            Modifier
+                                .weight(1f, fill = false)
+                                .testTag("balance"),
+                            fit = true,
+                        )
+                    }
+                    HorizontalGap(Spacing.S)
+                    Text(
+                        stringResource(R.string.home_currency),
+                        style = AmountType.Currency,
+                        color = Navy,
+                        modifier = Modifier.padding(bottom = Spacing.XS),
+                    )
+                }
+                IconButton(onClick = { hidden = !hidden }, modifier = Modifier.testTag("balance-toggle")) {
+                    Icon(
+                        painterResource(if (hidden) R.drawable.ic_visibility else R.drawable.ic_visibility_off),
+                        contentDescription = stringResource(if (hidden) R.string.balance_show else R.string.balance_hide),
+                        tint = TextSecondary,
+                    )
+                }
+            }
+            Text(stringResource(R.string.home_balance), style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            VerticalGap(Spacing.M)
+            // Vert : état vérifié par le serveur (session ouverte par signature) — règle de la palette.
+            Pill(stringResource(R.string.home_protected, deviceModel), Tone.VERIFIED, Modifier.testTag("protected"))
+            VerticalGap(Spacing.L)
+        }
+        HairlineDivider()
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+        ) {
+            HomeAction(R.drawable.ic_send, stringResource(R.string.home_send), 0, onSend, "tile-send")
+            VerticalRule()
+            HomeAction(R.drawable.ic_history, stringResource(R.string.home_history), 0, onHistory, "tile-history")
+            VerticalRule()
+            HomeAction(R.drawable.ic_alerts, stringResource(R.string.home_alerts), pendingAlerts, onAlerts, "tile-alerts")
+        }
+    }
+}
+
+/** Action de la carte du solde : icône au-dessus, libellé dessous ; sans action, indisponible. */
+@Composable
+private fun RowScope.HomeAction(
+    icon: Int,
+    label: String,
+    count: Int,
+    onClick: (() -> Unit)?,
+    tag: String,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier =
+            Modifier
+                .weight(1f)
+                .clickable(enabled = onClick != null) { onClick?.invoke() }
+                .alpha(if (onClick != null) 1f else DISABLED_ALPHA)
+                .heightIn(min = Dimens.TouchTarget)
+                .padding(vertical = Spacing.M)
+                .testTag(tag),
+    ) {
+        Icon(painterResource(icon), contentDescription = null, tint = Navy)
+        VerticalGap(Spacing.XS)
+        Text(
+            buildAnnotatedString {
+                append(label)
+                if (count > 0) withStyle(SpanStyle(color = Danger)) { append(" $count") }
+            },
+            style = MaterialTheme.typography.labelMedium,
+            color = Navy,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun VerticalRule() =
+    Box(
+        Modifier
+            .padding(vertical = Spacing.M)
+            .width(Dimens.Hairline)
+            .fillMaxHeight()
+            .background(Border),
+    )
+
+@Composable
+private fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium, color = Ink)
 
 /** Bandeau d'alerte de la maquette E-11 : résumé du serveur, jamais de lien ni de code (MOB-S-15). */
 @Composable
@@ -285,229 +587,64 @@ private fun AlertBanner(
             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.alert_banner_see)) }
         },
         color = Ink,
-        fontSize = 16.sp,
+        style = MaterialTheme.typography.bodyMedium,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Amber.copy(alpha = 0.16f))
-                .border(1.dp, Amber.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+                .clip(MaterialTheme.shapes.medium)
+                .background(Tone.WARNING.fill)
+                .border(Dimens.Hairline, Tone.WARNING.stroke, MaterialTheme.shapes.medium)
                 .clickable(onClick = onClick)
-                .padding(16.dp)
+                .padding(Spacing.L)
                 .testTag("alert-banner"),
     )
 }
 
+/**
+ * Une opération, une carte : seulement les champs du contrat (nom ou numéro, date, sens, montant,
+ * statut). Montant signé en encre ; refusé (bloqué, rejeté) en rouge ; jamais en vert.
+ */
 @Composable
-private fun BalanceCard(
-    account: Account,
-    deviceModel: String,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Navy)
-                .padding(24.dp),
-    ) {
-        Text(stringResource(R.string.home_hello), color = Color.White.copy(alpha = 0.8f), fontSize = 17.sp)
-        Text(account.holderName, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("holder"))
-        Text(stringResource(R.string.home_number, formatMsisdn(account.msisdn)), color = Color.White.copy(alpha = 0.8f), fontSize = 17.sp)
-        VerticalGap(16)
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(formatXaf(account.balanceXaf), color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("balance"))
-            HorizontalGap(8)
-            Text(stringResource(R.string.home_currency), color = Color.White, fontSize = 22.sp, modifier = Modifier.padding(bottom = 6.dp))
-        }
-        Text(stringResource(R.string.home_balance), color = Color.White.copy(alpha = 0.8f), fontSize = 16.sp)
-        VerticalGap(16)
-        // Vert : état vérifié par le serveur (session ouverte par signature) — règle de la palette.
-        Text(
-            stringResource(R.string.home_protected, deviceModel),
-            color = ProtectedGreen,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            modifier =
-                Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(ProtectedGreen.copy(alpha = 0.15f))
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-                    .testTag("protected"),
-        )
-    }
-}
-
-/** Tuile d'action ; sans action (null) elle est grisée : Alertes et Sécurité arrivent en M-08. */
-@Composable
-private fun Tile(
-    label: Int,
-    glyph: String,
-    onClick: (() -> Unit)?,
-    tag: String,
-    modifier: Modifier,
-    count: Int = 0,
-) {
-    val color = if (onClick != null) Navy else Secondary
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
-                .border(1.dp, Hairline, RoundedCornerShape(16.dp))
-                .clickable(enabled = onClick != null) { onClick?.invoke() }
-                .padding(vertical = 14.dp)
-                .testTag(tag),
-    ) {
-        Text(glyph, fontSize = 26.sp, color = color)
-        Text(
-            buildAnnotatedString {
-                append(stringResource(label))
-                if (count > 0) withStyle(SpanStyle(color = Danger)) { append(" $count") }
-            },
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = color,
-        )
-    }
-}
-
-enum class NavTab { HOME, SEND, HISTORY, ALERTS }
-
-/** Barre de navigation des maquettes (E-11, E-19, E-23). Sécurité (E-25) : inactive, hors M-08. */
-@Composable
-fun BottomNav(
-    selected: NavTab,
-    onHome: (() -> Unit)?,
-    onSend: (() -> Unit)?,
-    onHistory: (() -> Unit)?,
-    onAlerts: (() -> Unit)? = null,
-) {
-    Column {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(Hairline),
-        )
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .testTag("bottom-nav"),
-        ) {
-            NavItem("⌂", R.string.home_home, selected == NavTab.HOME, onHome, "nav-home", Modifier.weight(1f))
-            NavItem("↗", R.string.home_send, selected == NavTab.SEND, onSend, "nav-send", Modifier.weight(1f))
-            NavItem("≡", R.string.home_history, selected == NavTab.HISTORY, onHistory, "nav-history", Modifier.weight(1f))
-            NavItem("🔔", R.string.home_alerts, selected == NavTab.ALERTS, onAlerts, "nav-alerts", Modifier.weight(1f))
-            NavItem("🛡", R.string.home_security, false, null, "nav-security", Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun NavItem(
-    glyph: String,
-    label: Int,
-    selected: Boolean,
-    onClick: (() -> Unit)?,
-    tag: String,
-    modifier: Modifier,
-) {
-    val color = if (selected) Navy else Secondary
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier =
-            modifier
-                .clickable(enabled = onClick != null) { onClick?.invoke() }
-                .testTag(tag),
-    ) {
-        Text(glyph, fontSize = 20.sp, color = color)
-        Text(stringResource(label), fontSize = 12.sp, color = color, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-    }
-}
-
-@Composable
-private fun Card(
-    title: Int?,
-    tag: String,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color.White)
-                .border(1.dp, Hairline, RoundedCornerShape(20.dp))
-                .padding(horizontal = 20.dp, vertical = 14.dp)
-                .testTag(tag),
-    ) {
-        title?.let { Text(stringResource(it), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Ink) }
-        content()
-    }
-}
-
-@Composable
-private fun Pill(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text,
-        color = color,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(50))
-                .background(color.copy(alpha = 0.12f))
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-    )
-}
-
-/** Une opération : seulement les champs du contrat (nom ou numéro, date, sens, montant, statut). */
-@Composable
-private fun TransactionRow(
+private fun TransactionCard(
     t: Transaction,
     zone: ZoneId,
 ) {
     val outgoing = t.direction == DailyViewModel.DIRECTION_OUT
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 10.dp)
-                .testTag("tx-${t.transferId}"),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(t.counterpartyName ?: formatMsisdn(t.counterpartyMsisdn), color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text(
-                formatHistoryDate(t.at, zone) + " · " + stringResource(if (outgoing) R.string.history_out else R.string.history_in),
-                color = Secondary,
-                fontSize = 14.sp,
-            )
+    val badge =
+        when (t.status) {
+            "DEFERRED" -> R.string.status_deferred to Tone.WARNING
+            "CANCELLED" -> R.string.status_cancelled to Tone.MUTED
+            "FROZEN" -> R.string.status_frozen to Tone.DANGER
+            "REJECTED" -> R.string.status_rejected to Tone.DANGER
+            else -> null
         }
-        val badge =
-            when (t.status) {
-                "DEFERRED" -> R.string.status_deferred to Amber
-                "CANCELLED" -> R.string.status_cancelled to Secondary
-                "FROZEN" -> R.string.status_frozen to Danger
-                "REJECTED" -> R.string.status_rejected to Danger
-                else -> null
+    SurfaceCard(Modifier.testTag("tx-${t.transferId}")) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    t.counterpartyName ?: formatMsisdn(t.counterpartyMsisdn),
+                    color = Navy,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    formatHistoryDate(t.at, zone) + " · " + stringResource(if (outgoing) R.string.history_out else R.string.history_in),
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
-        if (badge != null) {
-            Pill(stringResource(badge.first), badge.second, Modifier.testTag("status-${t.transferId}"))
-        } else {
-            Text(
-                (if (outgoing) "- " else "+ ") + formatXaf(t.amountXaf),
-                color = if (outgoing) Ink else ProtectedGreen,
-                fontSize = 18.sp,
-            )
+            HorizontalGap(Spacing.S)
+            Column(horizontalAlignment = Alignment.End) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    val refused = badge?.second == Tone.DANGER
+                    AmountText((if (outgoing) "- " else "+ ") + formatXaf(t.amountXaf), AmountType.Row, if (refused) Danger else Ink)
+                    HorizontalGap(Spacing.XS)
+                    Text(stringResource(R.string.home_currency), style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                }
+                if (badge != null) {
+                    VerticalGap(Spacing.XS)
+                    Pill(stringResource(badge.first), badge.second, Modifier.testTag("status-${t.transferId}"))
+                }
+            }
         }
     }
 }
@@ -522,21 +659,16 @@ fun HistoryScreen(
     onSend: () -> Unit,
     zone: ZoneId = ZoneId.systemDefault(),
 ) {
-    Page(DailyTags.HISTORY) {
-        BackHeader(stringResource(R.string.history_title), onBack)
-        VerticalGap(12)
-        Column(
-            Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
-        ) {
+    NavScaffold(NavTab.HISTORY, onHome = onHome, onSend = onSend, onHistory = null) {
+        Page(DailyTags.HISTORY, title = stringResource(R.string.history_title), onBack = onBack) {
             if (step.items.isEmpty()) {
                 BodyText(stringResource(R.string.history_empty))
             } else {
-                Card(null, "history-list") { step.items.forEach { TransactionRow(it, zone) } }
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.S), modifier = Modifier.testTag("history-list")) {
+                    step.items.forEach { TransactionCard(it, zone) }
+                }
             }
         }
-        BottomNav(NavTab.HISTORY, onHome = onHome, onSend = onSend, onHistory = null)
     }
 }
 
@@ -550,23 +682,10 @@ fun BeneficiaryScreen(
     onDraft: (String) -> Unit = {},
 ) {
     var number by remember(step.recents) { mutableStateOf(step.draft) } // D4 : restitué après reconnexion
-    Page(DailyTags.BENEFICIARY) {
-        BackHeader(stringResource(R.string.send_title), onBack)
-        VerticalGap(16)
-        Text(stringResource(R.string.beneficiary_label), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        VerticalGap(8)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White)
-                    .border(1.dp, Hairline, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-        ) {
-            Text(stringResource(R.string.beneficiary_prefix), fontSize = 20.sp, color = Ink)
-            HorizontalGap(12)
+    Page(DailyTags.BENEFICIARY, title = stringResource(R.string.send_title), onBack = onBack) {
+        InputBox(stringResource(R.string.beneficiary_label)) {
+            Text(stringResource(R.string.beneficiary_prefix), style = MaterialTheme.typography.titleLarge, color = TextSecondary)
+            HorizontalGap(Spacing.M)
             BasicTextField(
                 value = number,
                 onValueChange = { v ->
@@ -574,41 +693,39 @@ fun BeneficiaryScreen(
                     onDraft(number)
                 },
                 singleLine = true,
-                textStyle = TextStyle(fontSize = 20.sp, color = Ink),
+                textStyle = MaterialTheme.typography.titleLarge.copy(color = Ink),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 modifier =
                     Modifier
                         .weight(1f)
                         .testTag("beneficiary-input"),
+                decorationBox = CenteredInput,
             )
         }
         step.problem?.let { ErrorText(problemText(it)) }
         val recents = step.recents.take(RECENT_BENEFICIARIES_SHOWN)
         if (recents.isNotEmpty()) {
-            VerticalGap(20)
-            Text(stringResource(R.string.recents_label), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            VerticalGap(8)
-            Card(null, "recents") {
-                recents.forEach { t ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { onSubmit(t.counterpartyMsisdn) }
-                                .padding(vertical = 10.dp)
-                                .testTag("recent-${t.counterpartyMsisdn}"),
-                    ) {
+            VerticalGap(Spacing.XL)
+            SectionLabel(stringResource(R.string.recents_label))
+            recents.forEach { t ->
+                VerticalGap(Spacing.S)
+                SurfaceCard(
+                    Modifier
+                        .clickable { onSubmit(t.counterpartyMsisdn) }
+                        .testTag("recent-${t.counterpartyMsisdn}"),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(t.counterpartyName ?: formatMsisdn(t.counterpartyMsisdn), color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                            Text(formatMsisdn(t.counterpartyMsisdn), color = Secondary, fontSize = 15.sp)
+                            Text(t.counterpartyName ?: formatMsisdn(t.counterpartyMsisdn), color = Navy, style = MaterialTheme.typography.titleMedium)
+                            Text(formatMsisdn(t.counterpartyMsisdn), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                         }
-                        Pill(stringResource(R.string.recent_known), Navy)
+                        Pill(stringResource(R.string.recent_known), Tone.NEUTRAL)
                     }
                 }
             }
         }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(number) }, enabled = number.isNotEmpty())
     }
 }
@@ -625,9 +742,7 @@ fun AmountScreen(
 ) {
     var digits by remember(step.holder, step.balanceXaf) { mutableStateOf(step.draft) } // D4
     val amount = digits.toLongOrNull() ?: 0
-    Page(DailyTags.AMOUNT) {
-        BackHeader(stringResource(R.string.amount_title), onBack)
-        VerticalGap(12)
+    Page(DailyTags.AMOUNT, title = stringResource(R.string.amount_title), onBack = onBack) {
         Text(
             buildAnnotatedString {
                 append(stringResource(R.string.amount_to))
@@ -635,51 +750,59 @@ fun AmountScreen(
                 append(" · " + formatMsisdn(step.holder.msisdn))
             },
             color = Ink,
-            fontSize = 17.sp,
+            style = MaterialTheme.typography.bodyLarge,
         )
-        VerticalGap(16)
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-            Text(formatXaf(amount), fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.testTag("amount"))
-            HorizontalGap(8)
-            Text(stringResource(R.string.home_currency), fontSize = 24.sp, color = Ink, modifier = Modifier.padding(bottom = 8.dp))
+        VerticalGap(Spacing.L)
+        InputBox(stringResource(R.string.amount_label)) {
+            AmountText(
+                formatXaf(amount),
+                AmountType.Hero,
+                Ink,
+                Modifier
+                    .weight(1f, fill = false)
+                    .testTag("amount"),
+                fit = true,
+            )
+            HorizontalGap(Spacing.S)
+            Text(stringResource(R.string.home_currency), style = AmountType.Currency, color = Ink)
         }
+        VerticalGap(Spacing.XS)
+        Text(
+            stringResource(R.string.amount_available, formatXaf(step.balanceXaf)),
+            color = TextSecondary,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.testTag("balance-available"),
+        )
         // Indicatif seulement : le serveur refuse un solde insuffisant (SPEC §7.4).
         if (amount in 1..step.balanceXaf) {
             Text(
                 stringResource(R.string.amount_after, formatXaf(step.balanceXaf - amount)),
-                color = Secondary,
-                fontSize = 15.sp,
-                textAlign = TextAlign.Center,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .testTag("balance-after"),
+                color = TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("balance-after"),
             )
         }
-        VerticalGap(12)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        VerticalGap(Spacing.M)
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S), modifier = Modifier.fillMaxWidth()) {
             quickAmounts.forEach { q ->
-                Text(
-                    formatXaf(q),
-                    color = Ink,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center,
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier =
                         Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color.White)
-                            .border(1.dp, Hairline, RoundedCornerShape(50))
+                            .heightIn(min = Dimens.TouchTarget)
+                            .clip(PillShape)
+                            .background(Surface)
+                            .border(Dimens.Hairline, Border, PillShape)
                             .clickable {
                                 digits = q.toString()
                                 onDraft(digits)
-                            }
-                            .padding(vertical = 8.dp)
-                            .testTag("quick-$q"),
-                )
+                            }.testTag("quick-$q"),
+                ) { AmountText(formatXaf(q), MaterialTheme.typography.labelMedium, Ink, fit = true) }
             }
         }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.M)
         Keypad(
             onDigit = { d ->
                 if (digits.length < MAX_AMOUNT_DIGITS && !(digits.isEmpty() && d == '0')) {
@@ -692,7 +815,7 @@ fun AmountScreen(
                 onDraft(digits)
             },
         )
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(amount) }, enabled = amount >= 1)
     }
 }
@@ -708,52 +831,39 @@ fun ReviewScreen(
     onCancel: () -> Unit,
     onBack: () -> Unit,
 ) {
-    Page(DailyTags.REVIEW, secure = true) {
-        BackHeader(stringResource(R.string.review_title), onBack)
-        VerticalGap(16)
-        Card(null, "review-beneficiary") {
-            Text(stringResource(R.string.review_beneficiary), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Text(step.holder.holderName, color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("holder-name"))
-            Text(stringResource(R.string.home_number, formatMsisdn(step.holder.msisdn)), color = Secondary, fontSize = 16.sp)
+    Page(DailyTags.REVIEW, secure = true, title = stringResource(R.string.review_title), onBack = onBack) {
+        SurfaceCard(Modifier.testTag("review-beneficiary"), contentPadding = PaddingValues(Spacing.L)) {
+            SectionLabel(stringResource(R.string.review_beneficiary))
+            VerticalGap(Spacing.XS)
+            Text(step.holder.holderName, color = Navy, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.testTag("holder-name"))
+            Text(stringResource(R.string.home_number, formatMsisdn(step.holder.msisdn)), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             if (step.holder.newBeneficiary) {
-                VerticalGap(10)
-                Pill(stringResource(R.string.review_new), Danger, Modifier.testTag("new-beneficiary"))
+                VerticalGap(Spacing.M)
+                Pill(stringResource(R.string.review_new), Tone.DANGER, Modifier.testTag("new-beneficiary"))
             }
         }
-        VerticalGap(12)
-        Card(null, "review-amount") {
-            Text(stringResource(R.string.review_amount), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.review_amount_value, formatXaf(step.amountXaf)), color = Ink, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        VerticalGap(Spacing.M)
+        SurfaceCard(Modifier.testTag("review-amount"), contentPadding = PaddingValues(Spacing.L)) {
+            SectionLabel(stringResource(R.string.review_amount))
+            VerticalGap(Spacing.XS)
+            AmountText(stringResource(R.string.review_amount_value, formatXaf(step.amountXaf)), AmountType.Large, Ink, fit = true)
         }
         if (step.holder.newBeneficiary) {
-            VerticalGap(12)
-            WarningBox(content = {
-                Text(
-                    buildAnnotatedString {
-                        append(stringResource(R.string.review_new_warning_before))
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.review_new_warning_key)) }
-                        append(stringResource(R.string.review_new_warning_after))
-                    },
-                    color = Ink,
-                    fontSize = 16.sp,
-                )
-            }, tag = "new-warning")
+            VerticalGap(Spacing.M)
+            Callout(
+                buildAnnotatedString {
+                    append(stringResource(R.string.review_new_warning_before))
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.review_new_warning_key)) }
+                    append(stringResource(R.string.review_new_warning_after))
+                },
+                tag = "new-warning",
+            )
         }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.action_confirm), onConfirm, tag = "confirm")
-        VerticalGap(8)
-        Text(
-            stringResource(R.string.action_cancel),
-            color = Secondary,
-            fontSize = 17.sp,
-            textAlign = TextAlign.Center,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onCancel)
-                    .padding(vertical = 12.dp)
-                    .testTag("cancel"),
-        )
+        VerticalGap(Spacing.S)
+        TextAction(stringResource(R.string.action_cancel), onCancel, tag = "cancel")
     }
 }
 
@@ -766,44 +876,52 @@ fun AuthorizeScreen(
     onBack: () -> Unit,
 ) {
     var pin by remember(step.problem, step.holder, step.amountXaf) { mutableStateOf("") }
-    Page(DailyTags.AUTHORIZE, secure = true) {
-        BackHeader(stringResource(R.string.authorize_title), onBack.takeUnless { step.busy })
-        VerticalGap(8)
+    Page(DailyTags.AUTHORIZE, secure = true, title = stringResource(R.string.authorize_title), onBack = onBack.takeUnless { step.busy }) {
         Text(
             stringResource(R.string.authorize_summary, formatXaf(step.amountXaf), step.holder.holderName),
             color = Ink,
-            fontSize = 18.sp,
-            modifier = Modifier.testTag("summary"),
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag("summary"),
         )
-        VerticalGap(12)
-        Text(stringResource(R.string.authorize_step_pin), color = Secondary, fontSize = 18.sp)
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
+        Text(
+            stringResource(R.string.authorize_step_pin),
+            color = TextSecondary,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        VerticalGap(Spacing.M)
         PinDots(pin.length)
-        VerticalGap(12)
-        Card(null, "unlock-card") {
+        VerticalGap(Spacing.M)
+        SurfaceCard(Modifier.testTag("unlock-card")) {
             Text(
                 "🔐 " + stringResource(R.string.authorize_step_unlock),
                 color = Ink,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(
                 stringResource(R.string.authorize_step_unlock_body),
-                color = Secondary,
-                fontSize = 15.sp,
+                color = TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
         step.problem?.let { ErrorText(problemText(it, onAuthorize = true)) }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.M)
         Keypad(
             onDigit = { if (!step.busy) pin += it },
             onDelete = { if (!step.busy) pin = pin.dropLast(1) },
         )
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(pin) }, enabled = pin.isNotEmpty() && !step.busy)
     }
 }
@@ -819,28 +937,24 @@ fun SentScreen(
 ) {
     Page(DailyTags.SENT) {
         Spacer(Modifier.weight(1f))
-        ResultIcon("✓", ProtectedGreen)
-        VerticalGap(20)
-        CenteredTitle(stringResource(R.string.sent_title), 24)
-        Text(
-            stringResource(R.string.review_amount_value, formatXaf(step.amountXaf)),
-            color = Ink,
-            fontSize = 40.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Disc("✓", ProtectedGreen) // exécution confirmée par le serveur
+        VerticalGap(Spacing.L)
+        Title(stringResource(R.string.sent_title))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            AmountText(stringResource(R.string.review_amount_value, formatXaf(step.amountXaf)), AmountType.Hero, Ink, fit = true)
+        }
         BodyText(
             stringResource(R.string.sent_to, step.holder.holderName, formatMsisdn(step.holder.msisdn)),
             align = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
-        VerticalGap(20)
-        Card(null, "receipt") {
+        VerticalGap(Spacing.L)
+        SurfaceCard(Modifier.testTag("receipt")) {
             ReceiptLine(stringResource(R.string.receipt_reference), step.transferId, "reference")
+            HairlineDivider()
             ReceiptLine(stringResource(R.string.receipt_signed_by), stringResource(R.string.receipt_this_phone, deviceModel), "signed-by")
         }
-        VerticalGap(20)
+        VerticalGap(Spacing.XL)
         PrimaryButton(stringResource(R.string.action_home), onHome, tag = "home")
         Spacer(Modifier.weight(1f))
     }
@@ -853,46 +967,17 @@ private fun ReceiptLine(
     tag: String,
 ) {
     Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 10.dp),
+                .padding(vertical = Spacing.M),
     ) {
-        Text(label, color = Ink, fontSize = 16.sp, modifier = Modifier.weight(1f))
-        Text(value, color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag(tag))
+        Text(label, color = TextSecondary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        HorizontalGap(Spacing.S)
+        Text(value, color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.End, modifier = Modifier.testTag(tag))
     }
 }
-
-@Composable
-private fun ColumnScope.ResultIcon(
-    glyph: String,
-    color: Color,
-) {
-    Box(
-        Modifier
-            .size(96.dp)
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.12f))
-            .align(Alignment.CenterHorizontally),
-        contentAlignment = Alignment.Center,
-    ) { Text(glyph, fontSize = 44.sp, color = color) }
-}
-
-@Composable
-private fun CenteredTitle(
-    text: String,
-    size: Int,
-) = Text(
-    text,
-    color = Ink,
-    fontSize = size.sp,
-    fontWeight = FontWeight.Bold,
-    textAlign = TextAlign.Center,
-    modifier =
-        Modifier
-            .fillMaxWidth()
-            .testTag("title"),
-)
 
 // ---- E-17 Exécution différée -------------------------------------------------------------------
 
@@ -906,85 +991,53 @@ fun DeferredScreen(
 ) {
     Page(DailyTags.DEFERRED) {
         Spacer(Modifier.weight(1f))
-        ResultIcon("⏱", Amber)
-        VerticalGap(20)
-        CenteredTitle(stringResource(R.string.deferred_title), 26)
-        VerticalGap(12)
+        Disc("⏱", Amber)
+        VerticalGap(Spacing.L)
+        Title(stringResource(R.string.deferred_title))
+        VerticalGap(Spacing.M)
         Text(
             step.executeAt?.let { stringResource(R.string.deferred_body, formatWhen(it, zone)) }
                 ?: stringResource(R.string.deferred_body_unknown_time),
             color = Ink,
-            fontSize = 17.sp,
+            style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .testTag("deferred-body"),
         )
-        VerticalGap(8)
+        VerticalGap(Spacing.S)
         BodyText(stringResource(R.string.deferred_can_cancel), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        VerticalGap(16)
-        Card(null, "deferred-card") {
+        VerticalGap(Spacing.L)
+        SurfaceCard(Modifier.testTag("deferred-card")) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     stringResource(R.string.home_deferred_item, formatXaf(step.amountXaf), step.holderName ?: formatMsisdn(step.msisdn)),
-                    color = Ink,
-                    fontSize = 17.sp,
+                    color = Navy,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
+                HorizontalGap(Spacing.S)
                 if (step.cancelled) {
-                    Pill(stringResource(R.string.status_cancelled), Secondary, Modifier.testTag("cancelled"))
+                    Pill(stringResource(R.string.status_cancelled), Tone.MUTED, Modifier.testTag("cancelled"))
                 } else {
-                    Pill(stringResource(R.string.deferred_pending), Amber)
+                    Pill(stringResource(R.string.deferred_pending), Tone.WARNING)
                 }
             }
         }
         step.problem?.let {
             ErrorText(if (it.error == DailyError.UNREACHABLE) stringResource(R.string.error_cancel_unconfirmed) else problemText(it))
         }
-        VerticalGap(16)
+        VerticalGap(Spacing.L)
         if (step.cancelled) {
             BodyText(stringResource(R.string.deferred_cancelled), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         } else {
-            DangerButton(stringResource(R.string.deferred_cancel), onCancel)
+            DangerButton(stringResource(R.string.deferred_cancel), onCancel, tag = "cancel-transfer")
         }
-        VerticalGap(8)
-        Text(
-            stringResource(R.string.action_home),
-            color = Secondary,
-            fontSize = 17.sp,
-            textAlign = TextAlign.Center,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onHome)
-                    .padding(vertical = 12.dp)
-                    .testTag("home"),
-        )
+        VerticalGap(Spacing.S)
+        TextAction(stringResource(R.string.action_home), onHome, tag = "home")
         Spacer(Modifier.weight(1f))
     }
-}
-
-@Composable
-private fun DangerButton(
-    text: String,
-    onClick: () -> Unit,
-) {
-    Text(
-        text,
-        color = Color.White,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.Center,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Danger)
-                .clickable(onClick = onClick)
-                .padding(vertical = 16.dp)
-                .testTag("cancel-transfer"),
-    )
 }
 
 // ---- E-18 Bloquée / Rejetée --------------------------------------------------------------------
@@ -998,34 +1051,26 @@ fun StoppedScreen(
 ) {
     Page(DailyTags.STOPPED) {
         Spacer(Modifier.weight(1f))
-        ResultIcon(if (step.outcome == Outcome.UNKNOWN) "?" else "✕", if (step.outcome == Outcome.UNKNOWN) Amber else Danger)
-        VerticalGap(20)
+        Disc(if (step.outcome == Outcome.UNKNOWN) "?" else "✕", if (step.outcome == Outcome.UNKNOWN) Amber else Danger)
+        VerticalGap(Spacing.L)
         when (step.outcome) {
             Outcome.FROZEN -> {
-                CenteredTitle(stringResource(R.string.frozen_title), 26)
-                VerticalGap(12)
+                Title(stringResource(R.string.frozen_title))
+                VerticalGap(Spacing.M)
                 BodyText(stringResource(R.string.frozen_body), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                VerticalGap(16)
-                Text(
+                VerticalGap(Spacing.L)
+                Callout(
                     buildAnnotatedString {
                         withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.frozen_what)) }
                         append(stringResource(R.string.frozen_what_body))
                     },
-                    color = Danger,
-                    fontSize = 16.sp,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Danger.copy(alpha = 0.08f))
-                            .border(1.dp, Danger.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                            .padding(16.dp)
-                            .testTag("what-to-do"),
+                    Tone.DANGER,
+                    tag = "what-to-do",
                 )
             }
             Outcome.REJECTED, Outcome.REJECTED_KEY -> {
-                CenteredTitle(stringResource(R.string.rejected_title), 26)
-                VerticalGap(12)
+                Title(stringResource(R.string.rejected_title))
+                VerticalGap(Spacing.M)
                 BodyText(
                     stringResource(if (step.outcome == Outcome.REJECTED_KEY) R.string.rejected_key_body else R.string.rejected_body),
                     align = TextAlign.Center,
@@ -1036,15 +1081,15 @@ fun StoppedScreen(
                 )
             }
             Outcome.UNKNOWN -> {
-                CenteredTitle(stringResource(R.string.unknown_title), 26)
-                VerticalGap(12)
+                Title(stringResource(R.string.unknown_title))
+                VerticalGap(Spacing.M)
                 BodyText(stringResource(R.string.unknown_body), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
-        VerticalGap(20)
+        VerticalGap(Spacing.L)
         if (step.outcome == Outcome.UNKNOWN) {
             PrimaryButton(stringResource(R.string.action_history), onHistory, tag = "history")
-            VerticalGap(8)
+            VerticalGap(Spacing.S)
             SecondaryButton(stringResource(R.string.action_home), onHome, tag = "home")
         } else {
             PrimaryButton(stringResource(R.string.action_home), onHome, tag = "home")

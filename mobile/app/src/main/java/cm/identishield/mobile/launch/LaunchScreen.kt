@@ -19,17 +19,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import cm.identishield.mobile.R
+import cm.identishield.mobile.ui.theme.AmountType
 import cm.identishield.mobile.ui.theme.Background
-import cm.identishield.mobile.ui.theme.IdentiShieldTheme
-import cm.identishield.mobile.ui.theme.Ink
+import cm.identishield.mobile.ui.theme.Dimens
 import cm.identishield.mobile.ui.theme.Navy
 import cm.identishield.mobile.ui.theme.ProtectedGreen
+import cm.identishield.mobile.ui.theme.Spacing
+import cm.identishield.mobile.ui.theme.TextSecondary
 
 /** Identifiants de test stables (MOB-NF-06). */
 object LaunchTags {
@@ -40,13 +38,12 @@ object LaunchTags {
 /** E-01 Lancement — maquette `maquettes/E01.png`. */
 @Composable
 fun LaunchScreen(modifier: Modifier = Modifier) {
-    val secondary = Ink.copy(alpha = 0.65f)
     Column(
         modifier =
             modifier
                 .fillMaxSize()
                 .background(Background)
-                .padding(horizontal = 32.dp)
+                .padding(horizontal = Spacing.XXL)
                 .testTag(LaunchTags.SCREEN),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -54,36 +51,29 @@ fun LaunchScreen(modifier: Modifier = Modifier) {
         Image(
             painter = painterResource(R.drawable.logo_mark),
             contentDescription = stringResource(R.string.launch_logo_description),
-            modifier = Modifier.size(140.dp),
+            modifier = Modifier.size(Dimens.LogoLarge),
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Spacing.XL))
         Text(
             text =
                 buildAnnotatedString {
                     withStyle(SpanStyle(color = Navy)) { append(stringResource(R.string.brand_identi)) }
                     withStyle(SpanStyle(color = ProtectedGreen)) { append(stringResource(R.string.brand_shield)) }
                 },
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
+            style = AmountType.Wordmark,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Spacing.S))
         Text(
             text = stringResource(R.string.launch_tagline),
             style = MaterialTheme.typography.titleMedium,
-            color = secondary,
+            color = TextSecondary,
         )
-        Spacer(Modifier.height(56.dp))
+        Spacer(Modifier.height(Spacing.XXL + Spacing.XL))
         Text(
             text = stringResource(R.string.launch_checking),
             style = MaterialTheme.typography.bodyLarge,
-            color = secondary,
+            color = TextSecondary,
             modifier = Modifier.testTag(LaunchTags.CHECKING),
         )
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LaunchScreenPreview() {
-    IdentiShieldTheme { LaunchScreen() }
 }

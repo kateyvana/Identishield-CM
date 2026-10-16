@@ -235,6 +235,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.datastore.preferences)
+    // WindowSizeClass (mise en page adaptative) : déjà au classpath d'exécution, ADR-037 amendement B-UI.
+    implementation(libs.androidx.window.core)
     implementation(libs.okhttp)
     implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)

@@ -127,7 +127,7 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 
 | Écran | Écart | Motif |
 |---|---|---|
-| E-01 | Le gris des textes secondaires (sous-titre, « Vérification… ») est le texte `#14213D` à 65 % d'opacité, pas une septième couleur | La palette ne définit pas de gris secondaire |
+| E-01 | ~~Le gris des textes secondaires (sous-titre, « Vérification… ») est le texte `#14213D` à 65 % d'opacité, pas une septième couleur~~ B-UI : jeton neutre `TextSecondary` `#52607A` (gris-bleu, 6,34:1 sur blanc) | La palette ne définit pas de gris secondaire ; B-UI autorise des jetons neutres |
 | E-01 | Le logo est `logo_mark.png` (PNG des maquettes), pas un dessin vectoriel | Échafaudage ; la vectorisation n'est pas nécessaire tant que l'écran est fidèle |
 | E-01 | Clé présente : l'écran E-01 reste affiché | Le déverrouillage E-10 relève de la carte M-07 |
 | E-02 | « Continuer par USSD (*126#) » est un texte, sans action | Bac à sable : aucun code USSD réel n'est composé |
@@ -166,11 +166,24 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 | E-23 | Date et résumé du serveur sur chaque ligne ; pas de texte « vous avez répondu… » | Le contrat porte le statut, pas l'historique de la réponse |
 | E-27a | « Continuer par USSD » est un texte, sans action | Bac à sable : aucun code USSD réel n'est composé (comme E-02) |
 | E-27a | Pas de date « le 25 sept. à 15:40 » du nouveau téléphone | Le refus `KEY_REVOKED` ne porte pas de date |
-| E-25 | Écran absent ; tuile et onglet « Sécurité » grisés | Hors M-08 (décision du propriétaire) : rotation et déliaison exigent des chaînes signées non définies |
+| E-25 | Écran absent ; ~~tuile et onglet « Sécurité » grisés~~ B-UI : tuile retirée (trois actions approuvées), onglet « Sécurité » gardé et **indisponible** (opacité 38 %, aucun effet au toucher, annoncé « désactivé ») | Hors M-08 (décision du propriétaire) : rotation et déliaison exigent des chaînes signées non définies |
 | Alertes | Aucune interrogation en arrière-plan (SPEC §9.4) | Décision du propriétaire (M-08) : le jeton n'est qu'en mémoire (SPEC §3) ; carte SPEC v1.3 |
 | E-06, E-08, E-09 | La pastille « 🔒 capture bloquée » est affichée en haut de la page, sous la barre d'état ; la maquette la dessine DANS la barre d'état | L'application ne dessine pas dans la barre d'état du système ; pastille omise en M-06, restaurée par le correctif du 30/09 |
-| Tous | Symboles Unicode (‹, ⟳, 🛡, ↗, ≡, 🔔) à la place d'icônes | Aucune bibliothèque d'icônes dans ADR-037 |
-| Tous | Mise en page vérifiée sur la taille des maquettes (360 × 760 dp) | Sur un écran nettement plus petit, le pavé numérique peut repousser le bouton hors de l'écran : limite déclarée |
+| Tous | ~~Symboles Unicode (‹, ⟳, 🛡, ↗, ≡, 🔔) à la place d'icônes~~ B-UI : navigation, actions de l'accueil, retour et œil du solde en icônes vectorielles (tracés Material, Apache 2.0, posés en ressources `res/drawable/ic_*.xml`) ; les disques des écrans de résultat gardent un symbole Unicode | Aucune bibliothèque d'icônes dans ADR-037 |
+| Tous | ~~Mise en page vérifiée sur la taille des maquettes (360 × 760 dp)~~ B-UI : chaque page défile quand son contenu dépasse (paysage, police à 200 %, clavier ouvert) ; le bouton reste atteignable (`AdaptiveLayoutTest`) | ~~Sur un écran nettement plus petit, le pavé numérique peut repousser le bouton hors de l'écran : limite déclarée~~ |
+| Tous (B-UI) | Palette des six couleurs inchangée ; ajout de jetons neutres seulement (`Surface` blanc, `Border`, `FieldBorder`, `TextSecondary`) et de deux variantes assombries de la même teinte quand l'ambre ou le vert portent du texte (`AmberText` `#975F0A`, `ProtectedGreenText` `#15766B`) | Contraste AA : l'ambre pur fait 2,00:1 sur blanc, le vert pur 3,51:1 (rapports détaillés dans `Theme.kt`) |
+| Tous (B-UI) | Typographie, formes et espacements (4/8/12/16/24/32 dp) centralisés dans `Theme.kt` ; aucune taille ni couleur en dur dans un écran | Carte B-UI |
+| Tous (B-UI) | Tablette et paysage : colonne de contenu bornée à 600 dp et centrée ; navigation en barre basse sous 600 dp de large, en rail latéral au-delà (`WindowSizeClass`) | Carte B-UI, ADR-037 amendement B-UI ; les maquettes ne dessinent que le téléphone en portrait |
+| Écrans secondaires (B-UI) | Bandeau bleu nuit pleine largeur sous la barre d'état, chevron retour à gauche, titre centré en blanc (la maquette : titre foncé à gauche, sur le fond) ; aucune croix | Carte B-UI, point 7 : jamais de croix sur E-07, E-08, E-09, E-22 ; ailleurs, aucune n'a été ajoutée |
+| E-11 (B-UI) | En-tête bleu nuit portant le nom de l'application ; carte blanche du solde qui le chevauche : « Portefeuille », titulaire, numéro, solde en très gros, œil (solde visible à l'ouverture, choix jamais enregistré), badge « Appareil protégé », puis trois actions (Envoyer, Historique, Alertes) au lieu de quatre tuiles ; ni icône de profil, ni cloche, ni onglets, ni grille de services | Carte B-UI, points 1 à 5 et 10 : on ne dessine jamais un élément qui ne mène nulle part |
+| E-11, E-19 (B-UI) | Une carte par opération ; contrepartie en bleu nuit ; montant signé suivi de « FCFA », en encre pour l'entrée comme pour la sortie, en rouge si l'opération est bloquée ou rejetée, jamais en vert ; chiffres à chasse fixe ; le signe reste le trait d'union « - » | Carte B-UI (montants) ; le trait d'union garde intact le test de parcours `e19_history_onlyContractFields_withStatusBadges` |
+| E-03, E-12, E-13, E-09, E-20 (B-UI) | Libellé à l'intérieur du champ, en casse de phrase, astérisque si requis (la maquette : libellé en capitales au-dessus du champ) | Carte B-UI (formulaires) |
+| E-13 (B-UI) | « Solde disponible : X FCFA » sous le champ du montant, en plus de « Solde après envoi » | Carte B-UI (formulaires) ; donnée déjà portée par l'écran |
+| E-04, E-07 (B-UI) | Barre de progression et bouclier en bleu nuit, coches des étapes en bleu nuit (la maquette : vert) | Le vert est réservé à un état vérifié par le serveur ; une vérification en cours ne l'est pas |
+| E-24 (B-UI) | « C'est moi » en bleu nuit, « Ce n'est pas moi » en rouge (la maquette : vert et rouge) ; mêmes actions | Le vert est réservé à un état vérifié par le serveur ; blanc sur vert = 3,51:1, sous le seuil AA |
+| E-18, E-27a (B-UI) | Encadré « danger » : texte rouge sur fond blanc, contour rouge (et non sur rouge dilué) | Rouge sur rouge dilué = 4,09:1, sous le seuil AA ; sur blanc = 4,96:1 |
+| E-05 (B-UI) | Les cases de l'OTP se partagent la largeur disponible | Au-delà de cinq chiffres, les cases de 48 dp débordaient de l'écran de 360 dp |
+| Flux A (B-UI) | Pas d'indicateur d'étape « 1 à 5 » | Question ouverte au propriétaire : E-03 et E-06 sont communs aux flux A et D, et l'application ne doit pas distinguer les flux (ES-26) |
 
 ## Architecture
 

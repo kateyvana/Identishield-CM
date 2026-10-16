@@ -6,17 +6,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.platform.testTag
@@ -39,22 +39,26 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import cm.identishield.mobile.R
 import cm.identishield.mobile.daily.DailyHomeScreen
 import cm.identishield.mobile.data.Account
 import cm.identishield.mobile.ui.theme.Amber
+import cm.identishield.mobile.ui.theme.AmberText
+import cm.identishield.mobile.ui.theme.AmountType
+import cm.identishield.mobile.ui.theme.Border
+import cm.identishield.mobile.ui.theme.Dimens
+import cm.identishield.mobile.ui.theme.FieldBorder
 import cm.identishield.mobile.ui.theme.Ink
 import cm.identishield.mobile.ui.theme.Navy
-import cm.identishield.mobile.ui.theme.ProtectedGreen
+import cm.identishield.mobile.ui.theme.NavyTint
+import cm.identishield.mobile.ui.theme.Spacing
+import cm.identishield.mobile.ui.theme.Surface
+import cm.identishield.mobile.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
 /** Identifiants de test stables (MOB-NF-06) : un par écran. */
@@ -95,41 +99,31 @@ fun errorMessage(error: EnrolError): String =
 @Composable
 fun WelcomeScreen(onStart: () -> Unit) {
     Page(EnrolTags.WELCOME) {
-        VerticalGap(24)
+        VerticalGap(Spacing.XL)
         Image(
             painter = painterResource(R.drawable.logo_mark),
             contentDescription = stringResource(R.string.launch_logo_description),
             modifier =
                 Modifier
-                    .size(120.dp)
+                    .size(Dimens.Logo)
                     .align(Alignment.CenterHorizontally),
         )
-        VerticalGap(24)
-        Text(
-            stringResource(R.string.welcome_title),
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = Ink,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        VerticalGap(16)
+        VerticalGap(Spacing.XL)
+        Title(stringResource(R.string.welcome_title))
+        VerticalGap(Spacing.L)
         BodyText(stringResource(R.string.welcome_body))
-        VerticalGap(16)
-        WarningBox(content = {
-            Text(
-                buildAnnotatedString {
-                    append(stringResource(R.string.welcome_warning_before))
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.welcome_warning_key)) }
-                    append(stringResource(R.string.welcome_warning_after))
-                },
-                color = Ink,
-                fontSize = 16.sp,
-            )
-        })
+        VerticalGap(Spacing.L)
+        Callout(
+            buildAnnotatedString {
+                append(stringResource(R.string.welcome_warning_before))
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.welcome_warning_key)) }
+                append(stringResource(R.string.welcome_warning_after))
+            },
+        )
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.welcome_start), onStart, tag = "start")
-        VerticalGap(16)
+        VerticalGap(Spacing.L)
         // Texte seul : aucun appel USSD réel n'est composé depuis le bac à sable (écart documenté).
         BodyText(
             stringResource(R.string.welcome_ussd),
@@ -150,41 +144,30 @@ fun NumberScreen(
     onBack: () -> Unit,
 ) {
     var value by remember { mutableStateOf("") }
-    Page(EnrolTags.NUMBER) {
-        BackHeader(stringResource(R.string.number_title), onBack)
-        VerticalGap(16)
+    Page(EnrolTags.NUMBER, title = stringResource(R.string.number_title), onBack = onBack) {
         BodyText(stringResource(R.string.number_body))
-        VerticalGap(20)
-        Text(stringResource(R.string.number_label), color = Secondary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        VerticalGap(8)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White)
-                    .border(1.dp, Hairline, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-        ) {
-            Text(stringResource(R.string.number_prefix), fontSize = 20.sp, color = Ink)
-            HorizontalGap(12)
+        VerticalGap(Spacing.XL)
+        InputBox(stringResource(R.string.number_label)) {
+            Text(stringResource(R.string.number_prefix), style = MaterialTheme.typography.titleLarge, color = TextSecondary)
+            HorizontalGap(Spacing.M)
             BasicTextField(
                 value = value,
                 onValueChange = { v -> value = v.filter { it.isDigit() || it == ' ' } },
                 singleLine = true,
-                textStyle = TextStyle(fontSize = 22.sp, color = Ink),
+                textStyle = MaterialTheme.typography.titleLarge.copy(color = Ink),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 modifier =
                     Modifier
                         .weight(1f)
                         .testTag("number-input"),
+                decorationBox = CenteredInput,
             )
         }
-        VerticalGap(8)
+        VerticalGap(Spacing.S)
         BodyText(stringResource(R.string.number_hint))
         step.error?.let { ErrorText(errorMessage(it)) }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(value) }, enabled = value.isNotBlank())
     }
 }
@@ -197,27 +180,26 @@ fun PinScreen(
     onBack: () -> Unit,
 ) {
     var pin by remember(step) { mutableStateOf("") }
-    Page(EnrolTags.PIN, secure = true) {
-        BackHeader(stringResource(R.string.pin_title), onBack)
-        VerticalGap(16)
+    Page(EnrolTags.PIN, secure = true, title = stringResource(R.string.pin_title), onBack = onBack) {
         Text(
             buildAnnotatedString {
                 append(stringResource(R.string.pin_account) + " ")
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(formatMsisdn(step.msisdn)) }
             },
             color = Ink,
-            fontSize = 19.sp,
+            style = MaterialTheme.typography.bodyLarge,
         )
-        VerticalGap(16)
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.pin_body))
-        VerticalGap(24)
+        VerticalGap(Spacing.XL)
         PinDots(pin.length)
-        VerticalGap(24)
+        VerticalGap(Spacing.XL)
         BodyText(stringResource(R.string.pin_note), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         step.error?.let { ErrorText(errorMessage(it)) }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.M)
         Keypad(onDigit = { pin += it }, onDelete = { pin = pin.dropLast(1) })
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         // Écart : bouton « Continuer » (la longueur du PIN n'est fixée par aucune spécification).
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(pin) }, enabled = pin.isNotEmpty())
     }
@@ -227,35 +209,23 @@ fun PinScreen(
 @Composable
 fun CheckingScreen() {
     Page(EnrolTags.CHECKING) {
-        VerticalGap(24)
-        Box(
-            Modifier
-                .size(96.dp)
-                .clip(CircleShape)
-                .background(Navy.copy(alpha = 0.08f))
-                .align(Alignment.CenterHorizontally),
-            contentAlignment = Alignment.Center,
-        ) { Text("⟳", fontSize = 40.sp, color = Navy) }
-        VerticalGap(24)
-        Text(
-            stringResource(R.string.checking_title),
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Ink,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        VerticalGap(12)
+        Spacer(Modifier.weight(1f))
+        Disc("⟳", Navy)
+        VerticalGap(Spacing.XL)
+        Title(stringResource(R.string.checking_title))
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.checking_body), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        VerticalGap(28)
+        VerticalGap(Spacing.XL)
+        // Bleu nuit : une vérification EN COURS n'est pas encore un état vérifié (le vert lui est réservé).
         LinearProgressIndicator(
-            color = ProtectedGreen,
-            trackColor = Hairline,
+            color = Navy,
+            trackColor = Border,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 40.dp),
+                    .padding(horizontal = Spacing.XXL),
         )
+        Spacer(Modifier.weight(1f))
     }
 }
 
@@ -276,31 +246,35 @@ fun OtpScreen(
             remaining -= 1
         }
     }
-    Page(EnrolTags.OTP) {
-        BackHeader(stringResource(R.string.otp_title), onBack)
-        VerticalGap(16)
+    Page(EnrolTags.OTP, title = stringResource(R.string.otp_title), onBack = onBack) {
         BodyText(stringResource(R.string.otp_body, maskMsisdn(step.msisdn)))
-        VerticalGap(20)
+        VerticalGap(Spacing.XL)
         // Écart : autant de cases que de chiffres tapés (la longueur de l'OTP est validée par le serveur).
+        // Les cases partagent la largeur disponible : elles ne débordent jamais de l'écran.
         Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.testTag("otp-digits"),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.S, Alignment.CenterHorizontally),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag("otp-digits"),
         ) {
             (otp.toList() + listOf(null)).forEach { c ->
                 Box(
                     Modifier
-                        .size(width = 48.dp, height = 60.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White)
-                        .border(1.dp, if (c == null) Navy else Hairline, RoundedCornerShape(12.dp)),
+                        .weight(1f, fill = false)
+                        .width(Dimens.TouchTarget)
+                        .height(Dimens.Button)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(Surface)
+                        .border(Dimens.Hairline, if (c == null) Navy else FieldBorder, MaterialTheme.shapes.small),
                     contentAlignment = Alignment.Center,
-                ) { Text(c?.toString() ?: "", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Ink) }
+                ) { Text(c?.toString() ?: "", style = MaterialTheme.typography.headlineMedium, color = Ink) }
             }
         }
-        VerticalGap(16)
+        VerticalGap(Spacing.L)
         BodyText(stringResource(R.string.otp_note))
         step.error?.let { ErrorText(errorMessage(it)) }
-        VerticalGap(16)
+        VerticalGap(Spacing.L)
         SecondaryButton(
             if (remaining > 0) stringResource(R.string.otp_resend_wait, remaining) else stringResource(R.string.otp_resend),
             onResend,
@@ -308,8 +282,9 @@ fun OtpScreen(
             tag = "resend",
         )
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.M)
         Keypad(onDigit = { otp += it }, onDelete = { otp = otp.dropLast(1) })
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(otp) }, enabled = otp.isNotEmpty())
     }
 }
@@ -324,36 +299,15 @@ fun SecuringScreen(
     // Lancement automatique à l'arrivée sur l'écran : la clé ne naît qu'ici, après l'OTP validé.
     LaunchedEffect(Unit) { if (step.error == null && step.stage == SecuringStage.CREATING_KEY) onSecure() }
     Page(EnrolTags.SECURING) {
-        VerticalGap(24)
-        Box(
-            Modifier
-                .size(96.dp)
-                .clip(CircleShape)
-                .background(ProtectedGreen.copy(alpha = 0.12f))
-                .align(Alignment.CenterHorizontally),
-            contentAlignment = Alignment.Center,
-        ) { Text("🛡", fontSize = 40.sp, color = ProtectedGreen) }
-        VerticalGap(24)
-        Text(
-            stringResource(R.string.securing_title),
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = Ink,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        VerticalGap(12)
+        VerticalGap(Spacing.XL)
+        // Bleu nuit : la liaison n'est pas encore vérifiée par le serveur (le vert lui est réservé).
+        Disc("🛡", Navy)
+        VerticalGap(Spacing.XL)
+        Title(stringResource(R.string.securing_title))
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.securing_body), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        VerticalGap(20)
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White)
-                    .border(1.dp, Hairline, RoundedCornerShape(20.dp))
-                    .padding(20.dp),
-        ) {
+        VerticalGap(Spacing.L)
+        SurfaceCard(contentPadding = PaddingValues(horizontal = Spacing.L, vertical = Spacing.XS)) {
             val order = SecuringStage.entries
             listOf(
                 R.string.securing_step_key to SecuringStage.CREATING_KEY,
@@ -367,22 +321,22 @@ fun SecuringScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 12.dp)
+                            .padding(vertical = Spacing.M)
                             .testTag("stage-${stage.name}"),
                 ) {
-                    Text(stringResource(label), color = Ink, fontSize = 17.sp, modifier = Modifier.weight(1f))
+                    Text(stringResource(label), color = Ink, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     Text(
                         if (done) "✓" else if (current) "…" else "·",
-                        color = if (done) ProtectedGreen else if (current) Amber else Secondary,
-                        fontSize = 20.sp,
+                        color = if (done) Navy else if (current) AmberText else TextSecondary,
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 }
-                if (i < 2) Box(Modifier.fillMaxWidth().height(1.dp).background(Hairline))
+                if (i < 2) HairlineDivider()
             }
         }
         step.error?.let { error ->
             ErrorText(if (error == EnrolError.UNREACHABLE) stringResource(R.string.error_connection_lost) else errorMessage(error))
-            VerticalGap(16)
+            VerticalGap(Spacing.L)
             val restart = error == EnrolError.DEVICE_REFUSED || error == EnrolError.SESSION_EXPIRED
             SecondaryButton(
                 stringResource(if (restart) R.string.welcome_start else R.string.securing_retry),
@@ -406,29 +360,23 @@ fun ScreenLockRequiredScreen(
     onConfigured: () -> Unit,
 ) {
     Page(EnrolTags.SCREEN_LOCK) {
-        VerticalGap(24)
+        VerticalGap(Spacing.XL)
         Disc("🔒", Amber)
-        VerticalGap(20)
+        VerticalGap(Spacing.L)
         Title(stringResource(R.string.screen_lock_title))
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.screen_lock_body))
-        VerticalGap(16)
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color.White)
-                .border(1.dp, Hairline, RoundedCornerShape(20.dp))
-                .padding(20.dp),
-        ) {
+        VerticalGap(Spacing.L)
+        SurfaceCard(contentPadding = PaddingValues(Spacing.L)) {
             listOf(R.string.screen_lock_step_1, R.string.screen_lock_step_2, R.string.screen_lock_step_3).forEach {
-                Text(stringResource(it), color = Ink, fontSize = 17.sp, modifier = Modifier.padding(vertical = 8.dp))
+                Text(stringResource(it), color = Ink, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = Spacing.S))
             }
         }
         if (step.stillMissing) ErrorText(stringResource(R.string.screen_lock_still_missing), tag = "still-missing")
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.screen_lock_open_settings), onOpenSettings, tag = "open-settings")
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         SecondaryButton(stringResource(R.string.screen_lock_done), onConfigured, tag = "lock-configured")
     }
 }
@@ -442,9 +390,7 @@ fun RecoveryKeyScreen(
     // Texte non sélectionnable (MOB-S-06). D2 : la clé est retirée de l'arbre d'accessibilité
     // (FLAG_SECURE bloque les pixels, pas le texte) ; compromis lecteurs d'écran documenté (README).
     val hiddenFromReaders = stringResource(R.string.recovery_code_a11y)
-    Page(EnrolTags.RECOVERY, secure = true) {
-        BackHeader(stringResource(R.string.recovery_title), onBack = null)
-        VerticalGap(16)
+    Page(EnrolTags.RECOVERY, secure = true, title = stringResource(R.string.recovery_title), onBack = null) {
         Text(
             buildAnnotatedString {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.recovery_intro_bold)) }
@@ -453,40 +399,40 @@ fun RecoveryKeyScreen(
                 append(stringResource(R.string.recovery_intro_after))
             },
             color = Ink,
-            fontSize = 17.sp,
-            lineHeight = 25.sp,
+            style = MaterialTheme.typography.bodyLarge,
         )
-        VerticalGap(20)
+        VerticalGap(Spacing.L)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White)
-                    .border(1.dp, Navy, RoundedCornerShape(16.dp))
-                    .padding(vertical = 20.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(Surface)
+                    .border(Dimens.Hairline, Navy, MaterialTheme.shapes.medium)
+                    .padding(vertical = Spacing.L)
                     .clearAndSetSemantics {
                         testTag = "recovery-code"
                         contentDescription = hiddenFromReaders
                     },
         ) {
             groupRecoveryCode(step.code).forEach { line ->
-                Text(line, fontFamily = FontFamily.Monospace, fontSize = 26.sp, color = Ink, letterSpacing = 2.sp)
+                Text(line, style = AmountType.Code, color = Ink)
             }
         }
-        VerticalGap(20)
-        WarningBox(content = { Text(stringResource(R.string.recovery_warning), color = Ink, fontSize = 16.sp) })
+        VerticalGap(Spacing.L)
+        Callout(stringResource(R.string.recovery_warning))
         if (step.lastDisplay) {
-            VerticalGap(12)
+            VerticalGap(Spacing.M)
             Text(
                 stringResource(R.string.recovery_last_display),
                 color = Ink,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.testTag("last-display"),
             )
         }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.recovery_written), onWritten, tag = "written")
     }
 }
@@ -522,40 +468,35 @@ fun ConfirmKeyScreen(
 ) {
     var typed by remember(step.codeTail) { mutableStateOf("") }
     val reminderSpoken = stringResource(R.string.confirm_reminder_a11y, step.codeTail.toList().joinToString(" "))
-    Page(EnrolTags.CONFIRM, secure = true) {
-        BackHeader(stringResource(R.string.confirm_title), onBack = null)
-        VerticalGap(16)
+    Page(EnrolTags.CONFIRM, secure = true, title = stringResource(R.string.confirm_title), onBack = null) {
         BodyText(stringResource(R.string.confirm_body))
-        VerticalGap(20)
-        Text(stringResource(R.string.confirm_reminder_label), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        VerticalGap(8)
+        VerticalGap(Spacing.L)
+        SectionLabel(stringResource(R.string.confirm_reminder_label))
+        VerticalGap(Spacing.S)
         Text(
             codeReminder(codeLength, step.codeTail),
-            fontFamily = FontFamily.Monospace,
-            fontSize = 26.sp,
-            letterSpacing = 2.sp,
+            style = AmountType.Code,
             color = Ink,
             textAlign = TextAlign.Center,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Navy.copy(alpha = 0.06f))
-                    .padding(vertical = 14.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(NavyTint)
+                    .padding(vertical = Spacing.M)
                     .clearAndSetSemantics {
                         testTag = "code-reminder"
                         contentDescription = reminderSpoken
                     },
         )
-        VerticalGap(20)
-        Text(stringResource(R.string.confirm_input_label, codeLength), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        VerticalGap(8)
-        CodeField(typed, { typed = it }, codeLength, "confirm-input")
-        VerticalGap(8)
+        VerticalGap(Spacing.L)
+        CodeField(typed, { typed = it }, codeLength, "confirm-input", stringResource(R.string.confirm_input_label, codeLength))
+        VerticalGap(Spacing.S)
         BodyText(stringResource(R.string.confirm_masked_hint))
         BodyText(stringResource(R.string.confirm_note))
         step.error?.let { ErrorText(errorMessage(it)) }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         PrimaryButton(
             stringResource(R.string.confirm_action),
             { onConfirm(typed) },
