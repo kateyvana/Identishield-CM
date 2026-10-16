@@ -10,9 +10,11 @@
 #
 # Calibration T3-07 (rs-0.8.0) : valeurs PROVISOIRES issues de l'étude hors ligne sur le jeu
 # légitime gelé (dev horizon v1) et le plan AC-02 gelé ; ADR-016 PROVISOIRE ; amendements
-# ISC-TM §7, ES-06, ES-11, ED-04 au statut PROPOSÉ (note de revue T3-07, citée par ADR-016). Le moteur de
-# règles n'existe pas encore (mois 4) : SCORE, W, STEP_UP_POLICY, NIGHT_ZONE et CAP_FAILCLOSED
-# ne sont lus par aucun code à ce jour.
+# ISC-TM §7, ES-06, ED-04 au statut PROPOSÉ, ES-11 RATIFIÉ par la propriétaire (note de revue T3-07,
+# citée par ADR-016). ~~Le moteur de règles n'existe pas encore (mois 4) : SCORE, W, STEP_UP_POLICY,
+# NIGHT_ZONE et CAP_FAILCLOSED ne sont lus par aucun code à ce jour.~~ Lus au mois 4 : SCORE, W,
+# STEP_UP_POLICY, NIGHT_ZONE par le moteur de règles du PDP (carte A2) ; CAP_FAILCLOSED par le
+# fail-closed du cœur (ES-11).
 #
 # La version DOIT figurer dans chaque décision /evaluate (EF-11 ruleSetVersion,
 # EF-17). Toute modification d'un paramètre s'accompagne d'un incrément de version.
@@ -26,9 +28,10 @@ ruleset:
       balancePct: 10 # inchangé (T3-07 : levier de perte AC-07 ; 25 % triplerait la perte médiane)
       balanceBase: PROBATION_ENTRY # solde de référence figé à l'entrée en PROBATION (T3-07)
       window: PT24H # cumul glissant (T3-07)
-    # ~~ES-11 fail-closed = CAP_PROB~~ : séparé (T3-07). ATTENTION : le cœur lit encore CAP_PROB.dailyXaf
-    # pour le fail-closed (FailClosedPolicy) ; le recâblage attend la ratification de l'amendement ES-11.
-    CAP_FAILCLOSED: # ES-11 (amendement PROPOSÉ) : PDP indisponible -> refus de toute sortie > xaf, par transaction
+    # ~~ES-11 fail-closed = CAP_PROB~~ : séparé (T3-07). ~~ATTENTION : le cœur lit encore CAP_PROB.dailyXaf
+    # pour le fail-closed (FailClosedPolicy) ; le recâblage attend la ratification de l'amendement ES-11.~~
+    # ES-11 ratifié : le cœur (FailClosedPolicy) lit CAP_FAILCLOSED.xaf, plus CAP_PROB.
+    CAP_FAILCLOSED: # ES-11 (amendement RATIFIÉ) : PDP indisponible -> refus de toute sortie > xaf, par transaction
       xaf: 50000 # H5 < 2 % par persona public (salarié 1,91 % ; 2,67 % à 25 000) ; agents 2,49 % déclarés
     THR_HIGH: # seuil « montant élevé » : min(absoluteXaf ; medianFactor × médiane 30 j)
       absoluteXaf: 50000

@@ -20,7 +20,7 @@ spring:
       initialization-fail-timeout: -1
   config:
     # Jeu de regles versionne (source unique des parametres nommes, ES-15), monte
-    # en lecture seule dans le conteneur. Le coeur y lit CAP_PROB.
+    # en lecture seule dans le conteneur. Le coeur y lit CAP_FAILCLOSED (ES-11).
     import: "file:/config/ruleset.yaml"
 
 # Horloge injectable (ADR-019, ENF-11). system = temps reel ; virtual demarre une
@@ -31,8 +31,8 @@ isc:
     mode: system
     # virtual-start: "2026-01-01T00:00:00Z"   # utilise seulement en mode virtual
 
-# Client PDP (ES-11, EI-01). CAP_PROB est un parametre NOMME (ISC-TM §7) : sa
-# valeur vient d'ici, jamais d'un litteral dans le code. Les chemins pointent
+# Client PDP (ES-11, EI-01). CAP_FAILCLOSED est un parametre NOMME : sa valeur
+# vient du jeu de regles versionne, jamais d'un litteral dans le code. Les chemins pointent
 # vers le volume `certs` monte au runtime ; aucun secret ici.
 core:
   pdp:

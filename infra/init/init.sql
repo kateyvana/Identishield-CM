@@ -55,7 +55,9 @@ CREATE TABLE core.transaction (
     channel        text NOT NULL,
     state          text NOT NULL,                               -- machine a etats (§7.4)
     decision_id    uuid,               -- refere la decision du PDP ; PAS de FK inter-schema
-    created_at     timestamptz NOT NULL
+    created_at     timestamptz NOT NULL,
+    execute_at     timestamptz,        -- A3 : echeance d'une operation DEFERRED (now + DEFER), fournie par l'app
+    CHECK ((state = 'DEFERRED') <= (execute_at IS NOT NULL))
 );
 
 CREATE TABLE core.ussd_session (

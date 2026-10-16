@@ -17,7 +17,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +30,8 @@ import org.springframework.stereotype.Service;
  * (ISC-SKEL §2), identique pour les six types (P2P + cash-in, cash-out, marchand, facture, crédit)
  * : créer la transaction PENDING_DECISION (+ decisionId généré en base) -> POST /evaluate en mTLS
  * -> appliquer la décision (ALLOW => mouvement de solde + EXECUTED). Si le PDP est indisponible,
- * politique fail-closed (ES-11) sur les SORTIES uniquement : refus au-dessus de CAP_PROB, mode
- * dégradé en dessous ; une entrée (CASH_IN) passe toujours en mode dégradé, quel que soit le
+ * politique fail-closed (ES-11) sur les SORTIES uniquement : refus au-dessus de CAP_FAILCLOSED,
+ * mode dégradé en dessous ; une entrée (CASH_IN) passe toujours en mode dégradé, quel que soit le
  * montant (ES-11 ne vise que les sorties — décision 15/09, correction SRS à venir).
  *
  * <p>Aucune règle ni machine à états de confiance au mois 2. currentImsi est résolu depuis le HLR
@@ -86,13 +88,65 @@ public class TransferService {
   }
 
   /**
+   * Exécute les opérations différées échues du compte (ADR-016-A : exécution à l'échéance sauf
+   * annulation). Évaluée à la lecture (ADR-019), sans ordonnanceur : à chaque nouvelle opération du
+   * compte, et par tout appelant qui consulte ses opérations différées (route mobile, couloir B).
+   */
+  public List<TransferResult> settleDeferred(String msisdn) {
+    return settle(account(msisdn), clock.instant());
+  }
+
+  /**
+   * Annule une opération différée du compte, seulement avant son échéance (E-17). Faux si elle
+   * n'est plus annulable (échue, déjà exécutée ou annulée) ou n'appartient pas au compte.
+   */
+  public boolean cancelDeferred(String msisdn, String decisionId) {
+    return transactions.cancelDeferred(account(msisdn).id(), decisionId, clock.instant());
+  }
+
+  private Account account(String msisdn) {
+    return accounts
+        .findByMsisdn(msisdn)
+        .orElseThrow(() -> new IllegalArgumentException("compte inconnu : " + msisdn));
+  }
+
+  private List<TransferResult> settle(Account account, Instant now) {
+    List<TransferResult> done = new ArrayList<>();
+    for (TransactionRepository.DeferredTransaction d :
+        transactions.findDueDeferred(account.id(), now)) {
+      if (transactions.claimDueDeferred(d.id(), now)) {
+        done.add(
+            commit(
+                new PendingTransaction(d.id(), d.decisionId()),
+                account,
+                OperationType.valueOf(d.type()),
+                d.beneficiaryId(),
+                d.amountXaf(),
+                TransferResult.State.EXECUTED));
+      }
+    }
+    return done;
+  }
+
+  /** STEP_UP (ES-06) : USSD -> CANCELLED, application -> DEFERRED jusqu'à now + DEFER. */
+  private TransferResult resolveStepUp(PendingTransaction tx, String channel, Instant now) {
+    if (new StepUpResolver(ruleSet).forChannel(channel) == StepUpResolver.Resolution.CANCEL) {
+      transactions.markCancelled(tx.id());
+      return TransferResult.cancelled(tx.decisionId(), "STEP_UP annulé (STEP_UP_POLICY)");
+    }
+    Instant executeAt = now.plus(ruleSet.defer());
+    transactions.markDeferred(tx.id(), executeAt);
+    return TransferResult.deferred(tx.decisionId(), executeAt);
+  }
+
+  /**
    * Exécute une opération de N'IMPORTE QUEL type (EF-04) en passant par le PDP AVANT tout commit
    * (EF-05) — chemin unique pour les six types. Créer la transaction PENDING_DECISION (+ decisionId
    * généré en base) -> POST /evaluate en mTLS -> appliquer la décision. ALLOW => commit (débit ou
    * crédit selon la direction) + EXECUTED ; refus explicite => REJECTED. PDP indisponible =>
-   * fail-closed (ES-11) sur les SORTIES : refus au-dessus de CAP_PROB, dégradé en dessous ; une
-   * entrée (CASH_IN) passe toujours en dégradé. Aucun type ne modifie un solde avant d'avoir appelé
-   * /evaluate.
+   * fail-closed (ES-11) sur les SORTIES : refus au-dessus de CAP_FAILCLOSED, dégradé en dessous ;
+   * une entrée (CASH_IN) passe toujours en dégradé. Aucun type ne modifie un solde avant d'avoir
+   * appelé /evaluate.
    *
    * <p>{@code counterparty} remplit le champ {@code beneficiaryId} requis par le contrat : le
    * bénéficiaire (P2P) ou l'identifiant de la contrepartie externe simulée (agent, marchand,
@@ -100,11 +154,10 @@ public class TransferService {
    */
   public TransferResult operate(
       String msisdn, OperationType type, long amountXaf, String counterparty, String channel) {
-    Account initiator =
-        accounts
-            .findByMsisdn(msisdn)
-            .orElseThrow(() -> new IllegalArgumentException("compte inconnu : " + msisdn));
+    Account initiator = account(msisdn);
     Instant now = clock.instant();
+    // Les opérations différées échues du compte s'exécutent avant toute nouvelle opération (A3).
+    settle(initiator, now);
     PendingTransaction tx =
         transactions.createPending(
             initiator.id(), type.name(), amountXaf, counterparty, channel, now);
@@ -127,6 +180,10 @@ public class TransferService {
       if (outcome.isAllow()) {
         return commit(tx, initiator, type, counterparty, amountXaf, TransferResult.State.EXECUTED);
       }
+      if (outcome.isStepUp()) {
+        return resolveStepUp(tx, channel, now);
+      }
+      // FREEZE (le compte est gelé par le PDP, A1) ou REJECTED : la transaction est bloquée.
       transactions.markRejected(tx.id());
       return TransferResult.rejected(tx.decisionId(), "decision=" + outcome.decision());
     }
@@ -138,13 +195,15 @@ public class TransferService {
     // vise que les sorties. Décision du propriétaire (15/09), correction ES-11 à remonter au SRS :
     // voir docs/03-revues/2026-09-15-correction-es-11-fail-closed-sorties-seulement.md.
     if (type.isOutflow()) {
-      Outcome policy = new FailClosedPolicy(ruleSet.capProbDailyXaf()).onPdpUnavailable(amountXaf);
+      Outcome policy = new FailClosedPolicy(ruleSet.capFailClosedXaf()).onPdpUnavailable(amountXaf);
       if (policy == Outcome.REFUSED_FAIL_CLOSED) {
         transactions.markRejected(tx.id());
         log.warn(
-            "PDP indisponible : {} de {} XAF REFUSE (> CAP_PROB), fail-closed", type, amountXaf);
+            "PDP indisponible : {} de {} XAF REFUSE (> CAP_FAILCLOSED), fail-closed",
+            type,
+            amountXaf);
         return TransferResult.rejected(
-            tx.decisionId(), "fail-closed : PDP indisponible, montant > CAP_PROB");
+            tx.decisionId(), "fail-closed : PDP indisponible, montant > CAP_FAILCLOSED");
       }
     }
     log.warn("PDP indisponible : {} de {} XAF appliqué en mode DEGRADE", type, amountXaf);
