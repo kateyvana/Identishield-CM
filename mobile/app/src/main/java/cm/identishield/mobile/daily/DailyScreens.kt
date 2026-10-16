@@ -378,15 +378,18 @@ fun DailyHomeScreen(
                             .clickable(enabled = onDeferred != null) { onDeferred?.invoke(op) }
                             .testTag("deferred-${op.transferId}"),
                     ) {
+                        Text(
+                            stringResource(R.string.home_deferred_item, formatXaf(op.amountXaf), formatMsisdn(op.beneficiaryMsisdn)),
+                            color = Navy,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    stringResource(R.string.home_deferred_item, formatXaf(op.amountXaf), formatMsisdn(op.beneficiaryMsisdn)),
-                                    color = Navy,
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                                Text(formatWhen(op.executeAt, zone), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                            }
+                            Text(
+                                formatWhen(op.executeAt, zone),
+                                color = TextSecondary,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f),
+                            )
                             HorizontalGap(Spacing.S)
                             Pill(stringResource(R.string.action_cancel), Tone.DANGER)
                         }
@@ -973,9 +976,18 @@ private fun ReceiptLine(
                 .fillMaxWidth()
                 .padding(vertical = Spacing.M),
     ) {
-        Text(label, color = TextSecondary, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        HorizontalGap(Spacing.S)
-        Text(value, color = Ink, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.End, modifier = Modifier.testTag(tag))
+        Text(label, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        HorizontalGap(Spacing.M)
+        Text(
+            value,
+            color = Ink,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.End,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .testTag(tag),
+        )
     }
 }
 

@@ -18,7 +18,7 @@
     <!-- E-02 Bienvenue -->
     <string name="welcome_title">Cet appareil va devenir la clé de votre compte</string>
     <string name="welcome_body">Après cette étape, envoyer de l\'argent depuis cette application ne demandera plus jamais de code par SMS : c\'est ce téléphone qui prouve que c\'est vous.</string>
-    <string name="welcome_warning_before">⚠️ Si vous désinstallez l\'application, vous devrez recommencer avec votre </string>
+    <string name="welcome_warning_before">⚠️ Si vous désinstallez l\'application, vous devrez recommencer avec votre\u0020</string>
     <string name="welcome_warning_key">clé de récupération</string>
     <string name="welcome_warning_after">. Gardez-la sur papier.</string>
     <string name="welcome_start">Commencer</string>
@@ -82,9 +82,9 @@
     <!-- E-08 Clé de récupération -->
     <string name="recovery_title">Votre clé de récupération</string>
     <string name="recovery_intro_bold">Écrivez-la sur papier, maintenant.</string>
-    <string name="recovery_intro_before"> Elle ne sera </string>
+    <string name="recovery_intro_before">\u0020Elle ne sera\u0020</string>
     <string name="recovery_intro_never">jamais</string>
-    <string name="recovery_intro_after"> affichée à nouveau, ni par l\'application, ni par l\'opérateur.</string>
+    <string name="recovery_intro_after">\u0020affichée à nouveau, ni par l\'application, ni par l\'opérateur.</string>
     <string name="recovery_warning">Sans cette clé, vous ne pourrez pas lier un nouveau téléphone si celui-ci est perdu, volé ou cassé. Ne la photographiez pas. Ne l\'envoyez à personne.</string>
     <string name="recovery_last_display">Dernier affichage : cette clé ne vous sera plus jamais montrée.</string>
     <string name="recovery_written">Je l\'ai écrite sur papier</string>
@@ -149,7 +149,7 @@
 
     <!-- E-13 Montant -->
     <string name="amount_title">Montant</string>
-    <string name="amount_to">À </string>
+    <string name="amount_to">À\u0020</string>
     <string name="amount_label">Montant à envoyer</string>
     <string name="amount_available">Solde disponible : %1$s FCFA</string>
     <string name="amount_after">Solde après envoi : %1$s FCFA</string>
@@ -160,9 +160,9 @@
     <string name="review_amount">MONTANT</string>
     <string name="review_amount_value">%1$s FCFA</string>
     <string name="review_new">● Nouveau bénéficiaire</string>
-    <string name="review_new_warning_before">Vous n\'avez jamais envoyé d\'argent à ce numéro. Vérifiez le </string>
+    <string name="review_new_warning_before">Vous n\'avez jamais envoyé d\'argent à ce numéro. Vérifiez le\u0020</string>
     <string name="review_new_warning_key">nom du titulaire</string>
-    <string name="review_new_warning_after"> avant de confirmer.</string>
+    <string name="review_new_warning_after">\u0020avant de confirmer.</string>
     <string name="action_confirm">Confirmer</string>
     <string name="action_cancel">Annuler</string>
 
@@ -195,7 +195,7 @@
     <!-- E-18 Bloquée / Rejetée -->
     <string name="frozen_title">Opération bloquée</string>
     <string name="frozen_body">Pour votre sécurité, cet envoi n\'a pas été exécuté. Votre argent est toujours sur votre compte.</string>
-    <string name="frozen_what">Que faire ? </string>
+    <string name="frozen_what">Que faire ?\u0020</string>
     <string name="frozen_what_body">Si vous êtes bien à l\'origine de cette opération, rendez-vous chez un agent avec votre pièce d\'identité. Aucun code ne vous sera demandé par téléphone.</string>
     <string name="rejected_title">Opération rejetée</string>
     <string name="rejected_body">Réessayez.</string>
@@ -217,16 +217,16 @@
     <!-- Flux D (M-08) : E-20, E-21, E-22, E-26 -->
     <string name="reenrol_title">Nouveau téléphone</string>
     <string name="recovery_banner">🛡 Ce compte est déjà protégé par un autre téléphone.</string>
-    <string name="recovery_body_before">Pour lier </string>
+    <string name="recovery_body_before">Pour lier\u0020</string>
     <string name="recovery_body_this">ce</string>
-    <string name="recovery_body_after"> téléphone, entrez la clé de récupération que vous avez notée sur papier.</string>
+    <string name="recovery_body_after">\u0020téléphone, entrez la clé de récupération que vous avez notée sur papier.</string>
     <string name="recovery_label">Clé de récupération</string>
     <string name="recovery_no_sms">Aucun code ne vous sera envoyé par SMS pour cette étape.</string>
     <string name="recovery_lost">J\'ai perdu ma clé</string>
     <string name="wait_title">Clé incorrecte</string>
     <string name="wait_body">Vous pourrez réessayer dans</string>
     <string name="wait_not_blocked">Votre compte n\'est pas bloqué.</string>
-    <string name="wait_not_blocked_body"> Vous pouvez continuer à l\'utiliser par USSD. Seul ce téléphone doit attendre.</string>
+    <string name="wait_not_blocked_body">\u0020Vous pouvez continuer à l\'utiliser par USSD. Seul ce téléphone doit attendre.</string>
     <string name="wait_grows">Le délai augmente à chaque nouvelle erreur.</string>
     <string name="rebound_title">Ce téléphone est maintenant votre clé</string>
     <string name="rebound_old">Ancien téléphone</string>

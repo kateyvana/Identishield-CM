@@ -538,12 +538,19 @@ fun PinDots(
                 .testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        repeat(maxOf(count, 1)) { i ->
+        if (count == 0) {
+            Box(
+                Modifier
+                    .size(Dimens.PinDot)
+                    .border(Dimens.Hairline * 2, FieldBorder, CircleShape),
+            )
+        }
+        repeat(count) {
             Box(
                 Modifier
                     .size(Dimens.PinDot)
                     .clip(CircleShape)
-                    .background(if (i < count) Navy else Border),
+                    .background(Navy),
             )
         }
     }

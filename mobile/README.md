@@ -183,6 +183,9 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 | E-24 (B-UI) | « C'est moi » en bleu nuit, « Ce n'est pas moi » en rouge (la maquette : vert et rouge) ; mêmes actions | Le vert est réservé à un état vérifié par le serveur ; blanc sur vert = 3,51:1, sous le seuil AA |
 | E-18, E-27a (B-UI) | Encadré « danger » : texte rouge sur fond blanc, contour rouge (et non sur rouge dilué) | Rouge sur rouge dilué = 4,09:1, sous le seuil AA ; sur blanc = 4,96:1 |
 | E-05 (B-UI) | Les cases de l'OTP se partagent la largeur disponible | Au-delà de cinq chiffres, les cases de 48 dp débordaient de l'écran de 360 dp |
+| E-01 (B-UI) | Logo animé : le bouclier apparaît, le nom et la devise montent à sa suite, puis une onde bleu nuit part du bouclier tant que la clé est vérifiée ; rien ne bouge si les animations sont coupées dans les réglages d'Android | Demande du propriétaire du 2026-10-16 ; l'animation ne retarde jamais le parcours |
+| E-06, E-10, E-15 (B-UI) | PIN vide : un anneau (champ prêt) au lieu d'un point gris plein | Audit B-UI : le point plein laissait croire à un chiffre déjà tapé |
+| Textes composés (B-UI) | Les espaces de début ou de fin des morceaux de texte sont protégées (`\u0020`) : « votre clé », « À Jean-Paul », « Que faire ? Si » | Audit B-UI : Android supprimait ces espaces (défaut antérieur, charte point 8) |
 | Flux A (B-UI) | Pas d'indicateur d'étape « 1 à 5 » | Question ouverte au propriétaire : E-03 et E-06 sont communs aux flux A et D, et l'application ne doit pas distinguer les flux (ES-26) |
 
 ## Architecture

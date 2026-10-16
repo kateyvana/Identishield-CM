@@ -1,5 +1,6 @@
 package cm.identishield.mobile.ui.theme
 
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -83,6 +84,7 @@ object Dimens {
     val Disc = 96.dp
     val Logo = 120.dp
     val LogoLarge = 140.dp
+    val LogoHalo = 200.dp // zone de l'onde autour du logo d'E-01
     val HeroOverlap = 48.dp // part de la carte du solde qui chevauche l'en-tête
     val ContentMaxWidth = 600.dp // au-delà, la colonne est centrée (tablette, paysage)
 }
@@ -127,6 +129,15 @@ val IdentiShieldShapes =
         large = RoundedCornerShape(20.dp), // carte
         extraLarge = RoundedCornerShape(28.dp), // bord bas de l'en-tête d'accueil
     )
+
+/** Mouvement : durées et courbe des animations (aucune ne retarde le parcours). */
+object Motion {
+    const val ENTER_MS = 900 // entrée du logo, du nom et de la devise (E-01)
+    const val PULSE_MS = 1800 // onde « vérification en cours » autour du logo
+    val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f) // courbe Material 3
+    const val ENTER_SCALE = 0.86f // taille de départ du logo
+    const val PULSE_ALPHA = 0.16f // opacité de l'onde à son départ
+}
 
 /** Pastille (badge, montant rapide) : extrémités entièrement arrondies. */
 val PillShape = RoundedCornerShape(50)
