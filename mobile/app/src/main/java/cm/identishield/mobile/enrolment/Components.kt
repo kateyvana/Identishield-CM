@@ -85,8 +85,9 @@ import cm.identishield.mobile.ui.theme.Tone
  * Page standard. [title] : bandeau bleu nuit (chevron retour si [onBack]) ; [hero] : bloc pleine largeur
  * en tête de la zone qui défile (accueil). Le contenu défile quand il dépasse (paysage, police à 200 %),
  * et sa colonne est bornée à [Dimens.ContentMaxWidth] puis centrée (tablette).
- * [secure] = écran 🔒 des maquettes : capture bloquée (FLAG_SECURE, MOB-S-05) ET pastille « capture
- * bloquée », toujours ensemble.
+ * [secure] = écran 🔒 des maquettes : capture bloquée (FLAG_SECURE, MOB-S-05) ET cadenas « capture
+ * d'écran bloquée » devant le titre, toujours ensemble (décision du propriétaire du 2026-10-16 : un
+ * cadenas discret plutôt que la grande pastille des maquettes).
  */
 @Composable
 fun Page(
@@ -108,7 +109,7 @@ fun Page(
                 .background(Background)
                 .testTag(tag),
     ) {
-        if (title != null) ScreenHeader(title, onBack)
+        if (title != null) ScreenHeader(title, onBack, secure)
         BoxWithConstraints(
             Modifier
                 .weight(1f)
@@ -135,7 +136,7 @@ fun Page(
                         .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                         .padding(horizontal = Spacing.XL, vertical = Spacing.L),
                 ) {
-                    if (secure) CaptureBlockedBadge(Modifier.align(Alignment.CenterHorizontally))
+                    if (secure && title == null) CaptureBlockedBadge(Modifier.align(Alignment.CenterHorizontally), Navy)
                     content()
                 }
             }
@@ -154,11 +155,15 @@ private fun StatusBarIcons(lightIcons: Boolean) {
     }
 }
 
-/** Bandeau des écrans secondaires : passe sous la barre d'état, chevron retour, titre centré blanc. */
+/**
+ * Bandeau des écrans secondaires : passe sous la barre d'état, chevron retour, titre centré blanc ;
+ * [secure] : cadenas devant le titre, comme celui d'une adresse sûre dans un navigateur (un état, pas un bouton).
+ */
 @Composable
 fun ScreenHeader(
     title: String,
     onBack: (() -> Unit)?,
+    secure: Boolean = false,
 ) {
     Box(
         modifier =
@@ -180,32 +185,38 @@ fun ScreenHeader(
                         .testTag("back"),
             ) { Icon(painterResource(R.drawable.ic_back), contentDescription = stringResource(R.string.back), tint = Surface) }
         }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = Surface,
-            textAlign = TextAlign.Center,
-            modifier =
-                Modifier
-                    .padding(horizontal = Dimens.TouchTarget + Spacing.XS, vertical = Spacing.S)
-                    .semantics { heading() },
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = Dimens.TouchTarget + Spacing.XS, vertical = Spacing.S),
+        ) {
+            if (secure) {
+                CaptureBlockedBadge(tint = Surface)
+                HorizontalGap(Spacing.S)
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = Surface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() },
+            )
+        }
     }
 }
 
-/** Pastille des écrans 🔒 (maquettes E-06, E-08, E-09, E-14, E-15). */
+/** Cadenas des écrans 🔒 (maquettes E-06, E-08, E-09, E-14, E-15) : annoncé « capture d'écran bloquée ». */
 @Composable
-fun CaptureBlockedBadge(modifier: Modifier = Modifier) {
-    Text(
-        text = stringResource(R.string.capture_blocked),
-        color = Surface,
-        style = MaterialTheme.typography.labelMedium,
+fun CaptureBlockedBadge(
+    modifier: Modifier = Modifier,
+    tint: Color,
+) {
+    Icon(
+        painterResource(R.drawable.ic_lock),
+        contentDescription = stringResource(R.string.capture_blocked),
+        tint = tint,
         modifier =
             modifier
-                .padding(bottom = Spacing.M)
-                .clip(PillShape)
-                .background(Ink)
-                .padding(horizontal = Spacing.M, vertical = Spacing.XS)
+                .size(Dimens.SmallIcon)
                 .testTag("capture-blocked"),
     )
 }

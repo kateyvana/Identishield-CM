@@ -10,7 +10,7 @@
     <!-- Communs -->
     <string name="back">Retour</string>
     <string name="action_continue">Continuer</string>
-    <string name="capture_blocked">🔒 capture bloquée</string>
+    <string name="capture_blocked">Capture d\'écran bloquée</string>
     <string name="error_unreachable">Connexion impossible. Vérifiez le réseau et réessayez.</string>
     <string name="error_unexpected">Une erreur est survenue. Réessayez.</string>
     <string name="error_session_expired">La session a expiré. Recommencez.</string>

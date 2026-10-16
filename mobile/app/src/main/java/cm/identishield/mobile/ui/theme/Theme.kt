@@ -80,6 +80,7 @@ object Dimens {
     val Key = 64.dp
     val HeaderBar = 56.dp
     val Icon = 24.dp
+    val SmallIcon = 18.dp // cadenas « capture d'écran bloquée »
     val PinDot = 20.dp
     val Disc = 96.dp
     val Logo = 120.dp
