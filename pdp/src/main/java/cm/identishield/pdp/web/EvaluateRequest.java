@@ -2,6 +2,7 @@ package cm.identishield.pdp.web;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 /**
@@ -29,4 +30,10 @@ public record EvaluateRequest(
     String deviceKeyId,
     String signature,
     @Pattern(regexp = "^[0-9a-f]{32}$", message = "nonce must be 128-bit hex") String nonce,
-    @NotBlank @Pattern(regexp = "SIGNATURE|NONE") String proofType) {}
+    @NotBlank @Pattern(regexp = "SIGNATURE|NONE") String proofType,
+    // A4 (V4) : solde au moment de la demande ; fige le solde d'entrée en PROBATION, refuse une
+    // sortie qui le dépasse ; n'entre dans aucune règle de score.
+    @NotNull @Min(value = 0, message = "balanceXaf must be a non-negative integer") Long balanceXaf,
+    // A4 (Q4) : date du dernier changement d'IMSI (historique HLR, EF-08) ; absent = aucun connu.
+    @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$")
+        String imsiChangedAt) {}

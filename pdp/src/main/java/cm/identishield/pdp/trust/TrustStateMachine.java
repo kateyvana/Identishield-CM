@@ -69,7 +69,9 @@ public class TrustStateMachine {
       Instant probationUntil,
       FreezeCause freezeCause,
       Instant freezeUntil,
-      Instant reenrolFrozenUntil) {}
+      Instant reenrolFrozenUntil,
+      Instant probationEnteredAt,
+      Long probationEntryBalanceXaf) {}
 
   /** Transition interdite : refusée, l'état ne change pas. */
   public static final class Refused extends RuntimeException {
@@ -91,7 +93,8 @@ public class TrustStateMachine {
       "SELECT * FROM pdp.trust_state WHERE account_id = ? FOR UPDATE";
   private static final String SAVE_SQL =
       "UPDATE pdp.trust_state SET state = ?, since = ?, reference_imsi = ?, current_imsi = ?,"
-          + " probation_until = ?, freeze_cause = ?, freeze_until = ?, reenrol_frozen_until = ?"
+          + " probation_until = ?, freeze_cause = ?, freeze_until = ?, reenrol_frozen_until = ?,"
+          + " probation_entered_at = ?, probation_entry_balance_xaf = ?"
           + " WHERE account_id = ?";
   private static final String TRANSITION_SQL =
       "INSERT INTO pdp.trust_transition(account_id, from_state, to_state, event, cause, occurred_at)"
@@ -131,7 +134,17 @@ public class TrustStateMachine {
               .orElseGet(
                   () ->
                       new Trust(
-                          accountId, State.TRUSTED, null, null, null, null, null, null, null));
+                          accountId,
+                          State.TRUSTED,
+                          null,
+                          null,
+                          null,
+                          null,
+                          null,
+                          null,
+                          null,
+                          null,
+                          null));
         });
   }
 
@@ -155,9 +168,11 @@ public class TrustStateMachine {
   /**
    * Changement d'IMSI (ES-01b, ES-03c) : PROBATION jusqu'à {@code changedAt} + CAR_IMSI ; un
    * nouveau changement en PROBATION relance la période. Pendant un gel, l'état reste FROZEN et
-   * l'IMSI de référence et l'échéance sont mis à jour (A1-6).
+   * l'IMSI de référence et l'échéance sont mis à jour (A1-6). À chaque entrée, l'instant d'entrée
+   * et le solde {@code balanceXaf} sont figés pour le plafond CAP_PROB (A4, V4).
    */
-  public Trust imsiChanged(String accountId, String oldImsi, String newImsi, Instant changedAt) {
+  public Trust imsiChanged(
+      String accountId, String oldImsi, String newImsi, Instant changedAt, long balanceXaf) {
     return mutate(
         accountId,
         (r, now) -> {
@@ -165,26 +180,63 @@ public class TrustStateMachine {
           if (newImsi.equals(known)) {
             throw new Refused("IMSI unchanged for " + accountId);
           }
-          State from = r.state;
-          if (from == State.FROZEN) {
-            r.referenceImsi = newImsi;
-          } else {
-            if (r.referenceImsi == null) {
-              r.referenceImsi = oldImsi;
-            }
-            r.state = State.PROBATION;
-            r.since = changedAt;
-          }
-          r.currentImsi = newImsi;
-          r.probationUntil = changedAt.plus(rules.carImsi());
-          transition(
-              r,
-              from,
-              EVENT_PROBATION_ENTERED,
-              "IMSI_CHANGE",
-              changedAt,
-              Map.of("probationUntil", iso(r.probationUntil)));
+          applyImsiChange(r, oldImsi, newImsi, changedAt, balanceXaf);
         });
+  }
+
+  /**
+   * Ce que /evaluate apprend du compte (A4, arbitrages Q3 et Q4) : l'IMSI courant et la date du
+   * dernier changement d'IMSI, lue par le cœur dans l'historique HLR immuable (EF-08, ADR-032).
+   * Compte jamais vu : jamais TRUSTED par défaut — PROBATION si ce changement est dans la fenêtre
+   * CAR_IMSI (échéance d'origine, solde de cette requête figé), sinon TRUSTED avec l'IMSI courant
+   * pour référence. Compte connu : un IMSI différent du dernier connu ouvre la PROBATION, datée du
+   * changement, ou à défaut de l'instant d'évaluation. Même IMSI : aucun effet (rejeu sûr).
+   */
+  public Trust observed(
+      String accountId, String currentImsi, Instant imsiChangedAt, long balanceXaf) {
+    return mutate(
+        accountId,
+        (r, now) -> {
+          if (r.referenceImsi == null && r.currentImsi == null) {
+            if (imsiChangedAt != null && now.isBefore(imsiChangedAt.plus(rules.carImsi()))) {
+              applyImsiChange(r, null, currentImsi, imsiChangedAt, balanceXaf);
+            } else {
+              r.referenceImsi = currentImsi;
+              r.currentImsi = currentImsi;
+            }
+            return;
+          }
+          String known = r.currentImsi != null ? r.currentImsi : r.referenceImsi;
+          if (!currentImsi.equals(known)) {
+            Instant changedAt = imsiChangedAt != null ? imsiChangedAt : now;
+            applyImsiChange(r, known, currentImsi, changedAt, balanceXaf);
+          }
+        });
+  }
+
+  private void applyImsiChange(
+      Row r, String oldImsi, String newImsi, Instant changedAt, long balanceXaf) {
+    State from = r.state;
+    if (from == State.FROZEN) {
+      r.referenceImsi = newImsi;
+    } else {
+      if (r.referenceImsi == null) {
+        r.referenceImsi = oldImsi;
+      }
+      r.state = State.PROBATION;
+      r.since = changedAt;
+    }
+    r.currentImsi = newImsi;
+    r.probationUntil = changedAt.plus(rules.carImsi());
+    r.probationEnteredAt = changedAt;
+    r.probationEntryBalanceXaf = balanceXaf;
+    transition(
+        r,
+        from,
+        EVENT_PROBATION_ENTERED,
+        "IMSI_CHANGE",
+        changedAt,
+        Map.of("probationUntil", iso(r.probationUntil)));
   }
 
   /** Décision FREEZE du PDP : FROZEN pour TTL_FREEZE (A1-3). Refusée si le compte est déjà gelé. */
@@ -312,6 +364,8 @@ public class TrustStateMachine {
       r.referenceImsi = r.currentImsi;
     }
     r.probationUntil = null;
+    r.probationEnteredAt = null;
+    r.probationEntryBalanceXaf = null;
   }
 
   private void transition(
@@ -344,6 +398,8 @@ public class TrustStateMachine {
         r.freezeCause == null ? null : r.freezeCause.name(),
         utc(r.freezeUntil),
         utc(r.reenrolFrozenUntil),
+        utc(r.probationEnteredAt),
+        r.probationEntryBalanceXaf,
         r.accountId);
   }
 
@@ -366,6 +422,8 @@ public class TrustStateMachine {
     FreezeCause freezeCause;
     Instant freezeUntil;
     Instant reenrolFrozenUntil;
+    Instant probationEnteredAt;
+    Long probationEntryBalanceXaf;
 
     static Row read(ResultSet rs) throws SQLException {
       Row r = new Row();
@@ -379,6 +437,9 @@ public class TrustStateMachine {
       r.freezeCause = cause == null ? null : FreezeCause.valueOf(cause);
       r.freezeUntil = instant(rs, "freeze_until");
       r.reenrolFrozenUntil = instant(rs, "reenrol_frozen_until");
+      r.probationEnteredAt = instant(rs, "probation_entered_at");
+      long balance = rs.getLong("probation_entry_balance_xaf");
+      r.probationEntryBalanceXaf = rs.wasNull() ? null : balance;
       return r;
     }
 
@@ -397,7 +458,9 @@ public class TrustStateMachine {
           probationUntil,
           freezeCause,
           freezeUntil,
-          reenrolFrozenUntil);
+          reenrolFrozenUntil,
+          probationEnteredAt,
+          probationEntryBalanceXaf);
     }
   }
 }
