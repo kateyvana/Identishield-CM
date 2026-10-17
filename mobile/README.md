@@ -186,6 +186,9 @@ E-01 (aucune clé) → E-02 → E-03 → E-06 → E-04 → E-05 → E-07 → E-0
 | E-01 (B-UI) | Logo animé : le bouclier apparaît, le nom et la devise montent à sa suite, puis une onde bleu nuit part du bouclier tant que la clé est vérifiée ; rien ne bouge si les animations sont coupées dans les réglages d'Android | Demande du propriétaire du 2026-10-16 ; l'animation ne retarde jamais le parcours |
 | E-06, E-10, E-15 (B-UI) | PIN vide : un anneau (champ prêt) au lieu d'un point gris plein | Audit B-UI : le point plein laissait croire à un chiffre déjà tapé |
 | Textes composés (B-UI) | Les espaces de début ou de fin des morceaux de texte sont protégées (`\u0020`) : « votre clé », « À Jean-Paul », « Que faire ? Si » | Audit B-UI : Android supprimait ces espaces (défaut antérieur, charte point 8) |
+| Champs (B-UI) | Un appui n'importe où dans le cadre d'un champ (libellé compris) donne le focus et ouvre le clavier | Passe sur tablette du 2026-10-17 : seule la ligne de saisie réagissait (charte point 2) |
+| Disques des écrans de résultat (B-UI) | Icônes vectorielles teintées dans la palette (coche, horloge, croix, sablier, clé, cadenas…) au lieu d'émojis | Passe sur tablette : Samsung dessine 🛡 en bouclier rouge, hors charte ; le badge « 🛡 Appareil protégé » garde son émoji (texte vérifié par un test de parcours) |
+| Rail, démarrage (B-UI) | Bande bleu nuit sous la barre d'état au-dessus du rail ; barre d'état transparente dès la première image | Passe sur tablette : icônes système invisibles sur le rail blanc ; bande grise au démarrage |
 | Flux A (B-UI) | Pas d'indicateur d'étape « 1 à 5 » | Question ouverte au propriétaire : E-03 et E-06 sont communs aux flux A et D, et l'application ne doit pas distinguer les flux (ES-26) |
 
 ## Architecture
