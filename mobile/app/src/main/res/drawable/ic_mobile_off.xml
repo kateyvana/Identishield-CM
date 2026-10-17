@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône Material (Apache 2.0), tracée en ressource : aucune bibliothèque d'icônes (ADR-037). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M17,5v8.61l2,2V3c0,-1.1 -0.9,-1.99 -2,-1.99L7,1c-0.71,0 -1.32,0.38 -1.67,0.94L8.39,5H17zM1.97,3.37L3.38,1.96 21.62,20.2 20.21,21.61 19,20.4V21c0,1.1 -0.9,2 -2,2H7c-1.1,0 -2,-0.9 -2,-2V7.39L1.97,3.37zM7,9.39V19h9.61L7,9.39z" />
+</vector>

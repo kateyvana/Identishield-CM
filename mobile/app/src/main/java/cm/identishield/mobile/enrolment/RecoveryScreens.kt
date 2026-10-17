@@ -1,18 +1,11 @@
 package cm.identishield.mobile.enrolment
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,8 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -31,14 +22,14 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import cm.identishield.mobile.R
-import cm.identishield.mobile.ui.theme.Amber
+import cm.identishield.mobile.ui.theme.AmberText
 import cm.identishield.mobile.ui.theme.Danger
 import cm.identishield.mobile.ui.theme.Ink
 import cm.identishield.mobile.ui.theme.Navy
 import cm.identishield.mobile.ui.theme.ProtectedGreen
+import cm.identishield.mobile.ui.theme.Spacing
+import cm.identishield.mobile.ui.theme.Tone
 import kotlinx.coroutines.delay
 import java.time.Duration
 
@@ -78,22 +69,10 @@ fun RecoveryScreen(
     onBack: () -> Unit,
 ) {
     var code by remember(step) { mutableStateOf("") }
-    Page(RecoveryTags.ENTRY, secure = true) {
-        BackHeader(stringResource(R.string.reenrol_title), onBack)
-        VerticalGap(12)
-        Text(
-            stringResource(R.string.recovery_banner),
-            color = ProtectedGreen,
-            fontSize = 17.sp,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(ProtectedGreen.copy(alpha = 0.10f))
-                    .border(1.dp, ProtectedGreen.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-        )
-        VerticalGap(12)
+    Page(RecoveryTags.ENTRY, secure = true, title = stringResource(R.string.reenrol_title), onBack = onBack) {
+        // Vert : le serveur a constaté que le compte est déjà lié à un autre téléphone.
+        Callout(stringResource(R.string.recovery_banner), Tone.VERIFIED, tag = "recovery-banner")
+        VerticalGap(Spacing.M)
         Text(
             buildAnnotatedString {
                 append(stringResource(R.string.recovery_body_before))
@@ -101,35 +80,18 @@ fun RecoveryScreen(
                 append(stringResource(R.string.recovery_body_after))
             },
             color = Ink,
-            fontSize = 17.sp,
+            style = MaterialTheme.typography.bodyLarge,
         )
-        VerticalGap(20)
-        Text(stringResource(R.string.recovery_label), color = Secondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        VerticalGap(8)
-        CodeField(code, { code = it }, codeLength, "recovery-input")
-        VerticalGap(8)
+        VerticalGap(Spacing.L)
+        CodeField(code, { code = it }, codeLength, "recovery-input", stringResource(R.string.recovery_label))
+        VerticalGap(Spacing.S)
         BodyText(stringResource(R.string.recovery_no_sms))
         step.error?.let { ErrorText(errorMessage(it)) }
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(code) }, enabled = code.length == codeLength)
-        LostKeyLink(onLostKey)
+        TextAction(stringResource(R.string.recovery_lost), onLostKey, tag = "lost-key")
     }
-}
-
-@Composable
-private fun LostKeyLink(onLostKey: () -> Unit) {
-    Text(
-        stringResource(R.string.recovery_lost),
-        color = Secondary,
-        fontSize = 17.sp,
-        textAlign = TextAlign.Center,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onLostKey)
-                .padding(vertical = 14.dp)
-                .testTag("lost-key"),
-    )
 }
 
 // ---- E-21 Attente imposée 🔒 ----------------------------------------------------------------------
@@ -157,46 +119,35 @@ fun RecoveryWaitScreen(
             delay(TICK_MILLIS)
         }
     }
-    Page(RecoveryTags.WAIT, secure = true) {
-        BackHeader(stringResource(R.string.reenrol_title), onBack)
-        VerticalGap(16)
-        Disc("⏳", Amber)
-        VerticalGap(20)
+    Page(RecoveryTags.WAIT, secure = true, title = stringResource(R.string.reenrol_title), onBack = onBack) {
+        Disc(R.drawable.ic_hourglass, AmberText)
+        VerticalGap(Spacing.L)
         Title(stringResource(R.string.wait_title))
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.wait_body), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Text(
             left?.let { formatWait(it) } ?: "00:00",
             color = Navy,
-            fontSize = 64.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.displayLarge,
             textAlign = TextAlign.Center,
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .testTag("countdown"),
         )
-        VerticalGap(12)
-        Text(
+        VerticalGap(Spacing.M)
+        Callout(
             buildAnnotatedString {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.wait_not_blocked)) }
                 append(stringResource(R.string.wait_not_blocked_body))
             },
-            color = ProtectedGreen,
-            fontSize = 16.sp,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(ProtectedGreen.copy(alpha = 0.10f))
-                    .border(1.dp, ProtectedGreen.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-                    .testTag("not-blocked"),
+            Tone.VERIFIED,
+            tag = "not-blocked",
         )
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.wait_grows), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.weight(1f))
-        LostKeyLink(onLostKey)
+        TextAction(stringResource(R.string.recovery_lost), onLostKey, tag = "lost-key")
     }
 }
 
@@ -213,26 +164,20 @@ fun ReboundScreen(
 ) {
     Page(RecoveryTags.REBOUND) {
         Spacer(Modifier.weight(1f))
-        Disc("🛡", ProtectedGreen)
-        VerticalGap(20)
+        Disc(R.drawable.ic_security, ProtectedGreen) // nouvelle liaison vérifiée par le serveur
+        VerticalGap(Spacing.L)
         Title(stringResource(R.string.rebound_title))
-        VerticalGap(8)
+        VerticalGap(Spacing.S)
         BodyText(formatMsisdn(step.msisdn), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        VerticalGap(16)
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color.White)
-                .border(1.dp, Hairline, RoundedCornerShape(20.dp))
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-        ) {
-            StatusRow(stringResource(R.string.rebound_old), stringResource(R.string.rebound_unbound), Danger, "old-phone")
-            StatusRow(stringResource(R.string.rebound_this, deviceModel), stringResource(R.string.rebound_bound), ProtectedGreen, "this-phone")
+        VerticalGap(Spacing.L)
+        SurfaceCard(contentPadding = PaddingValues(horizontal = Spacing.L, vertical = Spacing.XS)) {
+            StatusRow(stringResource(R.string.rebound_old), stringResource(R.string.rebound_unbound), Tone.DANGER, "old-phone")
+            HairlineDivider()
+            StatusRow(stringResource(R.string.rebound_this, deviceModel), stringResource(R.string.rebound_bound), Tone.VERIFIED, "this-phone")
         }
-        VerticalGap(12)
-        WarningBox(content = { Text(stringResource(R.string.rebound_warning), color = Ink, fontSize = 16.sp) })
-        VerticalGap(16)
+        VerticalGap(Spacing.M)
+        Callout(stringResource(R.string.rebound_warning))
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.rebound_show_key), onShowKey, tag = "show-key")
         Spacer(Modifier.weight(1f))
     }
@@ -242,7 +187,7 @@ fun ReboundScreen(
 private fun StatusRow(
     label: String,
     status: String,
-    color: Color,
+    tone: Tone,
     tag: String,
 ) {
     Row(
@@ -250,21 +195,12 @@ private fun StatusRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp)
+                .padding(vertical = Spacing.M)
                 .testTag(tag),
     ) {
-        Text(label, color = Ink, fontSize = 17.sp, modifier = Modifier.weight(1f))
-        Text(
-            status,
-            color = color,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            modifier =
-                Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(color.copy(alpha = 0.12f))
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-        )
+        Text(label, color = Ink, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        HorizontalGap(Spacing.S)
+        Pill(status, tone)
     }
 }
 
@@ -273,30 +209,22 @@ private fun StatusRow(
 /** Orientation seulement : la procédure dépend de QM-05 (point ouvert). */
 @Composable
 fun KeyLostScreen(onBack: () -> Unit) {
-    Page(RecoveryTags.LOST) {
-        BackHeader(stringResource(R.string.lost_title), onBack)
-        VerticalGap(16)
-        Disc("🗝", Navy)
-        VerticalGap(16)
+    Page(RecoveryTags.LOST, title = stringResource(R.string.lost_title), onBack = onBack) {
+        Disc(R.drawable.ic_key, Navy)
+        VerticalGap(Spacing.L)
         Title(stringResource(R.string.lost_heading))
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.lost_body))
-        VerticalGap(16)
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color.White)
-                .border(1.dp, Hairline, RoundedCornerShape(20.dp))
-                .padding(20.dp),
-        ) {
+        VerticalGap(Spacing.L)
+        SurfaceCard(contentPadding = PaddingValues(Spacing.L)) {
             listOf(R.string.lost_step_1, R.string.lost_step_2, R.string.lost_step_3).forEach {
-                Text(stringResource(it), color = Ink, fontSize = 17.sp, modifier = Modifier.padding(vertical = 8.dp))
+                Text(stringResource(it), color = Ink, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = Spacing.S))
             }
         }
-        VerticalGap(12)
-        WarningBox(content = { Text(stringResource(R.string.lost_pending), color = Ink, fontSize = 16.sp) })
+        VerticalGap(Spacing.M)
+        Callout(stringResource(R.string.lost_pending))
         Spacer(Modifier.weight(1f))
+        VerticalGap(Spacing.L)
         SecondaryButton(stringResource(R.string.back), onBack, tag = "lost-back")
     }
 }
@@ -314,34 +242,22 @@ fun KeyRevokedScreen(
 ) {
     Page(RecoveryTags.REVOKED) {
         Spacer(Modifier.weight(1f))
-        Disc("🔗", Danger)
-        VerticalGap(20)
+        Disc(R.drawable.ic_link_off, Danger)
+        VerticalGap(Spacing.L)
         Title(stringResource(if (invalidated) R.string.invalidated_title else R.string.revoked_title))
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         BodyText(
             stringResource(if (invalidated) R.string.invalidated_body else R.string.revoked_body),
             align = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
         if (!invalidated) {
-            VerticalGap(16)
-            Text(
-                stringResource(R.string.revoked_warning),
-                color = Danger,
-                fontSize = 16.sp,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Danger.copy(alpha = 0.08f))
-                        .border(1.dp, Danger.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                        .padding(16.dp)
-                        .testTag("revoked-warning"),
-            )
+            VerticalGap(Spacing.L)
+            Callout(stringResource(R.string.revoked_warning), Tone.DANGER, tag = "revoked-warning")
         }
-        VerticalGap(20)
+        VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.revoked_secure_again), onSecureAgain, tag = "secure-again")
-        VerticalGap(8)
+        VerticalGap(Spacing.S)
         // Texte seul : aucun code USSD réel n'est composé depuis le bac à sable (comme E-02).
         BodyText(stringResource(R.string.revoked_ussd), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.weight(1f))
@@ -354,46 +270,15 @@ fun KeyRevokedScreen(
 fun DeviceIncompatibleScreen(onQuit: () -> Unit) {
     Page(RecoveryTags.INCOMPATIBLE) {
         Spacer(Modifier.weight(1f))
-        Disc("📵", Navy)
-        VerticalGap(20)
+        Disc(R.drawable.ic_mobile_off, Navy)
+        VerticalGap(Spacing.L)
         Title(stringResource(R.string.incompatible_title))
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.incompatible_body), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        VerticalGap(12)
+        VerticalGap(Spacing.M)
         BodyText(stringResource(R.string.incompatible_ussd), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        VerticalGap(20)
+        VerticalGap(Spacing.L)
         SecondaryButton(stringResource(R.string.incompatible_quit), onQuit, tag = "quit")
         Spacer(Modifier.weight(1f))
     }
 }
-
-// ---- communs ------------------------------------------------------------------------------------
-
-@Composable
-internal fun ColumnScope.Disc(
-    glyph: String,
-    color: Color,
-) {
-    Box(
-        Modifier
-            .size(96.dp)
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.12f))
-            .align(Alignment.CenterHorizontally),
-        contentAlignment = Alignment.Center,
-    ) { Text(glyph, fontSize = 40.sp, color = color) }
-}
-
-@Composable
-internal fun Title(text: String) =
-    Text(
-        text,
-        color = Ink,
-        fontSize = 26.sp,
-        fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.Center,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .testTag("title"),
-    )

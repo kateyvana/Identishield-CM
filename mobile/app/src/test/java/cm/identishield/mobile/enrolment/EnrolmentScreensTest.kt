@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -212,7 +213,7 @@ class EnrolmentScreensTest {
     fun secureScreens_showTheCaptureBlockedBadge_likeTheMockups() {
         show { PinScreen(EnrolStep.Pin("677000200"), onSubmit = {}, onBack = {}) }
         compose.onNodeWithTag("capture-blocked").assertIsDisplayed()
-        compose.onNodeWithText("🔒 capture bloquée").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Capture d'écran bloquée").assertIsDisplayed() // B-UI : cadenas (décision du 2026-10-16)
         assertTrue("pastille et FLAG_SECURE vont ensemble", secureFlagSet())
     }
 
