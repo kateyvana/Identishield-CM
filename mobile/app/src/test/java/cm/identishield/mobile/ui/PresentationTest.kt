@@ -3,6 +3,11 @@ package cm.identishield.mobile.ui
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.performClick
+import cm.identishield.mobile.enrolment.EnrolStep
+import cm.identishield.mobile.enrolment.NumberScreen
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -42,6 +47,15 @@ class PresentationTest {
     fun frozenAdvice_keepsTheSpaceAfterTheQuestion() {
         compose.setContent { IdentiShieldTheme { StoppedScreen(DailyStep.Stopped(Outcome.FROZEN), onHome = {}, onHistory = {}) } }
         compose.onNodeWithText("Que faire ? Si", substring = true).assertIsDisplayed() // et non « Que faire ?Si »
+    }
+
+    /** Constat sur la tablette (2026-10-17) : un appui sur le libellé, DANS le cadre, n'ouvrait pas la saisie. */
+    @Test
+    fun tappingAnywhereInTheField_focusesTheInput() {
+        compose.setContent { IdentiShieldTheme { NumberScreen(EnrolStep.Number(), onSubmit = {}, onBack = {}) } }
+        compose.onNodeWithTag("number-input").assertIsNotFocused()
+        compose.onNodeWithText("Numéro de téléphone *").performClick()
+        compose.onNodeWithTag("number-input").assertIsFocused()
     }
 
     @Test

@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import cm.identishield.mobile.R
-import cm.identishield.mobile.ui.theme.Amber
+import cm.identishield.mobile.ui.theme.AmberText
 import cm.identishield.mobile.ui.theme.Danger
 import cm.identishield.mobile.ui.theme.Ink
 import cm.identishield.mobile.ui.theme.Navy
@@ -120,7 +120,7 @@ fun RecoveryWaitScreen(
         }
     }
     Page(RecoveryTags.WAIT, secure = true, title = stringResource(R.string.reenrol_title), onBack = onBack) {
-        Disc("⏳", Amber)
+        Disc(R.drawable.ic_hourglass, AmberText)
         VerticalGap(Spacing.L)
         Title(stringResource(R.string.wait_title))
         VerticalGap(Spacing.M)
@@ -164,7 +164,7 @@ fun ReboundScreen(
 ) {
     Page(RecoveryTags.REBOUND) {
         Spacer(Modifier.weight(1f))
-        Disc("🛡", ProtectedGreen) // nouvelle liaison vérifiée par le serveur
+        Disc(R.drawable.ic_security, ProtectedGreen) // nouvelle liaison vérifiée par le serveur
         VerticalGap(Spacing.L)
         Title(stringResource(R.string.rebound_title))
         VerticalGap(Spacing.S)
@@ -210,7 +210,7 @@ private fun StatusRow(
 @Composable
 fun KeyLostScreen(onBack: () -> Unit) {
     Page(RecoveryTags.LOST, title = stringResource(R.string.lost_title), onBack = onBack) {
-        Disc("🗝", Navy)
+        Disc(R.drawable.ic_key, Navy)
         VerticalGap(Spacing.L)
         Title(stringResource(R.string.lost_heading))
         VerticalGap(Spacing.M)
@@ -242,7 +242,7 @@ fun KeyRevokedScreen(
 ) {
     Page(RecoveryTags.REVOKED) {
         Spacer(Modifier.weight(1f))
-        Disc("🔗", Danger)
+        Disc(R.drawable.ic_link_off, Danger)
         VerticalGap(Spacing.L)
         Title(stringResource(if (invalidated) R.string.invalidated_title else R.string.revoked_title))
         VerticalGap(Spacing.M)
@@ -270,7 +270,7 @@ fun KeyRevokedScreen(
 fun DeviceIncompatibleScreen(onQuit: () -> Unit) {
     Page(RecoveryTags.INCOMPATIBLE) {
         Spacer(Modifier.weight(1f))
-        Disc("📵", Navy)
+        Disc(R.drawable.ic_mobile_off, Navy)
         VerticalGap(Spacing.L)
         Title(stringResource(R.string.incompatible_title))
         VerticalGap(Spacing.M)

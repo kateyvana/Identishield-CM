@@ -83,6 +83,7 @@ object Dimens {
     val SmallIcon = 18.dp // cadenas « capture d'écran bloquée »
     val PinDot = 20.dp
     val Disc = 96.dp
+    val DiscIcon = 44.dp
     val Logo = 120.dp
     val LogoLarge = 140.dp
     val LogoHalo = 200.dp // zone de l'onde autour du logo d'E-01
@@ -115,7 +116,6 @@ object AmountType {
     val Row = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val Currency = TextStyle(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
     val Code = TextStyle(fontSize = 24.sp, lineHeight = 32.sp, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp)
-    val Glyph = TextStyle(fontSize = 40.sp, lineHeight = 48.sp) // pictogramme des disques
     val Wordmark = TextStyle(fontSize = 36.sp, lineHeight = 44.sp, fontWeight = FontWeight.Bold)
 
     /** Resserrement de l'espace de groupe des montants (≈ espace fine). */

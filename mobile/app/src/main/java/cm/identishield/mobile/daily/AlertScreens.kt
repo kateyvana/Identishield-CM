@@ -146,7 +146,7 @@ fun AlertDetailScreen(
 ) {
     val alert = state.alert
     Page(AlertTags.DETAIL, title = stringResource(R.string.alert_title), onBack = onBack.takeUnless { state.busy }) {
-        Disc("📶", Amber)
+        Disc(R.drawable.ic_alerts, AmberText)
         VerticalGap(Spacing.L)
         Title(alertTitle(alert.type))
         VerticalGap(Spacing.S)

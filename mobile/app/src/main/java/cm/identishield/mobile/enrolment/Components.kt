@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -47,7 +48,10 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -383,20 +387,38 @@ fun HairlineDivider() =
             .background(Border),
     )
 
-/** Champ de formulaire : grand rectangle arrondi, libellé À L'INTÉRIEUR, astérisque si requis. */
+/**
+ * Champ de formulaire : grand rectangle arrondi, libellé À L'INTÉRIEUR, astérisque si requis.
+ * [field] : le champ de saisie du cadre ; un appui n'importe où dans le cadre lui donne le focus et
+ * ouvre le clavier (charte point 2 : tout le champ est touchable). Geste seul, sans sémantique ajoutée :
+ * les lecteurs d'écran atteignent le champ lui-même.
+ */
 @Composable
 fun InputBox(
     label: String,
     required: Boolean = true,
+    field: FocusRequester? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
     Column(
         Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .background(Surface)
             .border(Dimens.Hairline, FieldBorder, MaterialTheme.shapes.medium)
-            .padding(horizontal = Spacing.L, vertical = Spacing.M),
+            .then(
+                if (field == null) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(field) {
+                        detectTapGestures {
+                            field.requestFocus()
+                            keyboard?.show()
+                        }
+                    }
+                },
+            ).padding(horizontal = Spacing.L, vertical = Spacing.M),
     ) {
         Text(if (required) "$label *" else label, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
         VerticalGap(Spacing.XS)
@@ -444,10 +466,14 @@ fun Title(text: String) =
                 .testTag("title"),
     )
 
-/** Disque coloré portant un pictogramme (écrans de résultat et d'attente). */
+/**
+ * Disque coloré portant une icône (écrans de résultat et d'attente). Icône vectorielle teintée dans la
+ * palette, jamais un émoji : chaque fabricant dessine les émojis à sa façon (bouclier rouge chez Samsung,
+ * constaté sur la tablette le 2026-10-17). Décoratif : le titre de l'écran porte le sens.
+ */
 @Composable
 fun ColumnScope.Disc(
-    glyph: String,
+    icon: Int,
     color: Color,
 ) {
     Box(
@@ -457,7 +483,7 @@ fun ColumnScope.Disc(
             .background(color.copy(alpha = DISC_TINT_ALPHA))
             .align(Alignment.CenterHorizontally),
         contentAlignment = Alignment.Center,
-    ) { Text(glyph, style = AmountType.Glyph, color = color) }
+    ) { Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(Dimens.DiscIcon)) }
 }
 
 /** Montant : chiffres à chasse fixe, espaces de groupe affinées ; [fit] le réduit pour tenir sur une ligne. */

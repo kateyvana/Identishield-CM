@@ -13,6 +13,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,6 +53,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -89,6 +96,7 @@ import cm.identishield.mobile.enrolment.formatMsisdn
 import cm.identishield.mobile.enrolment.formatXaf
 import cm.identishield.mobile.enrolment.maskMsisdn
 import cm.identishield.mobile.ui.theme.Amber
+import cm.identishield.mobile.ui.theme.AmberText
 import cm.identishield.mobile.ui.theme.AmountType
 import cm.identishield.mobile.ui.theme.Background
 import cm.identishield.mobile.ui.theme.Border
@@ -284,24 +292,37 @@ fun NavScaffold(
                 .fillMaxSize()
                 .background(Background),
         ) {
-            NavigationRail(containerColor = Surface, modifier = Modifier.testTag("nav-rail")) {
-                destinations.forEach { d ->
-                    NavigationRailItem(
-                        selected = d.selected,
-                        onClick = d.onClick ?: {},
-                        enabled = d.enabled,
-                        icon = { Icon(painterResource(d.icon), contentDescription = null) },
-                        label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall) },
-                        colors =
-                            NavigationRailItemDefaults.colors(
-                                selectedIconColor = Navy,
-                                selectedTextColor = Navy,
-                                indicatorColor = NavyTint,
-                                unselectedIconColor = TextSecondary,
-                                unselectedTextColor = TextSecondary,
-                            ),
-                        modifier = Modifier.testTag(d.tag),
-                    )
+            Column(Modifier.width(IntrinsicSize.Max).background(Surface)) {
+                // Sous la barre d'état : bleu nuit, comme le bandeau voisin (icônes système claires lisibles).
+                Spacer(
+                    Modifier
+                        .fillMaxWidth()
+                        .windowInsetsTopHeight(WindowInsets.statusBars)
+                        .background(Navy),
+                )
+                NavigationRail(
+                    containerColor = Surface,
+                    windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start),
+                    modifier = Modifier.testTag("nav-rail"),
+                ) {
+                    destinations.forEach { d ->
+                        NavigationRailItem(
+                            selected = d.selected,
+                            onClick = d.onClick ?: {},
+                            enabled = d.enabled,
+                            icon = { Icon(painterResource(d.icon), contentDescription = null) },
+                            label = { Text(stringResource(d.label), style = MaterialTheme.typography.labelSmall) },
+                            colors =
+                                NavigationRailItemDefaults.colors(
+                                    selectedIconColor = Navy,
+                                    selectedTextColor = Navy,
+                                    indicatorColor = NavyTint,
+                                    unselectedIconColor = TextSecondary,
+                                    unselectedTextColor = TextSecondary,
+                                ),
+                            modifier = Modifier.testTag(d.tag),
+                        )
+                    }
                 }
             }
             Box(Modifier.weight(1f)) { content() }
@@ -685,8 +706,9 @@ fun BeneficiaryScreen(
     onDraft: (String) -> Unit = {},
 ) {
     var number by remember(step.recents) { mutableStateOf(step.draft) } // D4 : restitué après reconnexion
+    val focus = remember { FocusRequester() }
     Page(DailyTags.BENEFICIARY, title = stringResource(R.string.send_title), onBack = onBack) {
-        InputBox(stringResource(R.string.beneficiary_label)) {
+        InputBox(stringResource(R.string.beneficiary_label), field = focus) {
             Text(stringResource(R.string.beneficiary_prefix), style = MaterialTheme.typography.titleLarge, color = TextSecondary)
             HorizontalGap(Spacing.M)
             BasicTextField(
@@ -701,6 +723,7 @@ fun BeneficiaryScreen(
                 modifier =
                     Modifier
                         .weight(1f)
+                        .focusRequester(focus)
                         .testTag("beneficiary-input"),
                 decorationBox = CenteredInput,
             )
@@ -940,7 +963,7 @@ fun SentScreen(
 ) {
     Page(DailyTags.SENT) {
         Spacer(Modifier.weight(1f))
-        Disc("✓", ProtectedGreen) // exécution confirmée par le serveur
+        Disc(R.drawable.ic_check, ProtectedGreen) // exécution confirmée par le serveur
         VerticalGap(Spacing.L)
         Title(stringResource(R.string.sent_title))
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -1003,7 +1026,7 @@ fun DeferredScreen(
 ) {
     Page(DailyTags.DEFERRED) {
         Spacer(Modifier.weight(1f))
-        Disc("⏱", Amber)
+        Disc(R.drawable.ic_schedule, AmberText)
         VerticalGap(Spacing.L)
         Title(stringResource(R.string.deferred_title))
         VerticalGap(Spacing.M)
@@ -1063,7 +1086,7 @@ fun StoppedScreen(
 ) {
     Page(DailyTags.STOPPED) {
         Spacer(Modifier.weight(1f))
-        Disc(if (step.outcome == Outcome.UNKNOWN) "?" else "✕", if (step.outcome == Outcome.UNKNOWN) Amber else Danger)
+        Disc(if (step.outcome == Outcome.UNKNOWN) R.drawable.ic_help else R.drawable.ic_close, if (step.outcome == Outcome.UNKNOWN) AmberText else Danger)
         VerticalGap(Spacing.L)
         when (step.outcome) {
             Outcome.FROZEN -> {

@@ -5,7 +5,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.password
@@ -77,7 +80,8 @@ fun CodeField(
     tag: String,
     label: String,
 ) {
-    InputBox(label) {
+    val focus = remember { FocusRequester() }
+    InputBox(label, field = focus) {
         CompositionLocalProvider(LocalTextToolbar provides NoTextToolbar) {
             BasicTextField(
                 value = value,
@@ -94,6 +98,7 @@ fun CodeField(
                 modifier =
                     Modifier
                         .fillMaxWidth()
+                        .focusRequester(focus)
                         .semantics { password() }
                         .testTag(tag),
                 decorationBox = CenteredInput,

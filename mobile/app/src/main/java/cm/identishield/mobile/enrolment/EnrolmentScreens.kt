@@ -29,6 +29,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
@@ -144,10 +146,11 @@ fun NumberScreen(
     onBack: () -> Unit,
 ) {
     var value by remember { mutableStateOf("") }
+    val focus = remember { FocusRequester() }
     Page(EnrolTags.NUMBER, title = stringResource(R.string.number_title), onBack = onBack) {
         BodyText(stringResource(R.string.number_body))
         VerticalGap(Spacing.XL)
-        InputBox(stringResource(R.string.number_label)) {
+        InputBox(stringResource(R.string.number_label), field = focus) {
             Text(stringResource(R.string.number_prefix), style = MaterialTheme.typography.titleLarge, color = TextSecondary)
             HorizontalGap(Spacing.M)
             BasicTextField(
@@ -159,6 +162,7 @@ fun NumberScreen(
                 modifier =
                     Modifier
                         .weight(1f)
+                        .focusRequester(focus)
                         .testTag("number-input"),
                 decorationBox = CenteredInput,
             )
@@ -210,7 +214,7 @@ fun PinScreen(
 fun CheckingScreen() {
     Page(EnrolTags.CHECKING) {
         Spacer(Modifier.weight(1f))
-        Disc("⟳", Navy)
+        Disc(R.drawable.ic_sync, Navy)
         VerticalGap(Spacing.XL)
         Title(stringResource(R.string.checking_title))
         VerticalGap(Spacing.M)
@@ -301,7 +305,7 @@ fun SecuringScreen(
     Page(EnrolTags.SECURING) {
         VerticalGap(Spacing.XL)
         // Bleu nuit : la liaison n'est pas encore vérifiée par le serveur (le vert lui est réservé).
-        Disc("🛡", Navy)
+        Disc(R.drawable.ic_security, Navy)
         VerticalGap(Spacing.XL)
         Title(stringResource(R.string.securing_title))
         VerticalGap(Spacing.M)
@@ -361,7 +365,7 @@ fun ScreenLockRequiredScreen(
 ) {
     Page(EnrolTags.SCREEN_LOCK) {
         VerticalGap(Spacing.XL)
-        Disc("🔒", Amber)
+        Disc(R.drawable.ic_lock, AmberText)
         VerticalGap(Spacing.L)
         Title(stringResource(R.string.screen_lock_title))
         VerticalGap(Spacing.M)
