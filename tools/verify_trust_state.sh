@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# A1 — preuve EN BASE REELLE de la machine a etats de confiance (pdp.trust_state).
+# A1 + A3 — preuve EN BASE REELLE : machine a etats de confiance (pdp.trust_state), application du
+# FREEZE (DecisionEnforcer), operations differees du coeur (core.transaction).
 #
 # Lance dans la VM une instance PostgreSQL JETABLE : meme image (postgres:16), meme
 # infra/init/init.sql et memes roles que la pile, SANS toucher a la pile en service. Son port
 # n'est lie qu'a 127.0.0.1 dans la VM ; un tunnel SSH l'amene sur le poste, ou
-# TrustStateMachineDbTest s'execute sous le role applicatif isc_pdp_app (privileges reels).
+# les tests sur base s'executent sous les roles applicatifs isc_pdp_app et isc_core_app.
 # Mots de passe : aleatoires, ephemeres, jamais ecrits sur disque ni dans le depot.
 # Le conteneur n'est PAS supprime ici (CLAUDE.md §4, commandes destructrices) : la commande de
 # retrait est affichee a la fin.
@@ -50,13 +51,18 @@ tunnel=$!
 trap 'kill $tunnel' EXIT
 sleep 3
 
-echo ">>> TrustStateMachineDbTest (role isc_pdp_app)"
-(cd pdp && ISC_TEST_PG_URL="jdbc:postgresql://127.0.0.1:$PORT/identishield" \
-  ISC_TEST_PG_USER=isc_pdp_app ISC_TEST_PG_PASSWORD="$pdp_pw" \
+URL="jdbc:postgresql://127.0.0.1:$PORT/identishield"
+echo ">>> pdp : TrustStateMachineDbTest, DecisionEnforcerDbTest (role isc_pdp_app)"
+(cd pdp && ISC_TEST_PG_URL="$URL" ISC_TEST_PG_USER=isc_pdp_app ISC_TEST_PG_PASSWORD="$pdp_pw" \
   ./gradlew --quiet cleanTest test --tests 'cm.identishield.pdp.trust.*')
+echo ">>> core : TransactionRepositoryDbTest (role isc_core_app)"
+(cd core && ISC_TEST_PG_URL="$URL" ISC_TEST_PG_CORE_USER=isc_core_app \
+  ISC_TEST_PG_CORE_PASSWORD="$core_pw" \
+  ./gradlew --quiet cleanTest test --tests 'cm.identishield.core.transaction.*')
 
 # Preuve que les tests ont TOURNE (et non ete ignores faute de base).
 grep -h -o '<testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' \
-  pdp/build/test-results/test/TEST-cm.identishield.pdp.trust.*.xml
+  pdp/build/test-results/test/TEST-cm.identishield.pdp.trust.*.xml \
+  core/build/test-results/test/TEST-cm.identishield.core.transaction.*.xml
 echo "verify_trust_state : VERT"
 echo "Retrait de la base jetable (a faire a la main) : ssh $VM docker rm -f $NAME"

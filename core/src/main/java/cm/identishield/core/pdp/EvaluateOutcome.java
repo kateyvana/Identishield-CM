@@ -17,4 +17,9 @@ public record EvaluateOutcome(boolean available, String decision, String decisio
   public boolean isAllow() {
     return available && "ALLOW".equals(decision);
   }
+
+  /** STEP_UP : le cœur le résout selon le canal (ES-06, STEP_UP_POLICY). */
+  public boolean isStepUp() {
+    return available && "STEP_UP".equals(decision);
+  }
 }

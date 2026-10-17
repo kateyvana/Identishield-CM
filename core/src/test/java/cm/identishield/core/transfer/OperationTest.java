@@ -49,13 +49,13 @@ class OperationTest {
 
   private static final String MSISDN = "677000001";
   private static final String COUNTERPARTY = "agent-000001";
-  private static final long CAP_PROB = 25_000;
+  private static final long CAP_FAILCLOSED = 25_000;
 
   private final AccountRepository accounts = mock(AccountRepository.class);
   private final TransactionRepository transactions = mock(TransactionRepository.class);
   private final PdpClient pdp = mock(PdpClient.class);
   private final RuleSet ruleSet =
-      new RuleSet("rs-test", Map.of("CAP_PROB", Map.of("dailyXaf", 25000)));
+      new RuleSet("rs-test", Map.of("CAP_FAILCLOSED", Map.of("xaf", 25000)));
   private final HlrService hlr = mock(HlrService.class);
   private final NotificationService notifications = mock(NotificationService.class);
   private final LayerMode layerMode = mock(LayerMode.class);
@@ -120,8 +120,9 @@ class OperationTest {
 
   /**
    * Correction ES-11 (décision du propriétaire, 15/09) : une ENTRÉE n'est jamais refusée pour
-   * fail-closed. PDP indisponible, CASH_IN de 100 000 FCFA (bien au-dessus de CAP_PROB) : le compte
-   * est crédité, état EXECUTED_DEGRADED. Assertion négative : aucun CASH_IN n'est jamais rejeté.
+   * fail-closed. PDP indisponible, CASH_IN de 100 000 FCFA (bien au-dessus de CAP_FAILCLOSED) : le
+   * compte est crédité, état EXECUTED_DEGRADED. Assertion négative : aucun CASH_IN n'est jamais
+   * rejeté.
    */
   @Test
   void cashInNeverFailsClosedAndRunsDegradedWhenPdpUnavailable() {
@@ -136,8 +137,8 @@ class OperationTest {
   }
 
   /**
-   * Assertion négative (EF-04) : PDP indisponible au-dessus de CAP_PROB, aucune sortie sensible
-   * n'est commise (fail-closed), pour chacune des quatre sorties.
+   * Assertion négative (EF-04) : PDP indisponible au-dessus de CAP_FAILCLOSED, aucune sortie
+   * sensible n'est commise (fail-closed), pour chacune des quatre sorties.
    */
   @ParameterizedTest
   @EnumSource(
@@ -146,7 +147,7 @@ class OperationTest {
   void outflowCommitsNoDebitWhenPdpUnavailableAboveCap(OperationType type) {
     when(pdp.evaluate(anyString())).thenReturn(EvaluateOutcome.unavailable());
 
-    TransferResult r = service.operate(MSISDN, type, CAP_PROB + 1, COUNTERPARTY, "APP");
+    TransferResult r = service.operate(MSISDN, type, CAP_FAILCLOSED + 1, COUNTERPARTY, "APP");
 
     assertEquals(TransferResult.State.REJECTED, r.state());
     verify(pdp).evaluate(anyString()); // /evaluate a bien été tenté

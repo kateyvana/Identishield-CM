@@ -11,8 +11,8 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Racine de composition du client PDP : c'est le seul endroit qui fournit l'horloge concrete
  * ({@link Clock#systemUTC()}) et lit les fichiers PEM. Les classes metier recoivent le temps et le
- * SSLContext injectes (CLAUDE.md §3). CAP_PROB vient du jeu de regles versionne (RuleSet), pas d'un
- * litteral.
+ * SSLContext injectes (CLAUDE.md §3). CAP_FAILCLOSED vient du jeu de regles versionne (RuleSet),
+ * pas d'un litteral.
  */
 @Configuration
 @EnableConfigurationProperties({PdpClientProperties.class, RuleSet.class})
@@ -34,6 +34,6 @@ public class PdpClientConfig {
       SSLContext pdpSslContext,
       Clock clock,
       com.fasterxml.jackson.databind.ObjectMapper json) {
-    return new PdpClient(props, ruleSet.capProbDailyXaf(), pdpSslContext, clock, json);
+    return new PdpClient(props, ruleSet.capFailClosedXaf(), pdpSslContext, clock, json);
   }
 }
