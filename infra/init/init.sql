@@ -338,3 +338,26 @@ GRANT EXECUTE ON FUNCTION pdp.audit_anchor_check() TO isc_core_app;
 -- elle appelle audit_canonical (recalcul de l'empreinte), aussi revoquee de PUBLIC. Le lecteur doit
 -- donc l'executer aussi. Lecture seule (pur calcul de hachage), aucune ecriture.
 GRANT EXECUTE ON FUNCTION pdp.audit_canonical(bigint, bigint, jsonb, text, timestamptz) TO isc_core_app;
+
+-- ===== B3a, couloir B (ADR-041) : cycle de vie de la cle d'appareil, code de recuperation =====
+-- Section AJOUTEE en fin de fichier (regle de couloir) : objets du couloir B seulement, modifies par
+-- ALTER, jamais en reecrivant un CREATE TABLE existant.
+-- ADR-041 §1 : trois etats. EN ATTENTE (PENDING) a /device/register ; ACTIVE seulement a
+-- /device/activate, apres confirmation du code (invariant D4). L'index unique partiel
+-- device_one_active_per_account (M-09) continue de garantir une seule cle ACTIVE par compte (ES-20) ;
+-- une cle EN ATTENTE n'est jamais lue par DeviceRegistry.findActive : elle ne signe rien.
+ALTER TABLE pdp.device DROP CONSTRAINT device_state_check;
+ALTER TABLE pdp.device ADD CONSTRAINT device_state_check
+    CHECK (state IN ('PENDING', 'ACTIVE', 'REVOKED'));
+
+-- ADR-041 §5, ES-18 : code de recuperation produit par le PDP ; seule une empreinte PBKDF2 a sel
+-- unique est conservee, jamais le clair. Les iterations sont stockees par ligne : elles pourront
+-- augmenter sans invalider les codes deja emis.
+CREATE TABLE pdp.recovery_code (
+    device_id   text PRIMARY KEY REFERENCES pdp.device (id),
+    code_hash   text        NOT NULL,   -- PBKDF2-HMAC-SHA256, base64
+    salt        text        NOT NULL,   -- aleatoire, propre a ce code, base64
+    iterations  integer     NOT NULL CHECK (iterations > 0),
+    issued_at   timestamptz NOT NULL    -- fourni par l'app (ED-04) ; aucun DEFAULT d'horloge
+);
+GRANT SELECT, INSERT ON pdp.recovery_code TO isc_pdp_app;

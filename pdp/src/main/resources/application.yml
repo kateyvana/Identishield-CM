@@ -48,3 +48,11 @@ isc:
   clock:
     mode: system
     # virtual-start: "2026-01-01T00:00:00Z"   # utilise seulement en mode virtual
+  # Empreinte du code de recuperation (ADR-041 §5, ES-18) : PBKDF2-HMAC-SHA256, parametres NOMMES
+  # ici, jamais en litteraux dans le code. 600 000 iterations : recommandation OWASP pour
+  # PBKDF2-HMAC-SHA256 ; le code n'a qu'environ 30 bits, c'est ce cout par essai qui le protege.
+  recovery-code:
+    pbkdf2:
+      iterations: 600000
+      salt-bytes: 16
+      key-bits: 256
