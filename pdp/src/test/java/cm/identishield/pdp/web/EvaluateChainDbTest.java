@@ -95,7 +95,8 @@ class EvaluateChainDbTest {
             new AuthorizedHistory(jdbc),
             new RuleEngine(rs),
             new ProbationVeto(rs),
-            new DecisionEnforcer(trust));
+            new DecisionEnforcer(trust),
+            transactions);
   }
 
   private static String did() {
@@ -104,7 +105,18 @@ class EvaluateChainDbTest {
 
   private EvaluateResponse evaluate(
       String did, String imsi, Instant imsiChangedAt, String to, long amount, long balance) {
-    return controller.evaluate(
+    return evaluateWith(controller, did, imsi, imsiChangedAt, to, amount, balance);
+  }
+
+  private EvaluateResponse evaluateWith(
+      EvaluateController c,
+      String did,
+      String imsi,
+      Instant imsiChangedAt,
+      String to,
+      long amount,
+      long balance) {
+    return c.evaluate(
         new EvaluateRequest(
             did,
             acc,
@@ -122,6 +134,28 @@ class EvaluateChainDbTest {
             "NONE",
             balance,
             imsiChangedAt == null ? null : imsiChangedAt.toString()));
+  }
+
+  /** Même chaîne, avec un journal ou une application des décisions remplacés pour le test. */
+  private EvaluateController controllerWith(AuditLog audit, DecisionEnforcer enforcer) {
+    return new EvaluateController(
+        audit,
+        clock,
+        rs,
+        new SignatureVerifier(mock(DeviceRegistry.class), mock(NonceStore.class)),
+        trust,
+        new AuthorizedHistory(jdbc),
+        new RuleEngine(rs),
+        new ProbationVeto(rs),
+        enforcer,
+        transactions);
+  }
+
+  private int auditEntries(String did) {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM pdp.audit_entry WHERE payload ->> 'decisionId' = ?",
+        Integer.class,
+        did);
   }
 
   private List<String> ruleIds(EvaluateResponse r) {
@@ -226,6 +260,97 @@ class EvaluateChainDbTest {
             "SELECT count(*) FROM pdp.audit_entry WHERE payload ->> 'decisionId' = ?",
             Integer.class,
             d));
+  }
+
+  // ---- écriture d'audit et gel : une seule transaction (commit 1 de la revue A4) ----
+
+  @Test
+  void aCrashBetweenTheAuditEntryAndTheFreeze_leavesNoEntry_andTheSameDecisionStartsOver() {
+    String d = did();
+    Instant swap = T0.minus(Duration.ofHours(1));
+    DecisionEnforcer crashing =
+        new DecisionEnforcer(trust) {
+          @Override
+          public Effect apply(
+              String accountId, String decisionId, cm.identishield.pdp.rules.Score.Decision dd) {
+            throw new IllegalStateException("panne simulée entre l'audit et le gel");
+          }
+        };
+    AuditLog audit = new AuditLog(jdbc, new ObjectMapper());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            evaluateWith(
+                controllerWith(audit, crashing),
+                d,
+                ATTACKER_IMSI,
+                swap,
+                ATTACKER,
+                BALANCE,
+                BALANCE));
+    assertEquals(0, auditEntries(d), "aucune entrée d'audit ne subsiste");
+    assertEquals(0, transitions("TRUST_FROZEN"));
+    // La réévaluation du même decisionId repart à zéro : décision et gel, une seule entrée.
+    EvaluateResponse again = evaluate(d, ATTACKER_IMSI, swap, ATTACKER, BALANCE, BALANCE);
+    assertEquals("FREEZE", again.decision());
+    assertEquals(State.FROZEN, trust.current(acc).state());
+    assertEquals(1, auditEntries(d));
+  }
+
+  @Test
+  void aFreezeRacingAConcurrentFreezeOfTheSameAccount_keepsItsAuditEntry() {
+    String d = did();
+    Instant swap = T0.minus(Duration.ofHours(1));
+    DecisionEnforcer racing =
+        new DecisionEnforcer(trust) {
+          @Override
+          public Effect apply(
+              String accountId, String decisionId, cm.identishield.pdp.rules.Score.Decision dd) {
+            trust.frozenByDecision(accountId, "gel-concurrent"); // un autre gel gagne la course
+            return super.apply(accountId, decisionId, dd);
+          }
+        };
+    EvaluateResponse r =
+        evaluateWith(
+            controllerWith(new AuditLog(jdbc, new ObjectMapper()), racing),
+            d,
+            ATTACKER_IMSI,
+            swap,
+            ATTACKER,
+            BALANCE,
+            BALANCE);
+    assertEquals("FREEZE", r.decision());
+    assertEquals(1, auditEntries(d));
+    assertEquals(State.FROZEN, trust.current(acc).state());
+    assertEquals(1, transitions("TRUST_FROZEN"));
+  }
+
+  @Test
+  void aConcurrentDuplicate_isAnsweredByTheWinner_readOutsideTheAbortedTransaction() {
+    String d = did();
+    EvaluateResponse winner = evaluate(d, VICTIM_IMSI, null, KNOWN, 1_000, BALANCE);
+    // Le perdant n'a pas vu l'entrée gagnante à son premier contrôle d'idempotence.
+    AuditLog blind =
+        new AuditLog(jdbc, new ObjectMapper()) {
+          private int calls;
+
+          @Override
+          public java.util.Optional<java.util.Map<String, Object>> findByDecisionId(String id) {
+            return calls++ == 0 ? java.util.Optional.empty() : super.findByDecisionId(id);
+          }
+        };
+    EvaluateResponse loser =
+        evaluateWith(
+            controllerWith(blind, new DecisionEnforcer(trust)),
+            d,
+            VICTIM_IMSI,
+            null,
+            KNOWN,
+            1_000,
+            BALANCE);
+    assertEquals(winner.decision(), loser.decision());
+    assertEquals(winner.evaluatedAt(), loser.evaluatedAt());
+    assertEquals(1, auditEntries(d));
   }
 
   // ---- schéma : contraintes lisibles (V4) ----

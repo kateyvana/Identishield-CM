@@ -19,6 +19,7 @@ import cm.identishield.pdp.trust.TrustStateMachine.State;
 import cm.identishield.pdp.trust.TrustStateMachine.Trust;
 import java.time.Clock;
 import java.util.List;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Chaîne de décision neutre pour les tests du contrôleur antérieurs à la carte A4 (idempotence,
@@ -60,6 +61,7 @@ final class NeutralChain {
         history,
         engine,
         mock(ProbationVeto.class),
-        mock(DecisionEnforcer.class));
+        mock(DecisionEnforcer.class),
+        mock(PlatformTransactionManager.class));
   }
 }

@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -75,6 +77,7 @@ public class EvaluateController {
   private final RuleEngine engine;
   private final ProbationVeto probationVeto;
   private final DecisionEnforcer enforcer;
+  private final TransactionTemplate tx;
 
   public EvaluateController(
       AuditLog auditLog,
@@ -85,7 +88,8 @@ public class EvaluateController {
       AuthorizedHistory history,
       RuleEngine engine,
       ProbationVeto probationVeto,
-      DecisionEnforcer enforcer) {
+      DecisionEnforcer enforcer,
+      PlatformTransactionManager transactions) {
     this.auditLog = auditLog;
     this.clock = clock;
     this.ruleSet = ruleSet;
@@ -95,6 +99,7 @@ public class EvaluateController {
     this.engine = engine;
     this.probationVeto = probationVeto;
     this.enforcer = enforcer;
+    this.tx = new TransactionTemplate(transactions);
   }
 
   @PostMapping("/evaluate")
@@ -108,27 +113,40 @@ public class EvaluateController {
     }
 
     Instant now = clock.instant();
+    // Sur signature INVALIDE, decide() n'est jamais appelée, donc trust.observed() non plus : une
+    // requête forgée ne peut NI épingler l'IMSI de référence NI ouvrir une PROBATION. Ne jamais
+    // remonter observed() avant ce test.
     Verdict verdict =
         PROOF_SIGNATURE.equals(req.proofType()) ? signatureVerifier.verify(signed(req)) : null;
     if (verdict == Verdict.REPLAYED) {
       appendOnce(replayPayload(req, now), now);
       throw new NonceReplayedException();
     }
+    // trust.observed() (dans decide) reste HORS de la transaction ci-dessous, volontairement :
+    // l'observation d'un nouvel IMSI est un fait, qui doit survivre à la perte de la course
+    // d'idempotence ; l'appel gagnant l'applique de toute façon, idempotemment.
     Map<String, Object> payload =
         verdict == Verdict.INVALID
             ? payload(req, now, "REJECTED", 0, "NONE", "SIGNATURE_INVALID", List.of())
             : decide(req, now);
     try {
-      auditLog.append(payload, now);
+      // UNE transaction locale : l'entrée d'audit et l'effet de la décision (gel du compte)
+      // réussissent ou échouent ensemble ; une panne entre les deux n'écrit rien, et le même
+      // decisionId repart à zéro. V6 : l'effet ne suit que la PREMIÈRE écriture de ce decisionId ;
+      // un rejeu repart par l'idempotence ci-dessus et n'arrive jamais ici.
+      tx.executeWithoutResult(
+          s -> {
+            auditLog.append(payload, now);
+            if (FREEZE.equals(payload.get("decision"))) {
+              enforcer.apply(req.accountId(), req.decisionId(), Decision.FREEZE);
+            }
+          });
     } catch (DuplicateKeyException concurrentReplay) {
-      // Deux appels simultanés du même decisionId : renvoyer la décision gagnante.
+      // Deux appels simultanés du même decisionId : renvoyer la décision gagnante. La lecture se
+      // fait HORS de la transaction, avortée par la violation d'unicité (PostgreSQL), donc dans une
+      // transaction nouvelle.
       return fromPayload(
           auditLog.findByDecisionId(req.decisionId()).orElseThrow(), latencyMs(started));
-    }
-    // V6 : l'effet d'une décision (gel du compte) ne suit que la PREMIÈRE écriture de ce
-    // decisionId. Un rejeu repart par l'idempotence ci-dessus et n'arrive jamais ici.
-    if (FREEZE.equals(payload.get("decision"))) {
-      enforcer.apply(req.accountId(), req.decisionId(), Decision.FREEZE);
     }
     return fromPayload(payload, latencyMs(started));
   }
@@ -161,9 +179,14 @@ public class EvaluateController {
         return p;
       }
     }
-    // Q5 : une sortie au-delà du solde est refusée ici, donc jamais autorisée, donc jamais dans
-    // l'historique : sans ce refus, un ALLOW suivi d'un refus du cœur « blanchirait » le
-    // bénéficiaire.
+    // Refus de solde (Q5). Ce n'est PAS un doublon de la règle métier du cœur, qui reste
+    // l'autorité sur le solde. Il existe pour une seule raison : qu'une opération non exécutable
+    // n'entre jamais dans l'historique ALLOW (V3) ; sinon un ALLOW suivi d'un refus du cœur
+    // « blanchirait » le bénéficiaire. Si des frais sont introduits un jour, la comparaison devient
+    // montant + frais, sinon le trou Q5 se rouvre par la porte des frais.
+    // Il vient APRÈS le veto de PROBATION, volontairement : testé avant, il offrirait un oracle
+    // gratuit — en demandant toujours plus que le solde, un attaquant saurait quels bénéficiaires
+    // passent le veto, et récolterait un REJECTED neutre au lieu d'un gel.
     if (op.outgoing() && req.amountXaf() > req.balanceXaf()) {
       return payload(req, now, "REJECTED", 0, "NONE", "INSUFFICIENT_FUNDS", List.of());
     }

@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Chaîne de décision de /evaluate (carte A4) : idempotence → signature → état du compte → règles
@@ -125,7 +126,8 @@ class EvaluateChainTest {
         history,
         new RuleEngine(rs),
         new ProbationVeto(rs),
-        enforcer);
+        enforcer,
+        mock(PlatformTransactionManager.class));
   }
 
   private void accountIs(State state, FreezeCause cause) {

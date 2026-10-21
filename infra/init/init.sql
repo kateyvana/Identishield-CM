@@ -153,6 +153,11 @@ CREATE TABLE pdp.trust_state (
     CHECK ((state = 'FROZEN') = (freeze_cause IS NOT NULL)),
     CHECK ((freeze_cause IS NOT DISTINCT FROM 'FREEZE_DECISION') = (freeze_until IS NOT NULL)),
     CHECK ((state = 'PROBATION') <= (probation_until IS NOT NULL)),
+    -- Ces deux CHECK sont UNIDIRECTIONNELS expres. applyImsiChange pose probation_until,
+    -- probation_entered_at et probation_entry_balance_xaf meme quand l'etat reste FROZEN, pour
+    -- qu'A1-2 reprenne la PROBATION au degel a l'echeance d'origine : ces colonnes decrivent une
+    -- FENETRE CAR_IMSI en cours, gelee ou non, pas l'etat PROBATION. Un CHECK symetrique (=)
+    -- casserait A1-2 : ne pas le « corriger ».
     CHECK (state <> 'PROBATION' OR probation_entered_at IS NOT NULL),
     CHECK (state <> 'PROBATION' OR probation_entry_balance_xaf IS NOT NULL)
 );

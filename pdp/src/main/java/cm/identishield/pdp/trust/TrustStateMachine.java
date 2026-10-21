@@ -16,6 +16,7 @@ import java.util.function.BiConsumer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -114,6 +115,10 @@ public class TrustStateMachine {
       RuleSet rules) {
     this.jdbc = jdbc;
     this.tx = new TransactionTemplate(transactions);
+    // Point de sauvegarde : seule, une opération se comporte comme une transaction propre ; appelée
+    // dans la transaction de /evaluate (écriture d'audit + gel), un refus (Refused) n'annule que sa
+    // propre étape, sans rendre la transaction englobante « rollback-only » (perte de l'audit).
+    this.tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_NESTED);
     this.auditLog = auditLog;
     this.clock = clock;
     this.rules = rules;
