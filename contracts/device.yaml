@@ -1,0 +1,201 @@
+openapi: 3.1.0
+info:
+  title: IdentiShield-CM — PDP Device API
+  version: 0.1.0
+  summary: Cycle de vie de la clé d'appareil dans le PDP (isc-pdp)
+  description: |
+    Routes internes du PDP pour l'enrôlement d'un appareil (ADR-041 et son amendement du
+    2026-10-17). Le cœur opérateur simulé (isc-core) est l'unique client : le PDP n'est jamais
+    joignable depuis l'extérieur du réseau isc-net.
+
+    Cycle de vie de la clé : EN ATTENTE (PENDING) → ACTIVE → RÉVOQUÉE (REVOKED). La clé est
+    enregistrée EN ATTENTE par `POST /device/register` et ne devient ACTIVE qu'à
+    `POST /device/activate`, après que l'usager a retapé en entier le code de récupération
+    (invariant D4). Le code de récupération est produit par le PDP ; seul un haché salé est
+    conservé (`pdp.recovery_code`) ; le code en clair n'est renvoyé qu'une fois.
+
+    Contrat séparé d'`evaluate.yaml` pour qu'aucun couloir ne modifie le contrat de l'autre.
+
+    Transport : mTLS obligatoire entre isc-core et isc-pdp (SPIKE-4, ADR-021).
+servers:
+  - url: https://isc-pdp:8081
+    description: Réseau interne isc-net uniquement (jamais exposé à l'hôte)
+
+security:
+  - mtls: []
+
+paths:
+  /device/register:
+    post:
+      operationId: registerDevice
+      summary: Enregistre la clé d'un appareil EN ATTENTE et émet le code de récupération
+      description: |
+        Vérifie la chaîne d'attestation (clé matérielle, défi attendu) et la signature du défi par
+        la clé présentée, puis enregistre la clé EN ATTENTE : le compte n'est pas utilisable tant
+        que `/device/activate` n'a pas réussi. Renvoie le code de récupération en clair, une seule
+        fois.
+
+        Premier enrôlement seulement (carte B3a). Invariant R1 (amendement du 2026-10-17) : si le
+        compte possède déjà une clé ACTIVE, la route refuse ; le réenrôlement, qui fournira l'ancien
+        code de récupération, est décrit par la carte B3b.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: Clé enregistrée EN ATTENTE ; code de récupération émis une fois.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Le compte possède déjà une clé ACTIVE (invariant R1) ; aucun enregistrement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: DEVICE_ALREADY_BOUND
+                message: account already has an active device key
+        '422':
+          description: >-
+            ATTESTATION_REJECTED (chaîne, défi ou signature refusés) ou DEVICE_UNSUPPORTED (clé
+            logicielle, émulateur).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: DEVICE_UNSUPPORTED
+                message: hardware-backed key required
+  /device/activate:
+    post:
+      operationId: activateDevice
+      summary: Active la clé EN ATTENTE après la confirmation du code de récupération
+      description: |
+        Vérifie le code de récupération retapé en entier contre le haché salé et fait passer la clé
+        EN ATTENTE à ACTIVE. Tout échec (code erroné, appareil inconnu, clé qui n'est pas EN
+        ATTENTE) reçoit la MÊME réponse : l'appelant n'apprend jamais lequel a échoué. Un échec
+        laisse la clé EN ATTENTE : l'état ne progresse jamais sur une erreur.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateRequest'
+      responses:
+        '200':
+          description: Clé ACTIVE.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: >-
+            RECOVERY_INVALID (réponse unique pour tout échec d'activation), ou MTLS_REQUIRED si le
+            certificat client manque.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: RECOVERY_INVALID
+                message: recovery code rejected
+
+components:
+  securitySchemes:
+    mtls:
+      type: mutualTLS
+      description: Certificats de service émis par l'autorité locale (SPIKE-4).
+
+  responses:
+    BadRequest:
+      description: Requête hors contrat (champ manquant, type ou domaine invalide).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CONTRACT_VIOLATION
+            message: attestationChain must not be empty
+    Unauthorized:
+      description: mTLS absent ou certificat client invalide.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: MTLS_REQUIRED
+            message: client certificate required
+
+  schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [accountId, publicKey, attestationChain, attestationChallenge, challengeSignature]
+      properties:
+        accountId:
+          type: string
+        publicKey:
+          type: string
+          description: SubjectPublicKeyInfo DER en base64 (EC P-256, ADR-018).
+        attestationChain:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            description: Certificat X.509 DER en base64, feuille en premier.
+        attestationChallenge:
+          type: string
+          description: Défi d'attestation émis par le cœur pour cet enrôlement (base64, au moins 16 octets).
+        challengeSignature:
+          type: string
+          description: Signature du défi d'attestation par la clé présentée (base64).
+    RegisterResponse:
+      type: object
+      additionalProperties: false
+      required: [deviceId, recoveryCode]
+      properties:
+        deviceId:
+          type: string
+        recoveryCode:
+          type: string
+          description: >-
+            Code de récupération en clair, renvoyé UNE seule fois (CODE_LENGTH caractères, alphabet
+            sans 0/O/1/I/L) ; seul un haché salé est conservé.
+    ActivateRequest:
+      type: object
+      additionalProperties: false
+      required: [accountId, deviceId, recoveryCode]
+      properties:
+        accountId:
+          type: string
+        deviceId:
+          type: string
+        recoveryCode:
+          type: string
+          description: Le code complet, retapé une fois sur E-09.
+    ActivateResponse:
+      type: object
+      additionalProperties: false
+      required: [deviceId]
+      properties:
+        deviceId:
+          type: string
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
