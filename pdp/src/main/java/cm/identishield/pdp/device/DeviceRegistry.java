@@ -27,6 +27,8 @@ public class DeviceRegistry {
 
   private static final String ACTIVE_SQL =
       "SELECT id, account_id, public_key FROM pdp.device WHERE account_id = ? AND state = 'ACTIVE'";
+  private static final String STATES_SQL =
+      "SELECT state FROM pdp.device WHERE account_id = ? AND state IN ('ACTIVE', 'PENDING')";
   private static final String HAS_ACTIVE_SQL =
       "SELECT count(*) FROM pdp.device WHERE account_id = ? AND state = 'ACTIVE'";
 
@@ -54,6 +56,29 @@ public class DeviceRegistry {
                     rs.getString("id"), rs.getString("account_id"), rs.getString("public_key")),
             accountId);
     return rows.stream().findFirst();
+  }
+
+  /**
+   * État de liaison d'un compte, tel qu'il est en base : aucune clé, clé EN ATTENTE, clé ACTIVE.
+   */
+  public enum BindingState {
+    NONE,
+    PENDING,
+    ACTIVE
+  }
+
+  /**
+   * FAIT de liaison du compte (ES-26) : ACTIVE si une clé ACTIVE existe, sinon PENDING si une clé
+   * EN ATTENTE existe, sinon NONE. Le PDP énonce, le cœur arbitre : la correspondance avec l'étape
+   * suivante (OTP ou RECOVERY) n'est pas faite ici.
+   */
+  // @implements ES-26
+  public BindingState bindingState(String accountId) {
+    List<String> states = jdbc.queryForList(STATES_SQL, String.class, accountId);
+    if (states.contains("ACTIVE")) {
+      return BindingState.ACTIVE;
+    }
+    return states.contains("PENDING") ? BindingState.PENDING : BindingState.NONE;
   }
 
   /** Vrai si le compte possède déjà une clé ACTIVE (invariant R1 de l'amendement d'ADR-041). */

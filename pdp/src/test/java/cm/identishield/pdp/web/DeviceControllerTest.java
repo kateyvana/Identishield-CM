@@ -8,6 +8,8 @@ import cm.identishield.pdp.device.DeviceEnrolment;
 import cm.identishield.pdp.device.DeviceEnrolment.Refusal;
 import cm.identishield.pdp.device.DeviceEnrolment.Refused;
 import cm.identishield.pdp.device.DeviceEnrolment.Registered;
+import cm.identishield.pdp.device.DeviceRegistry;
+import cm.identishield.pdp.device.DeviceRegistry.BindingState;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +25,8 @@ import org.springframework.http.ResponseEntity;
 class DeviceControllerTest {
 
   private final DeviceEnrolment enrolment = mock(DeviceEnrolment.class);
-  private final DeviceController controller = new DeviceController(enrolment);
+  private final DeviceRegistry registry = mock(DeviceRegistry.class);
+  private final DeviceController controller = new DeviceController(enrolment, registry);
 
   private final RegisterRequest register =
       new RegisterRequest("acc-1", "cGs=", List.of("Y2VydA=="), "ZGVmaQ==", "c2ln");
@@ -58,6 +61,17 @@ class DeviceControllerTest {
     ResponseEntity<Object> unsupported = controller.register(register);
     assertEquals(422, unsupported.getStatusCode().value());
     assertEquals("DEVICE_UNSUPPORTED", ((ApiError) unsupported.getBody()).code());
+  }
+
+  @Test
+  void state_statesTheFact_noneOrPendingOrActive_andDecidesNothing() {
+    when(registry.bindingState("acc-1")).thenReturn(BindingState.ACTIVE);
+    when(registry.bindingState("acc-2")).thenReturn(BindingState.PENDING);
+    when(registry.bindingState("acc-3")).thenReturn(BindingState.NONE);
+    assertEquals(new DeviceStateResponse("ACTIVE"), controller.state("acc-1").getBody());
+    assertEquals(new DeviceStateResponse("PENDING"), controller.state("acc-2").getBody());
+    assertEquals(new DeviceStateResponse("NONE"), controller.state("acc-3").getBody());
+    assertEquals(400, controller.state(" ").getStatusCode().value());
   }
 
   @Test

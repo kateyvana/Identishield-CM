@@ -3,11 +3,14 @@ package cm.identishield.pdp.web;
 import cm.identishield.pdp.device.DeviceEnrolment;
 import cm.identishield.pdp.device.DeviceEnrolment.Refused;
 import cm.identishield.pdp.device.DeviceEnrolment.Registered;
+import cm.identishield.pdp.device.DeviceRegistry;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -20,9 +23,26 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeviceController {
 
   private final DeviceEnrolment enrolment;
+  private final DeviceRegistry registry;
 
-  public DeviceController(DeviceEnrolment enrolment) {
+  public DeviceController(DeviceEnrolment enrolment, DeviceRegistry registry) {
     this.enrolment = enrolment;
+    this.registry = registry;
+  }
+
+  /**
+   * FAIT de liaison du compte (ES-26) : NONE, PENDING ou ACTIVE. Le PDP énonce, le cœur arbitre :
+   * c'est le cœur qui en déduit l'étape suivante, et seulement APRÈS avoir vérifié le PIN (la
+   * réponse uniforme d'ES-22 tombe avant). Route interne, jamais atteignable depuis l'application.
+   */
+  // @implements ES-26
+  @GetMapping("/device/state")
+  public ResponseEntity<Object> state(@RequestParam String accountId) {
+    if (accountId.isBlank()) {
+      return ResponseEntity.badRequest()
+          .body(new ApiError("CONTRACT_VIOLATION", "accountId must not be blank"));
+    }
+    return ResponseEntity.ok(new DeviceStateResponse(registry.bindingState(accountId).name()));
   }
 
   @PostMapping("/device/register")

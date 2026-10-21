@@ -75,6 +75,36 @@ paths:
               example:
                 code: DEVICE_UNSUPPORTED
                 message: hardware-backed key required
+  /device/state:
+    get:
+      operationId: getDeviceState
+      summary: Énonce le FAIT de liaison d'un compte (NONE, PENDING ou ACTIVE)
+      description: |
+        ES-26 : c'est le PDP qui détient la clé et dit si elle existe. La route énonce un FAIT et ne
+        décide rien : le PDP énonce, le cœur arbitre. Correspondance faite par le cœur : ACTIVE →
+        RECOVERY ; NONE et PENDING → OTP (une clé EN ATTENTE jamais activée n'a lié personne).
+
+        Le cœur ne l'appelle qu'APRÈS avoir vérifié le PIN : un appelant non authentifié n'apprend
+        rien (la réponse uniforme d'ES-22 tombe avant). Route interne, jamais atteignable depuis
+        l'application. PDP injoignable : le cœur refuse l'enrôlement (503), il ne retombe JAMAIS
+        sur l'OTP.
+      parameters:
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Fait de liaison du compte.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceStateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /device/activate:
     post:
       operationId: activateDevice
@@ -172,6 +202,14 @@ components:
           description: >-
             Code de récupération en clair, renvoyé UNE seule fois (CODE_LENGTH caractères, alphabet
             sans 0/O/1/I/L) ; seul un haché salé est conservé.
+    DeviceStateResponse:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [NONE, PENDING, ACTIVE]
     ActivateRequest:
       type: object
       additionalProperties: false
