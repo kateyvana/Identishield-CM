@@ -148,7 +148,7 @@ paths:
   /recovery-code/confirm:
     post:
       operationId: confirmRecoveryCode
-      summary: Confirmation de quatre caractères de la clé de récupération
+      summary: Confirmation de la clé de récupération, retapée en entier
       security: []
       requestBody:
         required: true
