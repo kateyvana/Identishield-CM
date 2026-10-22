@@ -61,6 +61,7 @@ Tu ne modifies JAMAIS un document de docs/02-specifications/. Si une tâche exig
 - Toute ambiguïté dans une spécification est signalée avant d'écrire du code. Tu ne choisis pas seul.
 - Toute décision structurante prise pendant une tâche est signalée comme nécessitant un ADR.
 - Les tests de cas d'abus (T-AC) vérifient les deux phases : l'attaque réussit sans la couche, puis échoue avec. Et ils contiennent des assertions négatives (aucun débit, une seule entrée d'audit).
+- **Tableau Kanban « Mois 4 — Démo AC-02 »** (levée permanente de la propriétaire du 2026-10-22, `docs/03-revues/2026-10-22-levee-8e-interdiction-tableau-kanban.md`) : à CHAQUE changement d'état d'une carte — commencée, poussée, PR ouverte, fusionnée — sa carte est déplacée sur le tableau dans le même mouvement. Autorisé : déplacer les cartes, modifier « Dépend de » et « Jours », créer des cartes et leurs étiquettes. Non couvert : fusion, `main`, réglages du dépôt, visibilité. Rendu à la propriétaire : UN lien (PR à fusionner ou tableau) et une ligne ; le détail technique sur demande.
 
 ## 6. Conventions
 
