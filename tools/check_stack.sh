@@ -149,7 +149,7 @@ fi
 echo "--- /evaluate : idempotence par decisionId + latence ---"
 if bash tools/verify_evaluate.sh >/tmp/isc_verify_eval.out 2>&1; then
   grep -E '^\[OK\]|verify-evaluate:' /tmp/isc_verify_eval.out | sed 's/^/  /'
-  echo "[OK] /evaluate : ALLOW sans regle, idempotent, une entree d'audit chainee (EF-10/11, ENF-03)"
+  echo "[OK] /evaluate : ALLOW, idempotent, une entree d'audit chainee (EF-10/11, ENF-03)"
 else
   echo "[ECHEC] /evaluate : voir sortie"; sed 's/^/  /' /tmp/isc_verify_eval.out; fail=1
 fi

@@ -148,9 +148,18 @@ CREATE TABLE pdp.trust_state (
     freeze_cause         text CHECK (freeze_cause IN ('FREEZE_DECISION', 'NOT_ME')),
     freeze_until         timestamptz,            -- TTL_FREEZE ; jamais pour NOT_ME (A1-3)
     reenrol_frozen_until timestamptz,            -- REENROL_FREEZE (A1-4)
+    probation_entered_at timestamptz,            -- A4 : instant d'entree en PROBATION (fenetre CAP_PROB)
+    probation_entry_balance_xaf bigint CHECK (probation_entry_balance_xaf >= 0),  -- A4 : solde fige a l'entree (CAP_PROB, ED-05)
     CHECK ((state = 'FROZEN') = (freeze_cause IS NOT NULL)),
     CHECK ((freeze_cause IS NOT DISTINCT FROM 'FREEZE_DECISION') = (freeze_until IS NOT NULL)),
-    CHECK ((state = 'PROBATION') <= (probation_until IS NOT NULL))
+    CHECK ((state = 'PROBATION') <= (probation_until IS NOT NULL)),
+    -- Ces deux CHECK sont UNIDIRECTIONNELS expres. applyImsiChange pose probation_until,
+    -- probation_entered_at et probation_entry_balance_xaf meme quand l'etat reste FROZEN, pour
+    -- qu'A1-2 reprenne la PROBATION au degel a l'echeance d'origine : ces colonnes decrivent une
+    -- FENETRE CAR_IMSI en cours, gelee ou non, pas l'etat PROBATION. Un CHECK symetrique (=)
+    -- casserait A1-2 : ne pas le « corriger ».
+    CHECK (state <> 'PROBATION' OR probation_entered_at IS NOT NULL),
+    CHECK (state <> 'PROBATION' OR probation_entry_balance_xaf IS NOT NULL)
 );
 
 -- Historique des transitions (EF-13 : chaque transition avec sa cause), en ecriture seule pour le
@@ -260,6 +269,11 @@ REVOKE EXECUTE ON FUNCTION pdp.audit_chain() FROM PUBLIC;
 -- (le payload porte decisionId). L'index unique rend le doublon atomiquement
 -- impossible ; l'app rattrape la violation et renvoie la decision deja ecrite.
 CREATE UNIQUE INDEX audit_entry_decision_id_uk ON pdp.audit_entry ((payload ->> 'decisionId'));
+
+-- A4 : historique d'un compte relu depuis le journal du PDP (decisions ALLOW du compte, dans
+-- l'ordre de la chaine). Index d'EXPRESSION sur accountId : sans lui, chaque /evaluate parcourt
+-- toute la table.
+CREATE INDEX audit_entry_account ON pdp.audit_entry ((payload ->> 'accountId'), chain_index);
 
 -- ================= T2-06 : verification du journal d'audit =================
 -- Reprend SPIKE-3 (verify.sql) / ADR-020 en production. DEUX couches independantes.

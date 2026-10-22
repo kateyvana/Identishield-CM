@@ -60,6 +60,9 @@ class TrustStateMachineDbTest {
   private static final String IMSI_SWAP2 = "624010000000777";
   private static final Duration HOUR = Duration.ofHours(1);
 
+  /** Solde figé à l'entrée en PROBATION (V4, carte A4) ; valeur de test sans incidence ici. */
+  private static final long ENTRY_BALANCE = 100_000;
+
   private static RuleSet rules;
   private static JdbcTemplate jdbc;
   private static DataSourceTransactionManager transactions;
@@ -155,7 +158,7 @@ class TrustStateMachineDbTest {
   @Test
   void imsiChange_movesTrustedToProbation_forCarImsi() {
     m.enrolled(acc, IMSI_VICTIM);
-    Trust t = m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    Trust t = m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     assertEquals(State.PROBATION, t.state());
     assertEquals(probationEnd(T0), t.probationUntil());
     assertEquals(IMSI_VICTIM, t.referenceImsi()); // la référence ne change qu'à la sortie (A1-1)
@@ -170,7 +173,7 @@ class TrustStateMachineDbTest {
   void imsiChange_onAnAccountNeverEnrolled_isProbationToo() {
     // Compte USSD (AC-02) : jamais enrôlé, TRUSTED par défaut (A1-5) ; CAR_IMSI après TOUT
     // changement (ES-03c). L'IMSI d'avant le changement devient la référence.
-    Trust t = m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    Trust t = m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     assertEquals(State.PROBATION, t.state());
     assertEquals(IMSI_VICTIM, t.referenceImsi());
     assertEquals(List.of("TRUST_PROBATION_ENTERED"), audit());
@@ -179,10 +182,10 @@ class TrustStateMachineDbTest {
   @Test
   void secondImsiChange_inProbation_restartsCarImsi() {
     m.enrolled(acc, IMSI_VICTIM);
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     clock.advance(HOUR.multipliedBy(10));
     Instant second = clock.instant();
-    Trust t = m.imsiChanged(acc, IMSI_SWAP, IMSI_SWAP2, second);
+    Trust t = m.imsiChanged(acc, IMSI_SWAP, IMSI_SWAP2, second, ENTRY_BALANCE);
     assertEquals(State.PROBATION, t.state());
     assertEquals(probationEnd(second), t.probationUntil());
     assertEquals(IMSI_VICTIM, t.referenceImsi());
@@ -194,7 +197,7 @@ class TrustStateMachineDbTest {
   @Test
   void a11_carImsiExpiry_movesProbationToTrusted_andTheCurrentImsiBecomesTheReference() {
     m.enrolled(acc, IMSI_VICTIM);
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     clock.setInstant(probationEnd(T0).minusNanos(1000));
     assertEquals(State.PROBATION, m.current(acc).state()); // borne stricte : pas encore
     clock.setInstant(probationEnd(T0).plus(HOUR.multipliedBy(5))); // lecture tardive
@@ -223,7 +226,7 @@ class TrustStateMachineDbTest {
 
   @Test
   void freezeDecision_movesProbationToFrozen_keepingTheCarImsiDeadline() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     clock.advance(HOUR);
     Trust t = m.frozenByDecision(acc, UUID.randomUUID().toString());
     assertEquals(State.FROZEN, t.state());
@@ -235,7 +238,7 @@ class TrustStateMachineDbTest {
 
   @Test
   void a12a_frozenAtT0Plus1h_expiresAtT0Plus25h_backToProbationUntilTheOriginalEnd() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     clock.setInstant(T0.plus(HOUR));
     m.frozenByDecision(acc, UUID.randomUUID().toString());
     Instant expiry = T0.plus(HOUR).plus(rules.ttlFreeze());
@@ -253,7 +256,7 @@ class TrustStateMachineDbTest {
 
   @Test
   void a12b_freezeStartedAfterCarImsi_endsTrusted() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     Instant late = probationEnd(T0).plus(HOUR);
     clock.setInstant(late);
     m.frozenByDecision(acc, UUID.randomUUID().toString());
@@ -276,7 +279,7 @@ class TrustStateMachineDbTest {
 
   @Test
   void a12_releaseDuringProbation_returnsToProbation_withTheOriginalEnd() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     clock.setInstant(T0.plus(HOUR));
     m.frozenByDecision(acc, UUID.randomUUID().toString());
     clock.setInstant(T0.plus(HOUR.multipliedBy(2)));
@@ -301,7 +304,7 @@ class TrustStateMachineDbTest {
   @Test
   void a14_notMeOnSimAlert_freezesTheAccount_andReenrolments_withoutExpiry() {
     m.enrolled(acc, IMSI_VICTIM);
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     clock.advance(HOUR);
     Trust t = m.notMe(acc, Alert.SIM_CHANGE);
     assertEquals(State.FROZEN, t.state());
@@ -315,7 +318,7 @@ class TrustStateMachineDbTest {
 
   @Test
   void a13_notMeOnSimAlert_turnsADecisionFreezeIntoAFreezeThatNeverExpires() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     m.frozenByDecision(acc, UUID.randomUUID().toString());
     Trust t = m.notMe(acc, Alert.SIM_CHANGE);
     assertEquals(FreezeCause.NOT_ME, t.freezeCause());
@@ -342,7 +345,7 @@ class TrustStateMachineDbTest {
     m.frozenByDecision(acc, UUID.randomUUID().toString());
     clock.advance(HOUR);
     Instant changedAt = clock.instant();
-    Trust t = m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, changedAt);
+    Trust t = m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, changedAt, ENTRY_BALANCE);
     assertEquals(State.FROZEN, t.state());
     assertEquals(IMSI_SWAP, t.referenceImsi());
     assertEquals(probationEnd(changedAt), t.probationUntil());
@@ -370,13 +373,13 @@ class TrustStateMachineDbTest {
     assertEquals(State.TRUSTED, m.current(acc).state());
     assertEquals(
         0, transitions().stream().filter(s -> s.contains("TRUST_PROBATION_ENTERED")).count());
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, clock.instant());
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, clock.instant(), ENTRY_BALANCE);
     assertEquals(State.PROBATION, m.current(acc).state());
   }
 
   @Test
   void enrolmentDuringProbation_neitherEndsNorRestartsIt() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     clock.advance(HOUR);
     Trust t = m.enrolled(acc, IMSI_SWAP); // S-13 : premier enrôlement de l'attaquant après swap
     assertEquals(State.PROBATION, t.state());
@@ -387,7 +390,7 @@ class TrustStateMachineDbTest {
 
   @Test
   void a14_notMeOnReenrolAlert_freezesReenrolmentsOnly_theStateDoesNotChange() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     Trust t = m.notMe(acc, Alert.REENROL_ATTEMPT);
     assertEquals(State.PROBATION, t.state());
     assertNull(t.freezeCause());
@@ -404,7 +407,7 @@ class TrustStateMachineDbTest {
 
   @Test
   void release_cannotShortenAProbation() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     assertRefused(() -> m.release(acc, "analyst-01"));
     assertEquals(State.PROBATION, m.current(acc).state());
   }
@@ -426,7 +429,7 @@ class TrustStateMachineDbTest {
   @Test
   void sameImsi_isNotAChange_andIsRefused() {
     m.enrolled(acc, IMSI_VICTIM);
-    assertRefused(() -> m.imsiChanged(acc, IMSI_VICTIM, IMSI_VICTIM, T0));
+    assertRefused(() -> m.imsiChanged(acc, IMSI_VICTIM, IMSI_VICTIM, T0, ENTRY_BALANCE));
     assertEquals(State.TRUSTED, m.current(acc).state());
   }
 
@@ -460,7 +463,7 @@ class TrustStateMachineDbTest {
 
   @Test
   void theApplicationRoleCannotRewriteTheTransitionHistory() {
-    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0);
+    m.imsiChanged(acc, IMSI_VICTIM, IMSI_SWAP, T0, ENTRY_BALANCE);
     assertThrows(
         DataAccessException.class,
         () ->

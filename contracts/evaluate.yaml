@@ -261,6 +261,7 @@ components:
         - beneficiaryId
         - serverTimestamp
         - proofType
+        - balanceXaf
       properties:
         decisionId:
           type: string
@@ -293,6 +294,21 @@ components:
           format: date-time
           pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$'
           description: UTC obligatoire, suffixe Z (ED-04) ; généré par le serveur via Clock.
+        balanceXaf:
+          type: integer
+          minimum: 0
+          description: >-
+            Solde du compte au moment de la demande, en FCFA entiers (ED-05). Sert uniquement à
+            figer le solde à l'entrée en PROBATION (CAP_PROB, ES-04) et à refuser une sortie qui le
+            dépasse ; n'entre dans aucune règle de score (carte A4, V4).
+        imsiChangedAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$'
+          description: >-
+            Date du dernier changement d'IMSI du numéro, lue par le cœur dans l'historique HLR
+            immuable (EF-08, ADR-032), UTC suffixe Z. Absent : aucun changement connu. Le PDP en
+            déduit l'état initial d'un compte jamais vu (PROBATION si dans la fenêtre CAR_IMSI).
         localityCellId:
           type: string
         deviceKeyId:
@@ -339,7 +355,12 @@ components:
             $ref: '#/components/schemas/TriggeredRule'
         vetoApplied:
           type: string
-          enum: [IMSI_CHANGE, SIGNATURE_INVALID, PROBATION_VIOLATION, NONE]
+          enum: [IMSI_CHANGE, SIGNATURE_INVALID, PROBATION_VIOLATION, ACCOUNT_FROZEN, INSUFFICIENT_FUNDS, NONE]
+          description: >-
+            Veto appliqué (un veto ne passe jamais par le moteur de score). ACCOUNT_FROZEN : compte
+            gelé, sortie refusée. INSUFFICIENT_FUNDS : sortie au-delà du solde, refusée. IMSI_CHANGE
+            n'est PAS émis au mois 4 : un changement d'IMSI fait passer le compte en PROBATION
+            (transition), puis la transaction est jugée sous les restrictions de PROBATION.
         decisionId:
           type: string
           format: uuid

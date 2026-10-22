@@ -30,7 +30,7 @@ class EvaluateControllerTest {
   private final AuditLog auditLog = mock(AuditLog.class);
   private final RuleSet ruleSet = new RuleSet("rs-0.1.0", Map.of());
   private final EvaluateController controller =
-      new EvaluateController(
+      NeutralChain.controller(
           auditLog,
           Clock.fixed(T0, ZoneOffset.UTC),
           ruleSet,
@@ -51,7 +51,9 @@ class EvaluateControllerTest {
         null,
         null,
         null,
-        "NONE");
+        "NONE",
+        1_000_000L,
+        null);
   }
 
   @Test

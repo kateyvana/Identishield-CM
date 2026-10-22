@@ -3,6 +3,7 @@ package cm.identishield.core.transfer;
 import cm.identishield.core.account.Account;
 import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.config.RuleSet;
+import cm.identishield.core.hlr.HlrReassignment;
 import cm.identishield.core.hlr.HlrService;
 import cm.identishield.core.mode.LayerMode;
 import cm.identishield.core.notification.NotificationChannel;
@@ -279,6 +280,17 @@ public class TransferService {
     req.put("beneficiaryId", counterparty);
     req.put("serverTimestamp", DateTimeFormatter.ISO_INSTANT.format(at));
     req.put("proofType", "NONE");
+    // A4 (V4) : solde courant, que le PDP fige à l'entrée en PROBATION et compare au montant.
+    req.put("balanceXaf", from.balanceXaf());
+    // A4 (Q4) : date du dernier changement d'IMSI, lue dans l'historique HLR immuable (EF-08,
+    // ADR-032), triée par occurred_at ; absente si le numéro n'a jamais été réattribué. Le motif
+    // n'est jamais transmis (ES-16b).
+    List<HlrReassignment> swaps = hlr.history(from.msisdn());
+    if (!swaps.isEmpty()) {
+      req.put(
+          "imsiChangedAt",
+          DateTimeFormatter.ISO_INSTANT.format(swaps.get(swaps.size() - 1).occurredAt()));
+    }
     try {
       return json.writeValueAsString(req);
     } catch (Exception e) {
