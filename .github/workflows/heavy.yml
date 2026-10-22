@@ -9,7 +9,8 @@
 # forks compris. Les portes lourdes sont verifiees A LA MAIN dans la VM
 # (make up, make check-stack, make abuse) ; procedure et resultats :
 # docs/03-revues/2026-10-22-ci-01-verification-manuelle.md.
-# Lancement manuel possible le jour ou un executeur est inscrit.
+# Lancement manuel possible le jour ou un executeur est inscrit (ADR-023,
+# amendement CI-01).
 name: heavy
 
 on:
