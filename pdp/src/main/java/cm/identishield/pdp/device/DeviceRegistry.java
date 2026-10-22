@@ -32,6 +32,17 @@ public class DeviceRegistry {
   private static final String HAS_ACTIVE_SQL =
       "SELECT count(*) FROM pdp.device WHERE account_id = ? AND state = 'ACTIVE'";
 
+  /**
+   * Sérialise les enregistrements d'un même compte jusqu'à la fin de la transaction : sans ce
+   * verrou, deux enregistrements concurrents révoqueraient puis inséreraient chacun, et le second
+   * heurterait l'index device_one_pending_per_account.
+   */
+  private static final String LOCK_ACCOUNT_SQL = "SELECT pg_advisory_xact_lock(hashtext(?))";
+
+  /** Une seule clé EN ATTENTE par compte : la précédente est révoquée avant la nouvelle. */
+  private static final String REVOKE_PENDING_SQL =
+      "UPDATE pdp.device SET state = 'REVOKED' WHERE account_id = ? AND state = 'PENDING'";
+
   /** Identifiant produit par la base (gen_random_uuid) : aucun UUID.randomUUID dans le code. */
   private static final String INSERT_PENDING_SQL =
       "INSERT INTO pdp.device (id, account_id, public_key, state, enrolled_at) "
@@ -87,8 +98,15 @@ public class DeviceRegistry {
     return n != null && n > 0;
   }
 
-  /** Enregistre la clé EN ATTENTE ; renvoie son identifiant. [at] vient de l'horloge injectée. */
+  /**
+   * Enregistre la clé EN ATTENTE ; renvoie son identifiant. [at] vient de l'horloge injectée. Toute
+   * clé EN ATTENTE précédente du compte est d'abord RÉVOQUÉE : au plus une par compte, garanti par
+   * l'index device_one_pending_per_account. À appeler dans une transaction (le verrou de compte
+   * dure jusqu'à sa fin).
+   */
   public String registerPending(String accountId, String publicKey, Instant at) {
+    jdbc.queryForList(LOCK_ACCOUNT_SQL, accountId);
+    jdbc.update(REVOKE_PENDING_SQL, accountId);
     return jdbc.queryForObject(
         INSERT_PENDING_SQL,
         String.class,

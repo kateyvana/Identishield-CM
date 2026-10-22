@@ -35,6 +35,10 @@ paths:
         que `/device/activate` n'a pas réussi. Renvoie le code de récupération en clair, une seule
         fois.
 
+        Au plus UNE clé EN ATTENTE par compte, garantie par la base : un nouvel enregistrement
+        RÉVOQUE la clé EN ATTENTE précédente du compte (réponse perdue, nouvel essai), dont le code
+        de récupération ne peut plus rien activer.
+
         Premier enrôlement seulement (carte B3a). Invariant R1 (amendement du 2026-10-17) : si le
         compte possède déjà une clé ACTIVE, la route refuse ; le réenrôlement, qui fournira l'ancien
         code de récupération, est décrit par la carte B3b.

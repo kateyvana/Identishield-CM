@@ -361,3 +361,10 @@ CREATE TABLE pdp.recovery_code (
     issued_at   timestamptz NOT NULL    -- fourni par l'app (ED-04) ; aucun DEFAULT d'horloge
 );
 GRANT SELECT, INSERT ON pdp.recovery_code TO isc_pdp_app;
+
+-- Au plus UNE cle EN ATTENTE par compte, garantie PAR LA BASE (decision de la proprietaire du
+-- 2026-10-21) : index partiel jumeau de device_one_active_per_account. Sans lui, chaque reponse de
+-- /device/register perdue laisserait une cle EN ATTENTE de plus, et /device/activate devrait choisir
+-- celle qu'active le code de recuperation de l'usager. /device/register REVOQUE d'abord toute cle
+-- EN ATTENTE du compte (DeviceRegistry.registerPending).
+CREATE UNIQUE INDEX device_one_pending_per_account ON pdp.device (account_id) WHERE state = 'PENDING';

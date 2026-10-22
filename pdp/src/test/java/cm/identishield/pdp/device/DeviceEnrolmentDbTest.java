@@ -19,9 +19,10 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 /**
  * Cycle de vie de la clé et code de récupération sur une VRAIE base (init.sql, rôle isc_pdp_app) :
  * l'ALTER du CHECK accepte PENDING et refuse tout autre état ; les GRANT de la section B3a
- * permettent au rôle applicatif d'émettre ET de vérifier un code ; l'index unique garde une seule
- * clé ACTIVE par compte ; le fait de liaison suit NONE → PENDING → ACTIVE ; une clé EN ATTENTE ne
- * signe rien.
+ * permettent au rôle applicatif d'émettre ET de vérifier un code ; les index uniques gardent une
+ * seule clé ACTIVE et une seule clé EN ATTENTE par compte, et un nouvel enregistrement révoque la
+ * clé EN ATTENTE précédente ; le fait de liaison suit NONE → PENDING → ACTIVE ; une clé EN ATTENTE
+ * ne signe rien.
  *
  * <p>Sans base (ISC_TEST_PG_URL absente), la classe est ignorée ; tools/verify_device_enrolment.sh
  * la lance contre une base jetable dans la VM.
@@ -102,8 +103,8 @@ class DeviceEnrolmentDbTest {
   void neverTwoActiveKeys_aSecondActivationIsAnOrdinaryFailure() {
     init();
     String first = registry.registerPending(acc, "cGs=", T0);
-    String second = registry.registerPending(acc, "cXM=", T0);
     assertTrue(registry.activate(acc, first));
+    String second = registry.registerPending(acc, "cXM=", T0);
     assertFalse(registry.activate(acc, second), "l'index unique refuse une seconde clé ACTIVE");
     assertEquals(
         1,
@@ -111,6 +112,33 @@ class DeviceEnrolmentDbTest {
             "SELECT count(*) FROM pdp.device WHERE account_id = ? AND state = 'ACTIVE'",
             Integer.class,
             acc));
+  }
+
+  @Test
+  void atMostOnePendingKey_isEnforcedByTheDatabase() {
+    init();
+    registry.registerPending(acc, "cGs=", T0);
+    assertThrows(
+        DataIntegrityViolationException.class,
+        () ->
+            jdbc.update(
+                "INSERT INTO pdp.device (id, account_id, public_key, state, enrolled_at) "
+                    + "VALUES (gen_random_uuid()::text, ?, 'cXM=', 'PENDING', now())",
+                acc),
+        "la base, pas une convention, refuse une seconde clé EN ATTENTE");
+  }
+
+  @Test
+  void registeringAgain_revokesThePreviousPendingKey_whichCanNoLongerBeActivated() {
+    init();
+    String lost = registry.registerPending(acc, "cGs=", T0);
+    String retry = registry.registerPending(acc, "cXM=", T0);
+    assertEquals(
+        "REVOKED",
+        jdbc.queryForObject("SELECT state FROM pdp.device WHERE id = ?", String.class, lost));
+    assertFalse(registry.activate(acc, lost), "une clé EN ATTENTE remplacée n'est plus activable");
+    assertTrue(registry.activate(acc, retry));
+    assertEquals(retry, registry.findActive(acc).orElseThrow().id());
   }
 
   @Test
