@@ -1,0 +1,13 @@
+allprojects {
+  afterEvaluate { p ->
+    if (p.plugins.hasPlugin('java')) {
+      p.tasks.register('printBenchCp') {
+        dependsOn 'testClasses'
+        doLast {
+          p.file('build/bench-cp.txt').text =
+              p.sourceSets.test.runtimeClasspath.files.findAll { it.exists() }.join('\n')
+        }
+      }
+    }
+  }
+}
