@@ -35,8 +35,46 @@ Passages en VT-x (carte débit, #58), le 2026-10-23 :
 | Dossier | Ce qu'il mesure |
 |---|---|
 | `results/2026-10-23/vm-vtx-12s/` | c4a1167 contre ab44b64, phase à 50 req/s de **12 s**, après 2 min de chauffe du poste. La fréquence effective est **remontée** à 2,8–3,4 GHz pendant la mesure (relevé `frequence-poste.csv`) : ce n'est pas un régime chaud. |
-| `results/2026-10-23/vm-vtx/` | c4a1167 contre ab44b64, phase à 50 req/s de **dix minutes réelles** (SQ-30), sans chauffe artificielle : le **coût du commit 1**. |
-| `results/2026-10-23/vm-vtx-main/` | `main`, le code réellement livré, avec la même phase de dix minutes : **c'est ce passage qui porte le verdict ENF-01.** |
+| `results/2026-10-23/vm-vtx-10min-batterie/` | c4a1167 contre ab44b64, dix minutes réelles, sans chauffe. **Mesuré SUR BATTERIE, non représentatif** : poste débranché de 14:45 à 15:24 UTC, batterie tombée à 5,9 %, fréquence effective effondrée jusqu'à 389 MHz. Voir `BATTERIE.md` et `croisement-frequence.txt`. |
+| `results/<date>/vm-vtx/` | *(à refaire, sur secteur et batterie chargée)* c4a1167 contre ab44b64, dix minutes réelles : le **coût du commit 1**. |
+| `results/<date>/vm-vtx-main/` | *(à faire)* `main`, le code réellement livré, dix minutes réelles : **c'est ce passage qui porte le verdict du moteur pour ENF-01.** |
+| `results/<date>/e2e-main/` | *(à faire)* `main`, générateur de bout en bout `e2e_load.py`, dix minutes réelles : **la latence qui répond à ENF-01.** |
+
+## Préconditions de mesure (décisions du 2026-10-23)
+
+- **Dix minutes réelles**, la définition de SQ-30 (`ISC_BENCH_SQ30_SECONDS`, 600 s par défaut).
+  Mesurer 12 s et extrapoler ne mesure pas l'exigence.
+- **Aucune chauffe artificielle**, ni avant ni pendant. Une chauffe parallèle volerait des cœurs à
+  une mesure de débit de toute la pile. Une chauffe avant ne tient pas : pendant le passage de 12 s,
+  la fréquence est remontée à 2,8–3,4 GHz. Ce sont les dix minutes qui disent, par la mesure, si la
+  machine se bride.
+- **La machine ne force pas.** À 50 req/s, l'utilisation du poste est restée entre 14 et 33 % pendant
+  le passage de 12 s, et entre 11 et 28 % pendant celui de dix minutes.
+- **Secteur branché et batterie chargée**, vérifiés AVANT et APRÈS chaque passage :
+  `Get-CimInstance Win32_Battery` (charge) et le journal système (Kernel-Power, événement 105,
+  `AcOnline`). Le passage de dix minutes du 23/10 a été invalidé par une coupure de secteur : sur
+  batterie, la fréquence s'effondre quelle que soit la charge, et les deux commits en souffrent de la
+  même façon. Une montée de latence « identique sur les deux commits » peut donc venir de
+  l'alimentation du poste, et non d'une limite du système.
+- **Fréquence effective du poste relevée** pendant tout le passage, toutes les 10 s :
+  `Get-Counter '\Processor Information(_Total)\% Processor Performance'` × 2 995 MHz (nominal,
+  `Win32_Processor.MaxClockSpeed`). Sur ce poste, `Win32_Processor.CurrentClockSpeed` est **figé**
+  à 1 198 MHz, au repos comme en charge : il n'est pas utilisable.
+- **VM réservée** par le témoin `~/VM-OCCUPEE` (CLAUDE.md), pile du projet arrêtée.
+
+## Marge du journal d'audit : correction d'un chiffre du SAD
+
+Le SAD v1.4 annonce une « marge ×2,6 sur SQ-30 », d'après le « plafond réel du journal » de
+SPIKE-5 (~133 écritures chaînées/s) et en supposant **une** écriture par requête. Calcul du
+superviseur technique (2026-10-23) : avec le mélange de ce banc, moitié FREEZE (3 écritures
+chaînées) et moitié ALLOW (1 écriture), **une requête écrit en moyenne 2 entrées**. 50 req/s font
+donc 100 écritures chaînées/s, et la marge annoncée tomberait à ×1,33.
+
+**La mesure réfute la prémisse.** En VT-x, sur secteur, la saturation (`vm-vtx-12s`, 16 fils)
+atteint 299 à 423 req/s avec ce mélange, soit **~600 à 850 écritures chaînées/s**, cinq à six fois le
+« plafond » de SPIKE-5. Ce plafond a été mesuré sous NEM, comme tous les spikes VM (voir la
+carte #63). La marge du SAD est fausse dans les deux sens : elle suppose une écriture par requête,
+et elle part d'un plafond sous-estimé.
 
 ## Pourquoi pas T3-07
 
@@ -52,6 +90,27 @@ Passages en VT-x (carte débit, #58), le 2026-10-23 :
 - Pool de connexions Hikari de **10** (valeur par défaut de Spring Boot, celle du PDP).
 - **60 appels de rodage**, jetés avant toute mesure (observation du 2026-09-15 : le premier appel à
   froid n'est pas représentatif).
+- **C'est une BORNE BASSE de la latence de `/evaluate`.** ENF-01 parle de la route HTTP appelée en
+  mTLS par le cœur. Ce banc donne la durée interne du moteur de décision, celle que rend aussi le
+  champ `latencyMs` (les 32 ms et 11 ms de `check-stack` sont de cette nature, et non un
+  bout-en-bout).
+
+## Bout en bout : `e2e_load.py`
+
+- **Ce qu'il fait.** Un client mTLS, placé là où est le cœur (conteneur `python:3.12-alpine` sur
+  `isc-net`, certificat du cœur), envoie de vrais `POST /evaluate` en JSON, sur des connexions
+  **persistantes** comme `PdpClient` (OB-6), au rythme de SQ-30 : 50 req/s pendant dix minutes. Le
+  mélange est celui du banc.
+- **Boucle ouverte.** Chaque latence est comptée depuis l'instant **prévu** d'envoi : si le PDP prend
+  du retard, l'attente est comptée et non cachée. La durée depuis l'envoi réel est aussi relevée.
+- **Ce qu'il ne mesure pas** (limite déclarée) : le temps ajouté par le client Java du cœur
+  lui-même. `PdpClient` n'est pas instrumenté : c'est du code de production, et on ne le modifie pas
+  pour une mesure. Ordre de grandeur disponible : `tools/bench_mtls.sh` (surcoût du transport mTLS),
+  dont le chiffre de référence (1,7 ms p95, SPIKE-4) date lui aussi de l'époque NEM.
+- **Statistiques :** `python tools/bench_evaluate/e2e_stats.py <dossier>`.
+- **Le verdict ENF-01 citera deux chiffres, nommés :** la durée interne du moteur de décision (ce
+  banc), et la latence vue par un client mTLS du réseau (`e2e_load.py`). **C'est la seconde qui
+  répond à ENF-01.**
 
 ## Charge
 
@@ -64,12 +123,12 @@ bénéficiaires et les soldes. Chaque cas donne deux requêtes, chacune sur un c
 - **ALLOW** : IMSI de la victime, aucun changement d'IMSI, 1 000 FCFA vers le même bénéficiaire.
   Une requête ALLOW écrit UNE entrée chaînée.
 
-Trois phases, 600 requêtes chacune (moitié FREEZE, moitié ALLOW) :
+Trois phases (moitié FREEZE, moitié ALLOW) :
 
 | Phase | Régime |
 |---|---|
 | `seq` | séquentiel, FREEZE et ALLOW alternés |
-| `sq30` | 50 requêtes/s en boucle ouverte (rythme de SQ-30), 12 s, 64 fils |
+| `sq30` | 50 requêtes/s en boucle ouverte (rythme de SQ-30), 64 fils ; dix minutes (30 000 requêtes) depuis le 23/10, 12 s (600 requêtes) avant |
 | `sat16` | saturation, 16 fils en boucle fermée ; débit = 16 / latence moyenne (loi de Little) |
 
 ## Exécution DANS la VM, et pourquoi
