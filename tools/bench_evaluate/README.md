@@ -28,8 +28,15 @@ Les deux passages du banc ont tourné pendant le démarrage du 17/10 22:24, donc
 résultats restent dans le dépôt, à leur place (`results/2026-10-21/`, `results/2026-10-22/`),
 marqués **« mesurés sous NEM, non représentatifs »**. Rien n'est effacé. La conclusion qu'ils
 portaient, « ni c4a1167 ni ab44b64 ne tiennent 50 req/s », peut être un artefact du mode NEM : elle
-n'est plus défendable en l'état. Le passage de référence est celui de `results/<date>/vm-vtx/`, avec
-le même `run.sh`, les mêmes commits et la même méthode (carte débit, #58).
+n'est plus défendable en l'état.
+
+Passages en VT-x (carte débit, #58), le 2026-10-23 :
+
+| Dossier | Ce qu'il mesure |
+|---|---|
+| `results/2026-10-23/vm-vtx-12s/` | c4a1167 contre ab44b64, phase à 50 req/s de **12 s**, après 2 min de chauffe du poste. La fréquence effective est **remontée** à 2,8–3,4 GHz pendant la mesure (relevé `frequence-poste.csv`) : ce n'est pas un régime chaud. |
+| `results/2026-10-23/vm-vtx/` | c4a1167 contre ab44b64, phase à 50 req/s de **dix minutes réelles** (SQ-30), sans chauffe artificielle : le **coût du commit 1**. |
+| `results/2026-10-23/vm-vtx-main/` | `main`, le code réellement livré, avec la même phase de dix minutes : **c'est ce passage qui porte le verdict ENF-01.** |
 
 ## Pourquoi pas T3-07
 
