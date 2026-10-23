@@ -22,6 +22,11 @@ servie clé en main.
 **Remède : une règle d'accès Tailscale** (ACL) qui limite les évaluateurs à `100.93.166.19:8443`,
 et à rien d'autre. Ni le 22, ni le 3000, ni aucun autre port.
 
+**La règle couvre le 3000 avec autant de soin que le 8443** (superviseur technique, 2026-10-23).
+Un OTP lisible par tout le tailnet ne prouve plus la possession de la SIM : la défense d'AC-02
+reposerait alors sur un code que n'importe quel invité peut lire. La preuve rouge/vert vaut donc
+pour les deux ports : le 8443 OUVERT aux évaluateurs, le 3000 FERMÉ aux évaluateurs.
+
 **Porte bloquante, et non conseil.** AUCUN évaluateur n'est invité sur le tailnet tant que :
 1. la règle n'est pas en place. C'est un acte de la propriétaire, dans la console d'administration
    Tailscale ;
