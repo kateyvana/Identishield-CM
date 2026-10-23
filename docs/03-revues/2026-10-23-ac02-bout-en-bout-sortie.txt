@@ -1,0 +1,92 @@
+=== 2026-10-23T11:44:09Z commit 971156905c2e67e5afb9a174d1f5d9295aeb8c36
+=== make check-stack
+  [OK] latence /evaluate (chaud) rapportee : 11 ms (reference ENF-01)
+  verify-evaluate: VERT
+[OK] /evaluate : ALLOW, idempotent, une entree d'audit chainee (EF-10/11, ENF-03)
+--- integrite du journal d'audit : detection + localisation (porte #4) ---
+  [OK] verification complete : chaine intacte (0 anomalie)
+  [OK] alteration de contenu detectee ET localisee au chain_index 1
+  [OK] suppression du dernier enregistrement detectee par l'ancre chain_head
+  [OK] verification incrementale depuis chain_index 1 : 0 anomalie
+  verify-audit: VERT
+[OK] audit : chaine verifiee, alteration detectee ET localisee, ancre couvre la suppression du dernier (ES-09)
+--- coeur : transfert P2P avec appel /evaluate AVANT commit + fail-closed ---
+  [OK] transfert P2P EXECUTED : /evaluate appele AVANT commit (EF-05)
+  [OK] solde debite de 25000 (960000 -> 935000)
+  [OK] une entree d'audit chainee pour le decisionId du transfert (503c886e-86e2-4e5d-b1cd-ab70c0416bb5)
+  verify-transfer: VERT
+[OK] coeur : transfert EXECUTED apres /evaluate, solde debite, audit ecrit (EF-04/EF-05)
+--- USSD : une session traverse le fil et est executee ---
+  [OK] une transaction USSD traverse le fil et est EXECUTED (EF-06, porte #2)
+  [OK] transaction USSD EXECUTED persistee (canal USSD, decisionId e4296084-0827-472c-bb70-209145b5c34d)
+  verify-ussd: VERT
+[OK] USSD : session -> transfert -> /evaluate -> EXECUTED (EF-06)
+check-stack: VERT
+=== AC-02 phase 1 : tools/verify_attacker.sh
+======== SORTIE BRUTE DE isc-attacker ac02 ========
+[ETAPE 1] constat initial : victime 677000007, solde 500000 FCFA
+[ETAPE 2] SIM reattribuee : 624010000000010 -> 624010000000666 (agent agent-kyc-07)
+[ETAPE 3] OTP emis vers l'IMSI courant 624010000000666 (l'appareil attaquant)
+[ETAPE 4] OTP intercepte sur l'appareil attaquant (via isc-sim) : [masqué]
+[ETAPE 5] authentification par OTP intercepte : ACCEPTED
+[ETAPE 6] sortie USSD : 500000 FCFA -> 677000008 (etat EXECUTED, decision ec06f762-df5d-490b-850b-699eb511dc26)
+[ETAPE 7] constat final : victime 677000007, solde 0 FCFA
+[ETAPE 8] notifications sur l'ancien appareil (624010000000010) : 0
+--- ETAT CONSTATE (faits, pas jugement) ---
+ORACLE_VICTIM=677000007
+ORACLE_BALANCE_INITIAL=500000
+ORACLE_BALANCE_FINAL=0
+ORACLE_OUTPUTS=1
+ORACLE_OUTPUT_BENEFICIARY=677000008
+ORACLE_OUTPUT_STATE=EXECUTED
+ORACLE_OTP_TARGET_IMSI=624010000000666
+ORACLE_OLD_DEVICE_IMSI=624010000000010
+ORACLE_OLD_DEVICE_NOTIFICATIONS=0
+===================================================
+--- oracle ISC-TM §8 (verifie en base) ---
+[OK] solde de la victime vide : 0 FCFA
+[OK] 1 sortie(s) executee(s) vers le beneficiaire attaquant (677000008)
+[OK] l'OTP consomme etait parti vers l'IMSI ATTAQUANT (624010000000666), pas la victime
+[OK] aucune notification parvenue a l'ancien appareil de la victime (624010000000010)
+[OK] mode restaure a PROTEGE
+verify-attacker: VERT
+=== AC-02 phase 2 : tools/verify_ac02_protected.sh
+mode : {"layerless":false,"pdpState":"DISPONIBLE"}
+compte victime : ebeeb3fc-d5cc-464e-99cf-f15a4a61c15d ; état PDP avant : AUCUN
+======== SORTIE BRUTE DE isc-attacker ac02 (mode PROTÉGÉ) ========
+[ETAPE 1] constat initial : victime 677000007, solde 500000 FCFA
+[ETAPE 2] SIM reattribuee : 624010000000010 -> 624010000000666 (agent agent-kyc-07)
+[ETAPE 3] OTP emis vers l'IMSI courant 624010000000666 (l'appareil attaquant)
+[ETAPE 4] OTP intercepte sur l'appareil attaquant (via isc-sim) : [masqué]
+[ETAPE 5] authentification par OTP intercepte : ACCEPTED
+[ETAPE 6] sortie USSD : 500000 FCFA -> 677000008 (etat REJECTED, decision 3407d25e-b317-436b-aea9-700950854f97)
+[ETAPE 7] constat final : victime 677000007, solde 500000 FCFA
+[ETAPE 8] notifications sur l'ancien appareil (624010000000010) : 0
+--- ETAT CONSTATE (faits, pas jugement) ---
+ORACLE_VICTIM=677000007
+ORACLE_BALANCE_INITIAL=500000
+ORACLE_BALANCE_FINAL=500000
+ORACLE_OUTPUTS=0
+ORACLE_OUTPUT_BENEFICIARY=677000008
+ORACLE_OUTPUT_STATE=REJECTED
+ORACLE_OTP_TARGET_IMSI=624010000000666
+ORACLE_OLD_DEVICE_IMSI=624010000000010
+ORACLE_OLD_DEVICE_NOTIFICATIONS=0
+code de sortie de l'outil : 0
+==================================================================
+--- oracle de la phase 2 (vérifié en base) ---
+[OK] solde de la victime intact : 500000 FCFA
+[OK] aucune sortie exécutée
+transactions du cœur : 677000008:REJECTED
+décisions du PDP pour ce compte : FREEZE/PROBATION_VIOLATION
+[OK] première décision : FREEZE, veto PROBATION_VIOLATION
+[OK] exactement une décision FREEZE au journal
+[OK] compte FROZEN côté PDP
+événements de confiance : TRUST_PROBATION_ENTERED,TRUST_FROZEN
+[OK] chaîne d'audit : 0 anomalie (pdp.audit_verify)
+verify-ac02-protected: VERT
+=== make abuse
+    hors pile (ex. poste sans Docker), les T-AC s'ignorent proprement ; ils tournent en VM/CI.
+...                                                                      [100%]
+3 passed in 3.70s
+=== mode final : {"layerless":false,"pdpState":"DISPONIBLE"}

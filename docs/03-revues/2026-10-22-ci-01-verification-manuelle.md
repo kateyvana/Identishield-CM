@@ -58,3 +58,28 @@ Le passage a constaté REJECTED, parce que l'essai manuel de la phase 2 venait d
 la victime. Le gel dure TTL_FREEZE, et le test ne remet pas l'état du PDP à zéro. Corriger cet
 ensemble revient à modifier un test existant : c'est hors de cette carte, et cela demande l'accord
 de la propriétaire (CLAUDE.md §4).
+
+**Résolu le 2026-10-23** (décision de la propriétaire du 2026-10-22), dans le commit `9b640cc` :
+- l'ensemble des décisions acceptées est aligné sur le contrat, `[ALLOW, STEP_UP, FREEZE, REJECTED]` ;
+- le test ne dépend plus de ce qui a tourné avant : le compte de la victime est recréé à chaque
+  passage, avec un identifiant neuf que le PDP n'a jamais vu.
+
+Vérification dans la VM, en VT-x : `make abuse` passe à 3 sur 3, trois fois de suite, alors que des
+comptes gelés s'accumulent en base. Mutation « couche désactivée » dans le test du piège : le test
+redevient ROUGE (« 0 >= 1 », le PDP n'est pas consulté). Il est donc réparé, pas vidé. La mutation
+n'a jamais été poussée.
+
+### 2026-10-23 — commit 9711569 (entre dans main par la PR #61), VM isc-vm en VT-x
+
+| Porte | Résultat |
+|---|---|
+| `make up` (sans reset, volumes conservés) | 5 conteneurs sains |
+| `make check-stack` | VERT ; latence `/evaluate` à chaud : 11 ms (un appel, VT-x) |
+| `tools/verify_attacker.sh` (AC-02 phase 1) | VERT |
+| `tools/verify_ac02_protected.sh` (AC-02 phase 2) | VERT |
+| `make abuse` | **3 réussis sur 3** |
+
+Pièce de démonstration complète : `docs/03-revues/2026-10-23-ac02-bout-en-bout.md`.
+
+Amendement d'ADR-023 (CI-01) : écrit et ratifié. La raison retenue : sur un dépôt public, un
+exécuteur auto-hébergé ferait tourner dans la VM le code des pull requests de n'importe quel fork.
