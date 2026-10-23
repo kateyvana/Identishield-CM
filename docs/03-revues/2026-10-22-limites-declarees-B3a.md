@@ -43,6 +43,12 @@ Un code émis ne peut donc être ni invalidé, ni consommé, ni révoqué par l'
 remède à un code compromis est le ré-enrôlement (flux D), qui émet un nouveau code pour la nouvelle
 clé.
 
+**Reste ouverte au mois 4.** `POST /recovery-code/rotate` (et `DELETE /device`) sont reportées au
+mois 5 (décision de la propriétaire du 2026-10-23). Ce report LAISSE OUVERTE la limite L1 : un code
+de récupération reste non invalidable, et le seul remède demeure le réenrôlement. Les deux routes
+sont publiées dans `contracts/mobile-api.yaml` ; leur description y précise qu'elles ne sont pas
+servies au mois 4.
+
 ## L2 — Aucun étranglement sur les routes publiques d'enrôlement
 
 `/enrolment/start` est publique et dérive une empreinte PBKDF2 du PIN pour TOUT appelant, même
@@ -168,6 +174,41 @@ ratifiée ; c'est pourtant aujourd'hui la seule borne temporelle de la limite L2
 « (proposé) » sur APP_SESSION_TTL. La ratification appartient à la propriétaire ; B3a ne change
 aucune valeur.
 
+## L12 — L'attestation prouve qu'une chaîne est BIEN FORMÉE, pas qu'elle vient d'un vrai téléphone
+
+Le PDP ne compare pas la racine de la chaîne d'attestation aux racines matérielles de Google
+(`AttestationVerifier`, limite « Racine simulée » de l'amendement M-09 d'ADR-018). Il ne distingue
+donc PAS une vraie puce de sécurité d'une chaîne fabriquée par ordinateur : une chaîne construite
+de bout en bout par un attaquant, avec sa propre racine auto-signée, une extension KeyDescription
+bien formée déclarant « TEE » et le bon défi, passe la vérification. Le refus DEVICE_UNSUPPORTED
+(clé logicielle) ne s'applique qu'à une chaîne qui AVOUE être logicielle. La garantie « clé
+matérielle », au cœur de la thèse, repose aujourd'hui sur une hypothèse.
+
+Ce qu'il faudrait pour la fermer :
+1. **Racines matérielles de Google épinglées** dans la configuration du PDP (publiques, possible
+   hors ligne), et refus de toute autre racine ; les tests gardent une racine de test injectée.
+2. **RootOfTrust** lu dans KeyDescription : démarrage vérifié (`verifiedBootState`) et chargeur
+   d'amorçage verrouillé (`deviceLocked`), demandés par ISC-MOB-SPEC §12.1.
+3. **Révocation** : liste d'état publiée par Google, qui exige Internet (QM-06) ; le bac à sable
+   n'a aucune sortie réseau.
+4. **Validité temporelle** des certificats, lue par l'horloge injectée (autre limite déclarée de
+   M-09).
+
+Statut documentaire : la limite est déclarée dans ADR-018 (amendement M-09, FERMÉ par la
+propriétaire le 2026-10-11, ligne « LIMITE DÉCLARÉE — Racine simulée »).
+
+**Incohérence de documentation, à corriger par la carte qui touchera le vérificateur** (celle de
+L12) : la Javadoc d'`AttestationVerifier` (lignes 35 à 38) cite encore l'amendement M-09 comme
+« PROPOSÉ », alors qu'il est FERMÉ depuis le 2026-10-11. Elle n'est pas modifiée par B3a : le
+vérificateur n'y est pas touché.
+
+Carte nommée — **Attestation : racines Google, RootOfTrust** (couloir B). Tenabilité au mois 4,
+évaluée : points 1 et 2 TENABLES (de l'ordre de deux à trois jours avec les tests), à condition de
+disposer d'une VRAIE chaîne de fabricant comme vecteur de test — celle du téléphone de la
+propriétaire, obtenue à l'étape 4 du test de contrat de B3a. Point 3 NON tenable dans le bac à
+sable (aucune sortie réseau) : il resterait déclaré. Point 4 : dépend d'une décision sur
+l'horloge injectée.
+
 ## Deux cartes pour le couloir A (à nommer, pas à faire dans B3a)
 
 **(a) Durées de session.** La conception en fixe trois (décision du 2026-10-10) : 5 min
@@ -191,6 +232,8 @@ exemptions NOMMÉES, jamais une exclusion silencieuse.
 | avant B4 | Paramètres de session : arrière-plan 60 s, durée maximale 30 min | A | (a) |
 | — | Sens inverse de named-params (paramètre déclaré = paramètre lu), exemptions nommées | A | (b) |
 | — | Compteur et délai de renvoi des OTP côté serveur | à désigner | L10 |
+| à décider (tenable au mois 4 pour les points 1-2) | Attestation : racines Google épinglées, RootOfTrust | B | L12 |
+| mois 5 | `/recovery-code/rotate` et `DELETE /device` (une seule carte) | B | L1 |
 | — | Étranglement par origine des routes publiques d'enrôlement (motif ES-21) | A | L2 |
 | — | Comptage des échecs de `/recovery-code/confirm`, limitation P-11 | B4 | L2 |
 | — | Amorçage PDP du compte lié des fixtures ; `/enrolment/recover` | B3b | L5, L6 |
