@@ -62,6 +62,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /enrolment/otp:
     post:
       operationId: verifyEnrolmentOtp
@@ -145,6 +147,8 @@ paths:
           $ref: '#/components/responses/Gone'
         '422':
           $ref: '#/components/responses/Unprocessable'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /recovery-code/confirm:
     post:
       operationId: confirmRecoveryCode
@@ -169,6 +173,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '410':
           $ref: '#/components/responses/Gone'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /session/challenge:
     get:
       operationId: getSessionChallenge
@@ -501,7 +507,10 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Gone:
-      description: OTP_EXPIRED ou ENROLMENT_EXPIRED.
+      description: |
+        OTP_EXPIRED ou ENROLMENT_EXPIRED. ENROLMENT_EXPIRED est la même réponse que l'enrôlement
+        ait expiré (ENROL_TTL), qu'il ait déjà été consommé par une confirmation réussie, ou qu'une
+        autre liaison l'ait devancé : l'application reprend à /enrolment/start (B3a).
       content:
         application/json:
           schema:
@@ -516,19 +525,40 @@ components:
       description: THROTTLED ; délai croissant sur l'origine, jamais sur le compte (ES-21).
       headers:
         Retry-After:
-          description: Secondes d'attente avant une nouvelle tentative.
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
           schema:
-            type: integer
-            minimum: 1
+            $ref: '#/components/schemas/Error'
+    Unavailable:
+      description: |
+        SERVICE_UNAVAILABLE : une dépendance du cœur est injoignable (le PDP, ou le réseau SMS
+        simulé à l'émission de l'OTP). Code TRANSITOIRE, contrairement aux codes
+        terminaux : l'application peut réessayer la même requête après Retry-After ; l'enrôlement
+        en cours est GARDÉ à son étape (décision de la propriétaire du 2026-10-21). Le cœur ne
+        retombe JAMAIS sur l'OTP. Jamais CONTRACT_VIOLATION, qui reste le signal d'un défaut.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
 
+  headers:
+    RetryAfter:
+      description: Secondes d'attente avant une nouvelle tentative.
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
   schemas:
     ReasonCode:
       type: string
-      description: Liste fermée d'ISC-MOB-SPEC v1.2 §12.4, plus REQUEST_INVALID (M-03, à reporter en SPEC v1.3).
+      description: |
+        Liste fermée d'ISC-MOB-SPEC v1.2 §12.4, plus REQUEST_INVALID (M-03) et SERVICE_UNAVAILABLE
+        (B3a, décision de la propriétaire du 2026-10-21), à reporter en SPEC v1.3.
       enum:
         - CREDENTIALS_INVALID
         - OTP_INVALID
@@ -545,6 +575,7 @@ components:
         - ACCOUNT_FROZEN
         - ENROLMENT_EXPIRED
         - REQUEST_INVALID
+        - SERVICE_UNAVAILABLE
     Error:
       type: object
       additionalProperties: false
