@@ -209,6 +209,43 @@ propriétaire, obtenue à l'étape 4 du test de contrat de B3a. Point 3 NON tena
 sable (aucune sortie réseau) : il resterait déclaré. Point 4 : dépend d'une décision sur
 l'horloge injectée.
 
+## L13 — Chaque remise à zéro de la pile périme l'APK publié
+
+L'APK de publication épingle l'autorité TLS du bac à sable (MOB-S-08, ADR-038) : celle d'UNE
+instance précise de la pile. Or `make reset` exécute `docker compose down -v`, qui supprime le
+volume `isc-certs`, et `infra/ca/gen-ca.sh` régénère alors une NOUVELLE autorité au démarrage
+suivant (commentaire de son en-tête : « down/up conserve, down -v régénère »). Après une remise à
+zéro, l'APK publié refuse le nouveau certificat du serveur : la poignée de main TLS échoue, et
+l'application affiche « Connexion impossible » alors que le réseau fonctionne.
+
+Deux disciplines possibles, **à trancher par la propriétaire** :
+1. **Ne plus remettre la pile à zéro avant la soutenance** une fois l'APK publié (un
+   `make up` simple conserve l'autorité) ;
+2. **Reconstruire et republier l'APK après chaque remise à zéro**, contre la nouvelle autorité,
+   avec une nouvelle étiquette de version.
+
+## L14 — L'enrôlement d'un nouveau téléphone demande la présence de l'auteur
+
+**Texte à reprendre tel quel sur la page de publication (release GitHub de l'APK)**, décision de
+la propriétaire du 2026-10-23 : cette limite se déclare publiquement, pas seulement ici.
+
+> Le réseau SMS est simulé dans le bac à sable. L'installation et l'application fonctionnent de
+> façon autonome ; l'enrôlement d'un nouveau téléphone demande la présence de l'auteur, qui lit le
+> code dans le réseau SMS simulé.
+
+Pourquoi : l'OTP du premier enrôlement part vers la boîte simulée de l'IMSI courant dans `isc-sim`
+(ADR-034), jamais vers la vraie SIM du téléphone (l'application ne lit pas la SIM). Un évaluateur
+à distance ne peut donc pas lire seul son code. Aucun chemin de contournement n'est ajouté :
+- pas de lecture des codes dans la console (elle exposerait tous les codes de tous les numéros, et
+  `/api/mode`, au réseau) ;
+- pas d'OTP dans la réponse du cœur (contrat : `demoOtp` « jamais servi par le cœur » ; ADR-034) ;
+- pas de passerelle SMS réelle ni de courriel (AC-02 repose sur le canal de la SIM ; ADR-035
+  interdit toute sortie Internet).
+
+Pour la soutenance (décision du même jour) : le téléphone de la victime est enrôlé la VEILLE,
+comme ISC-DEMO §227 prévoit déjà de tester les téléphones la veille ; le seul OTP lu en direct
+devant le jury est celui de l'attaquant, dans son terminal (ISC-DEMO §111).
+
 ## Deux cartes pour le couloir A (à nommer, pas à faire dans B3a)
 
 **(a) Durées de session.** La conception en fixe trois (décision du 2026-10-10) : 5 min
@@ -228,7 +265,8 @@ exemptions NOMMÉES, jamais une exclusion silencieuse.
 | Priorité | Carte | Couloir | Limite |
 |---|---|---|---|
 | HAUTE, bloquante avant soutenance | Comptage des essais du PIN et verrou temporaire (motif ES-21) | A | L9 |
-| PRIORITAIRE, avant soutenance | TLS de la surface mobile du cœur (8443) | infrastructure | L7 |
+| PRIORITAIRE, avant soutenance | L7-a : second connecteur HTTPS 8443 réservé à `/mobile/v1/*`, refus de ces routes en clair sur 8080, mécanisme du point 5 d'ADR-036 prouvé rouge/vert ; L7-c : vérification de bout en bout depuis le téléphone (décision du 2026-10-23) | B | L7 |
+| PRIORITAIRE, avant soutenance | L7-b : feuille serveur `core-mobile` (SAN : nom MagicDNS de la VM, IP 100.93.166.19, `DNS:isc-core`), exposition du 8443 (décision du 2026-10-23) | A | L7 |
 | avant B4 | Paramètres de session : arrière-plan 60 s, durée maximale 30 min | A | (a) |
 | — | Sens inverse de named-params (paramètre déclaré = paramètre lu), exemptions nommées | A | (b) |
 | — | Compteur et délai de renvoi des OTP côté serveur | à désigner | L10 |
