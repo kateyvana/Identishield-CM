@@ -19,6 +19,7 @@
 #
 # Usage (racine du dépôt, poste) :
 #   bash tools/bench_evaluate/run.sh <dossier de résultats> [commit A] [commit B] [isc@<vm>]
+# Avec A = B (ex. le SHA de main deux fois), un seul commit est mesuré, sur deux tours.
 set -euo pipefail
 
 OUT="${1:?dossier de résultats}"
@@ -32,15 +33,17 @@ PORT=55433
 DIR=/tmp/isc-bench
 WORK="$(mktemp -d)"
 mkdir -p "$OUT"
+COMMITS=("$A")
+if [ "$B" != "$A" ]; then COMMITS+=("$B"); fi
 
-for c in "$A" "$B"; do
+for c in "${COMMITS[@]}"; do
   echo ">>> $c : extraction, compilation, classpath"
   mkdir -p "$WORK/$c"
   git archive "$c" pdp config data/eval | tar -x -C "$WORK/$c"
   cp "$HERE/EvaluateLatencyBench.java" "$HERE/BenchMain.java" "$WORK/$c/$WEB/"
   (cd "$WORK/$c/pdp" && ./gradlew --quiet -I "$HERE/export-cp.gradle" printBenchCp)
 done
-python "$HERE/bundle.py" "$WORK" "$A" "$B"
+python "$HERE/bundle.py" "$WORK" "${COMMITS[@]}"
 
 echo ">>> envoi des paquets dans la VM ($VM:$DIR)"
 git show "$B:infra/init/init.sql" >"$WORK/init.sql"
@@ -67,7 +70,7 @@ for i in $(seq 1 60); do
 done
 
 for round in 1 2; do
-  for c in "$A" "$B"; do
+  for c in "${COMMITS[@]}"; do
     echo ">>> VM, tour $round : $c"
     ssh "$VM" "docker run --rm --network host -v $DIR/vm:/b -w /b/$c/pdp \
       -e ISC_TEST_PG_URL=jdbc:postgresql://127.0.0.1:$PORT/identishield \
@@ -80,7 +83,7 @@ for round in 1 2; do
   done
 done
 
-scp -q "$VM:$DIR/vm/result-*.csv" "$OUT/"
+for c in "${COMMITS[@]}"; do scp -q "$VM:$DIR/vm/result-$c-*.csv" "$OUT/"; done  # les seuls commits mesurés ici
 python "$HERE/stats.py" "$OUT"
 echo "Retrait de la base jetable (à faire à la main) : ssh $VM docker rm -f $NAME"
 echo "Paquets dans la VM : $DIR ; arbres extraits sur le poste : $WORK"
