@@ -271,7 +271,7 @@ exemptions NOMMÉES, jamais une exclusion silencieuse.
 | — | Sens inverse de named-params (paramètre déclaré = paramètre lu), exemptions nommées | A | (b) |
 | — | Compteur et délai de renvoi des OTP côté serveur | à désigner | L10 |
 | à décider (tenable au mois 4 pour les points 1-2) | Attestation : racines Google épinglées, RootOfTrust | B | L12 |
-| mois 5 | `/recovery-code/rotate` et `DELETE /device` (une seule carte) | B | L1 |
+| mois 5 | #64 · `/recovery-code/rotate` et `DELETE /device` (une seule carte) | B | L1 |
 | — | Étranglement par origine des routes publiques d'enrôlement (motif ES-21) | A | L2 |
 | — | Comptage des échecs de `/recovery-code/confirm`, limitation P-11 | B4 | L2 |
 | — | Amorçage PDP du compte lié des fixtures ; `/enrolment/recover` | B3b | L5, L6 |

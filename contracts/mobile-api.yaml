@@ -418,7 +418,7 @@ paths:
       operationId: rotateRecoveryCode
       summary: Nouvelle clé de récupération ; l'ancienne est invalidée
       description: |
-        NON SERVIE AU MOIS 4 par le cœur — carte à créer (mois 5, décision de la propriétaire du
+        NON SERVIE AU MOIS 4 par le cœur — carte #64 (mois 5, décision de la propriétaire du
         2026-10-23). Seul le faux serveur la sert. Conséquence : un code de récupération émis ne
         peut pas être invalidé ; le seul remède est le réenrôlement (limite L1,
         docs/03-revues/2026-10-22-limites-declarees-B3a.md).
@@ -446,7 +446,7 @@ paths:
       operationId: unbindDevice
       summary: Délier ce téléphone ; le prochain enrôlement sera un premier enrôlement (OTP)
       description: |
-        NON SERVIE AU MOIS 4 par le cœur — carte à créer (mois 5, décision de la propriétaire du
+        NON SERVIE AU MOIS 4 par le cœur — carte #64 (mois 5, décision de la propriétaire du
         2026-10-23). Seul le faux serveur la sert.
       requestBody:
         required: true
