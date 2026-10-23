@@ -266,7 +266,7 @@ exemptions NOMMÉES, jamais une exclusion silencieuse.
 |---|---|---|---|
 | HAUTE, bloquante avant soutenance | Comptage des essais du PIN et verrou temporaire (motif ES-21) | A | L9 |
 | PRIORITAIRE, avant soutenance | L7-a : second connecteur HTTPS 8443 réservé à `/mobile/v1/*`, refus de ces routes en clair sur 8080, mécanisme du point 5 d'ADR-036 prouvé rouge/vert ; L7-c : vérification de bout en bout depuis le téléphone (décision du 2026-10-23) | B | L7 |
-| PRIORITAIRE, avant soutenance | L7-b : feuille serveur `core-mobile` (SAN : nom MagicDNS de la VM, IP 100.93.166.19, `DNS:isc-core`), exposition du 8443 (décision du 2026-10-23) | A | L7 |
+| PRIORITAIRE, avant soutenance | L7-b : feuille serveur `core-mobile` (SAN : `DNS:isc-core`, `DNS:isc-vm`, `DNS:isc-vm.tail3824f1.ts.net`, `IP:100.93.166.19` ; l'APK compose le nom MagicDNS complet), exposition du 8443 (décision du 2026-10-23) | A | L7 |
 | avant B4 | Paramètres de session : arrière-plan 60 s, durée maximale 30 min | A | (a) |
 | — | Sens inverse de named-params (paramètre déclaré = paramètre lu), exemptions nommées | A | (b) |
 | — | Compteur et délai de renvoi des OTP côté serveur | à désigner | L10 |
