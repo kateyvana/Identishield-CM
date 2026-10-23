@@ -67,6 +67,14 @@ passage moteur. Pendant ces fenêtres, la latence monte à plusieurs secondes. E
 machine à fréquence normale. Il ne tient pas sur une machine qui se met à 389 MHz. La cause (chargeur,
 limite de puissance, protection thermique) n'est pas identifiée.
 
+**HYPOTHÈSE (non prouvée) : une alimentation intermittente, par le chargeur ou la prise.** Superviseur
+technique, 2026-10-23. Les deux effondrements à 389 MHz « sur secteur » (18:04:22 → 18:05:12, puis
+18:07:22 → 18:08:03 UTC) seraient des micro-coupures, que le journal système n'a pas notées comme
+changements de source. La coupure franche de 18:08:23 UTC (`AcOnline=false`) suivrait la même
+histoire. Le passage sur batterie du même après-midi (fréquence à 389 MHz sur batterie basse) va dans
+le même sens. La propriétaire vérifie son chargeur. Tant que cette hypothèse n'est pas confirmée ou
+écartée, la machine de démonstration reste exposée à ce risque.
+
 ## Préconditions de mesure (décisions du 2026-10-23)
 
 - **Dix minutes réelles**, la définition de SQ-30 (`ISC_BENCH_SQ30_SECONDS`, 600 s par défaut).
@@ -88,6 +96,17 @@ limite de puissance, protection thermique) n'est pas identifiée.
   `Win32_Processor.MaxClockSpeed`). Sur ce poste, `Win32_Processor.CurrentClockSpeed` est **figé**
   à 1 198 MHz, au repos comme en charge : il n'est pas utilisable.
 - **VM réservée** par le témoin `~/VM-OCCUPEE` (CLAUDE.md), pile du projet arrêtée.
+- **Fréquence au repos ≥ 2 GHz, ou ARRÊT** (superviseur technique, 2026-10-23). Avant toute mesure,
+  relever l'état du secteur, puis la fréquence effective du poste au repos pendant une minute. Si elle
+  est **sous 2 GHz**, on ne mesure pas, et on le consigne.
+- **Aucune charge étrangère sur le poste pendant la mesure** (règle R-Z, étendue) : pas de
+  `make check`, pas de compilation, **pas de `git push`**, dans aucun couloir. La compression et
+  l'envoi d'une poussée chargent le processeur. La charge étrangère de 17:37–17:39 UTC sur le passage
+  de bout en bout coïncide avec une poussée du couloir B achevée à 17:40:04 UTC (journal de la
+  référence distante). Son heure de début reste à confirmer.
+- **Décalage d'horloge VM → poste mesuré avant ET après** chaque passage (à mi-aller-retour SSH), et
+  sa dérive consignée. Une dérive significative impose de synchroniser l'horloge de la VM avant de
+  mesurer.
 
 ## Marge du journal d'audit : correction d'un chiffre du SAD
 
