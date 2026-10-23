@@ -41,23 +41,31 @@ def call(method, path, body=None, base=CORE):
         return e.code, (json.loads(raw) if raw else None), e.headers
 
 
-def check(name, method, template, path, body, status, reason=None):
-    """Appelle le vrai cœur et valide la réponse contre le contrat ; renvoie le corps."""
+def check(name, method, template, path, body, status, reason=None, next_step=None, required=()):
+    """Appelle le vrai cœur, valide la réponse contre le contrat PUIS son contenu attendu (étape
+    suivante, champs requis) ; UN seul verdict par cas. Renvoie le corps, ou None si échec."""
     got, data, headers = call(method, path, body)
+    data = data or {}
     try:
         sch = schema.response_schema(CONTRACT, method, template, got)
         schema.validate(CONTRACT, sch, data)
         if got != status:
             raise AssertionError(f"code {got}, attendu {status}")
-        if reason is not None and (data or {}).get("reason") != reason:
-            raise AssertionError(f"raison {(data or {}).get('reason')}, attendue {reason}")
+        if reason is not None and data.get("reason") != reason:
+            raise AssertionError(f"raison {data.get('reason')}, attendue {reason}")
+        if next_step is not None and data.get("next") != next_step:
+            raise AssertionError(f"etape {data.get('next')}, attendue {next_step}")
+        missing = [f for f in required if f not in data]
+        if missing:
+            raise AssertionError(f"champs attendus absents : {missing}")
         if got == 503 and not headers.get("Retry-After"):
             raise AssertionError("503 sans Retry-After")
-        print(f"  OK     {name} : {got}{' ' + reason if reason else ''}")
+        print(f"  OK     {name} : {got}{' ' + (reason or next_step or '')}")
+        return data
     except (schema.ContractViolation, AssertionError, KeyError, TypeError) as e:
         failures.append(name)
         print(f"  ECHEC  {name} : {e}")
-    return data or {}
+        return None
 
 
 def main():
@@ -112,12 +120,17 @@ def main():
         "REQUEST_INVALID",
     )
     started = check(
-        "compte neuf -> OTP", "POST", start, start, {"msisdn": fresh["msisdn"], "pin": pin}, 200
+        "compte neuf -> OTP",
+        "POST",
+        start,
+        start,
+        {"msisdn": fresh["msisdn"], "pin": pin},
+        200,
+        next_step="OTP",
+        required=("enrolmentId",),
     )
-    if started.get("next") != "OTP" or "enrolmentId" not in started:
-        failures.append("compte neuf -> OTP (contenu)")
-        print("  ECHEC  compte neuf -> OTP : next ou enrolmentId absent")
-        return
+    if started is None:
+        return  # sans enrôlement ouvert, la suite n'a pas de sens
     eid = started["enrolmentId"]
 
     print(">>> /enrolment/otp")
@@ -133,17 +146,16 @@ def main():
         401,
         "OTP_INVALID",
     )
-    bound = check(
+    check(
         "OTP lu sur l'IMSI courant -> BIND",
         "POST",
         "/enrolment/otp",
         "/enrolment/otp",
         {"enrolmentId": eid, "otp": otp},
         200,
+        next_step="BIND",
+        required=("attestationChallenge",),
     )
-    if bound.get("next") != "BIND":
-        failures.append("OTP -> BIND (contenu)")
-        print("  ECHEC  OTP -> BIND : next absent")
 
     print(">>> /enrolment/complete")
     junk = base64.b64encode(b"pas un certificat").decode()
