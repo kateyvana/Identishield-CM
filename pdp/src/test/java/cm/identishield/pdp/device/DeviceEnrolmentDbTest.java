@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -70,6 +71,40 @@ class DeviceEnrolmentDbTest {
     assertThrows(
         DataIntegrityViolationException.class,
         () -> jdbc.update("UPDATE pdp.device SET state = 'BOGUS' WHERE id = ?", id));
+  }
+
+  @Test
+  void theStateCheck_acceptsExactlyPendingActiveRevoked() {
+    init();
+    String id = registry.registerPending(acc, "cGs=", T0);
+    for (String state : new String[] {"ACTIVE", "REVOKED", "PENDING"}) {
+      assertEquals(
+          1, jdbc.update("UPDATE pdp.device SET state = ? WHERE id = ?", state, id), state);
+    }
+    for (String state : new String[] {"BOGUS", "active", ""}) {
+      assertThrows(
+          DataIntegrityViolationException.class,
+          () -> jdbc.update("UPDATE pdp.device SET state = ? WHERE id = ?", state, id),
+          state);
+    }
+  }
+
+  /** L1 : un code émis ne peut être ni modifié ni supprimé par le rôle applicatif. */
+  @Test
+  void theApplicationRole_canNeitherUpdateNorDeleteARecoveryCode() {
+    init();
+    String id = registry.registerPending(acc, "cGs=", T0);
+    codes.issue(id, T0);
+    assertThrows(
+        DataAccessException.class,
+        () -> jdbc.update("UPDATE pdp.recovery_code SET code_hash = 'x' WHERE device_id = ?", id));
+    assertThrows(
+        DataAccessException.class,
+        () -> jdbc.update("DELETE FROM pdp.recovery_code WHERE device_id = ?", id));
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pdp.recovery_code WHERE device_id = ?", Integer.class, id));
   }
 
   @Test

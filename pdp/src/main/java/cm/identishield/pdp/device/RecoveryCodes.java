@@ -21,10 +21,10 @@ import org.springframework.stereotype.Component;
  * jamais le code. Aucune primitive réimplémentée : {@link SecretKeyFactory} et {@link SecureRandom}
  * du JDK.
  *
- * <p>Pourquoi PBKDF2 ici (et pas pour le jeton de session du cœur) : c'est l'ENTROPIE du secret qui
- * décide. CODE_LENGTH caractères d'un alphabet de 31 font environ 30 bits : une empreinte rapide se
- * retrouverait par recherche exhaustive. Le coût par essai (itérations) et le sel unique
- * l'empêchent.
+ * <p>Le nombre d'itérations est fixé par un BUDGET de latence (ADR-042), pas par la recommandation
+ * pour mots de passe. Ce qui protège le code est le comptage des essais en ligne (ES-21 : délai
+ * croissant sur l'origine, jamais sur le compte) et le fait qu'il ne suffit jamais seul (le flux D
+ * exige aussi le PIN, puis l'attestation matérielle).
  *
  * <p>Revue ligne à ligne requise : secret de récupération (empreinte, comparaison).
  */

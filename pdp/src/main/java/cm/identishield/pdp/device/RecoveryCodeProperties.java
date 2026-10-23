@@ -4,10 +4,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Paramètres de l'empreinte PBKDF2-HMAC-SHA256 du code de récupération (ADR-041 §5, ES-18), nommés
- * dans la configuration du PDP, jamais en littéraux. Le code n'a que CODE_LENGTH caractères : c'est
- * le coût de chaque essai (itérations) qui protège l'empreinte d'une recherche exhaustive.
+ * dans la configuration du PDP, jamais en littéraux. Ce qui protège le code est le comptage des
+ * essais en ligne (ES-21) et le second facteur (PIN), pas le nombre d'itérations (ADR-042).
  *
- * @param iterations itérations PBKDF2 (OWASP : au moins 600 000 pour HMAC-SHA256)
+ * @param iterations itérations PBKDF2, fixées par un budget de latence (ADR-042), pas par la
+ *     recommandation pour mots de passe
  * @param saltBytes taille du sel aléatoire propre à chaque code, en octets
  * @param keyBits taille de l'empreinte dérivée, en bits
  */
