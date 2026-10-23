@@ -55,10 +55,16 @@ route `/evaluate` appelée en mTLS par le cœur.
 - **Contre le budget** (p95 < 500 ms, p99 < 800 ms), la latence vue par le client mTLS est tenue avec
   une marge de ×18 au p95 et de ×13 au p99, sur un mélange pessimiste (50 % de FREEZE, comptes neufs).
   Le mélange de SQ-30 n'est pas défini (voir « Réserves »).
-- **Réserve sur `e2e-main`, tour 1.** À la minute 6 (17:37:23 → 17:38:23 UTC), une charge étrangère
-  apparaît sur le poste : utilisation jusqu'à 58 %, fréquence descendue à 2,0 GHz. Elle coïncide avec le
-  maximum de 740 ms. Sa source n'est pas identifiée. Aucun `make check` connu n'y tombe. Elle n'est pas
-  exclue (`croisement-frequence.txt`).
+- **Le tour 2 porte le verdict** (décision du superviseur technique, 2026-10-23) : p95 24,8 ms, p99
+  41,9 ms, soit ×20 et ×19 sous le budget.
+- **Réserve sur `e2e-main`, tour 1, écrite et non exclue.** À la minute 6 (17:37:23 → 17:38:23 UTC),
+  une charge étrangère apparaît sur le poste : utilisation jusqu'à 58 %, fréquence descendue à
+  2,0 GHz. Elle coïncide avec le maximum de 740 ms (`croisement-frequence.txt`). Sa source la plus
+  probable est une poussée de la branche B3a par le couloir B (cinq commits). La fin de cette poussée
+  est datée à **17:40:04 UTC** par le journal de la référence distante, mais son heure de début est
+  inconnue. Le tour 1 n'est pas refait : même contaminé, il donne p95 28,0 ms et p99 60,2 ms (×18 et
+  ×13 sous le budget). La contamination ne change donc pas la conclusion ; elle ne la changerait que
+  près du seuil.
 - **Le verdict reste incomplet** tant que la durée interne du moteur n'a pas un passage valide.
 
 **Risque pour la démonstration, constaté le 23/10.** Le poste peut s'effondrer à **389 MHz même sur
