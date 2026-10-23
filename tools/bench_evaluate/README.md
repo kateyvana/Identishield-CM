@@ -37,8 +37,35 @@ Passages en VT-x (carte débit, #58), le 2026-10-23 :
 | `results/2026-10-23/vm-vtx-12s/` | c4a1167 contre ab44b64, phase à 50 req/s de **12 s**, après 2 min de chauffe du poste. La fréquence effective est **remontée** à 2,8–3,4 GHz pendant la mesure (relevé `frequence-poste.csv`) : ce n'est pas un régime chaud. |
 | `results/2026-10-23/vm-vtx-10min-batterie/` | c4a1167 contre ab44b64, dix minutes réelles, sans chauffe. **Mesuré SUR BATTERIE, non représentatif** : poste débranché de 14:45 à 15:24 UTC, batterie tombée à 5,9 %, fréquence effective effondrée jusqu'à 389 MHz. Voir `BATTERIE.md` et `croisement-frequence.txt`. |
 | `results/<date>/vm-vtx/` | *(à refaire, sur secteur et batterie chargée)* c4a1167 contre ab44b64, dix minutes réelles : le **coût du commit 1**. |
-| `results/<date>/vm-vtx-main/` | *(à faire)* `main`, le code réellement livré, dix minutes réelles : **c'est ce passage qui porte le verdict du moteur pour ENF-01.** |
-| `results/<date>/e2e-main/` | *(à faire)* `main`, générateur de bout en bout `e2e_load.py`, dix minutes réelles : **la latence qui répond à ENF-01.** |
+| `results/2026-10-23/vm-vtx-main-contamine/` | `main`, moteur, dix minutes réelles. **CONTAMINÉ** : un `make check` du couloir B (16:47:26 → 16:49:29 UTC) recouvre la phase séquentielle et ~32 s de la phase à 50 req/s du tour 1 (`CONTAMINE.md`, `recouvrement.txt`). Pas un verdict. |
+| `results/2026-10-23/vm-vtx-main-secteur-perdu/` | `main`, moteur, dix minutes réelles, refait. **SECTEUR PERDU** à 18:08:23 UTC pendant le tour 2, et fréquence effondrée à 389 MHz même branché (`SECTEUR-PERDU.md`). Pas un verdict. |
+| `results/<date>/vm-vtx-main/` | *(à refaire)* `main`, moteur, dix minutes réelles : la **durée interne du moteur** pour le verdict ENF-01. |
+| `results/2026-10-23/e2e-main/` | `main`, générateur de bout en bout `e2e_load.py`, deux tours de dix minutes réelles, **secteur tenu** de bout en bout : **la latence qui répond à ENF-01.** |
+
+## État du verdict ENF-01 (2026-10-23, 18:20 UTC)
+
+Le verdict cite **deux chiffres nommés**. **C'est le second qui répond à ENF-01** : ENF-01 parle de la
+route `/evaluate` appelée en mTLS par le cœur.
+
+| Chiffre | Instrument | Passage | Résultat à 50 req/s pendant dix minutes réelles |
+|---|---|---|---|
+| **Latence vue par un client mTLS du réseau** | `e2e_load.py` (boucle ouverte, latence depuis l'instant prévu) | `e2e-main`, `main` = `8929a3f`, secteur tenu, 60 000 requêtes, **0 erreur** | tour 1 : p95 **28,0 ms**, p99 **60,2 ms**, max 740 ms ; tour 2 : p95 **24,8 ms**, p99 **41,9 ms**, max 127 ms |
+| Durée interne du moteur de décision (borne basse) | ce banc | **aucun passage valide à ce jour** (contaminé, puis secteur perdu) | observé sur les tours propres, à titre indicatif : p95 10–20 ms, p99 22–28 ms |
+
+- **Contre le budget** (p95 < 500 ms, p99 < 800 ms), la latence vue par le client mTLS est tenue avec
+  une marge de ×18 au p95 et de ×13 au p99, sur un mélange pessimiste (50 % de FREEZE, comptes neufs).
+  Le mélange de SQ-30 n'est pas défini (voir « Réserves »).
+- **Réserve sur `e2e-main`, tour 1.** À la minute 6 (17:37:23 → 17:38:23 UTC), une charge étrangère
+  apparaît sur le poste : utilisation jusqu'à 58 %, fréquence descendue à 2,0 GHz. Elle coïncide avec le
+  maximum de 740 ms. Sa source n'est pas identifiée. Aucun `make check` connu n'y tombe. Elle n'est pas
+  exclue (`croisement-frequence.txt`).
+- **Le verdict reste incomplet** tant que la durée interne du moteur n'a pas un passage valide.
+
+**Risque pour la démonstration, constaté le 23/10.** Le poste peut s'effondrer à **389 MHz même sur
+secteur**, batterie pleine, pour une utilisation de 13 %. C'est arrivé deux fois pendant le second
+passage moteur. Pendant ces fenêtres, la latence monte à plusieurs secondes. ENF-01 tient sur une
+machine à fréquence normale. Il ne tient pas sur une machine qui se met à 389 MHz. La cause (chargeur,
+limite de puissance, protection thermique) n'est pas identifiée.
 
 ## Préconditions de mesure (décisions du 2026-10-23)
 

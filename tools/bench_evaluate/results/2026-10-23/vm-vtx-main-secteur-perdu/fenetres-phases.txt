@@ -1,0 +1,6 @@
+tour 1 seq   17:53:35 -> 17:53:42  recouvrement make check B : aucun
+tour 1 sq30  17:53:42 -> 18:03:42  recouvrement make check B : aucun
+tour 1 sat16 18:03:42 -> 18:03:44  recouvrement make check B : aucun
+tour 2 seq   18:03:48 -> 18:03:53  recouvrement make check B : aucun
+tour 2 sq30  18:03:53 -> 18:13:53  recouvrement make check B : aucun
+tour 2 sat16 18:13:53 -> 18:13:59  recouvrement make check B : aucun

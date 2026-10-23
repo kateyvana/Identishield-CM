@@ -1,0 +1,42 @@
+== e2e-8929a3f-1.csv : 30000 requêtes, 0 erreur(s)
+   décisions : {('FREEZE', 'FREEZE'): 15000, ('ALLOW', 'ALLOW'): 15000}
+   mesure                      n  med_ms  p95_ms  p99_ms   max_ms
+   ALLOW depuis prévu      15000     6.4    25.0    52.5    614.1
+   ALLOW depuis envoi      15000     4.6    13.5    35.0    612.5
+   FREEZE depuis prévu     15000     8.5    30.8    64.0    740.1
+   FREEZE depuis envoi     15000     6.4    18.5    49.0    711.6
+   tout depuis prévu       30000     7.5    28.0    60.2    740.1
+   tout depuis envoi       30000     5.5    15.9    43.0    711.6
+   minute par minute (tout, depuis prévu)
+   minute 0                 2929    10.0    24.5    35.2     82.3
+   minute 1                 3000     7.1    22.1    38.2     93.2
+   minute 2                 3000     7.5    30.1    58.4    144.3
+   minute 3                 3000     6.4    17.3    30.0     69.3
+   minute 4                 3000     7.7    28.4    58.8    104.1
+   minute 5                 3000     6.8    21.5    36.5     99.7
+   minute 6                 3000     8.7    70.1   241.5    740.1
+   minute 7                 3000     7.2    38.1    76.3    214.9
+   minute 8                 3000     8.1    25.7    39.3     65.7
+   minute 9                 3000     8.1    21.5    33.1     93.9
+   minute 10                  71     7.7    14.3    43.7     43.7
+== e2e-8929a3f-2.csv : 30000 requêtes, 0 erreur(s)
+   décisions : {('FREEZE', 'FREEZE'): 15000, ('ALLOW', 'ALLOW'): 15000}
+   mesure                      n  med_ms  p95_ms  p99_ms   max_ms
+   ALLOW depuis prévu      15000     6.2    22.7    39.0    117.0
+   ALLOW depuis envoi      15000     4.4     7.7    19.1    115.9
+   FREEZE depuis prévu     15000     8.2    26.9    44.0    126.7
+   FREEZE depuis envoi     15000     6.1    10.9    22.4     81.9
+   tout depuis prévu       30000     7.4    24.8    41.9    126.7
+   tout depuis envoi       30000     5.3     9.9    21.2    115.9
+   minute par minute (tout, depuis prévu)
+   minute 0                 2948     7.8    26.2    59.4     91.5
+   minute 1                 3000     7.6    25.4    39.0     67.7
+   minute 2                 3000     7.2    21.2    30.9    107.3
+   minute 3                 3000     7.1    24.8    45.0     98.5
+   minute 4                 3000     6.7    25.1    41.2     78.6
+   minute 5                 3000     8.0    24.3    38.6     89.7
+   minute 6                 3000     7.2    23.9    43.0     95.4
+   minute 7                 3000     7.7    27.6    42.8    117.0
+   minute 8                 3000     7.5    22.0    34.3    126.7
+   minute 9                 3000     7.1    27.5    46.8     83.7
+   minute 10                  52     8.3    27.9    38.1     38.1

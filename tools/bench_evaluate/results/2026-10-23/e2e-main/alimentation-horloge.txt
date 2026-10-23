@@ -1,0 +1,3 @@
+2026-10-23T16:48:06Z AVANT le banc moteur : secteur=True batterie=89 %
+2026-10-23T17:51:30Z APRÈS le bout-en-bout : secteur (statut 2), batterie=100 %, aucun événement Kernel-Power 105 entre les deux
+Décalage d'horloge VM -> poste : 28,2 s à 17:39 UTC ; 28,26 s à 17:51 UTC (dérive 0,06 s en 12 min)
