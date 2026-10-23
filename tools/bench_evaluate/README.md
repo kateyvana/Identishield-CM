@@ -39,7 +39,7 @@ Passages en VT-x (carte débit, #58), le 2026-10-23 :
 | `results/<date>/vm-vtx/` | *(à refaire, sur secteur et batterie chargée)* c4a1167 contre ab44b64, dix minutes réelles : le **coût du commit 1**. |
 | `results/2026-10-23/vm-vtx-main-contamine/` | `main`, moteur, dix minutes réelles. **CONTAMINÉ** : un `make check` du couloir B (16:47:26 → 16:49:29 UTC) recouvre la phase séquentielle et ~32 s de la phase à 50 req/s du tour 1 (`CONTAMINE.md`, `recouvrement.txt`). Pas un verdict. |
 | `results/2026-10-23/vm-vtx-main-secteur-perdu/` | `main`, moteur, dix minutes réelles, refait. **SECTEUR PERDU** à 18:08:23 UTC pendant le tour 2, et fréquence effondrée à 389 MHz même branché (`SECTEUR-PERDU.md`). Pas un verdict. |
-| `results/<date>/vm-vtx-main/` | *(à refaire)* `main`, moteur, dix minutes réelles : la **durée interne du moteur** pour le verdict ENF-01. |
+| `results/<date>/vm-vtx-main/` | *(non lancé)* `main`, moteur, dix minutes réelles. Troisième passage NON lancé le 2026-10-23 à 19:26 UTC : précondition non tenue (sur batterie, fréquence au repos 1 787 MHz). La durée interne du moteur reste une borne indicative. |
 | `results/2026-10-23/e2e-main/` | `main`, générateur de bout en bout `e2e_load.py`, deux tours de dix minutes réelles, **secteur tenu** de bout en bout : **la latence qui répond à ENF-01.** |
 
 ## État du verdict ENF-01 (2026-10-23, 18:20 UTC)
@@ -65,7 +65,12 @@ route `/evaluate` appelée en mTLS par le cœur.
   inconnue. Le tour 1 n'est pas refait : même contaminé, il donne p95 28,0 ms et p99 60,2 ms (×18 et
   ×13 sous le budget). La contamination ne change donc pas la conclusion ; elle ne la changerait que
   près du seuil.
-- **Le verdict reste incomplet** tant que la durée interne du moteur n'a pas un passage valide.
+- **La durée interne du moteur reste une borne INDICATIVE.** Le troisième passage n'a pas été lancé :
+  la précondition n'était pas tenue le 2026-10-23 à 19:26 UTC. Le poste était sur batterie (77 %), et
+  sa fréquence effective au repos descendait à 1 787 MHz, sous le seuil de 2 GHz. Sur décision du
+  superviseur technique, on n'insiste pas : le chiffre qui répond à ENF-01 est celui du bout en bout,
+  déjà obtenu. Indicatif, sur les tours propres des deux passages invalides : p95 10–20 ms, p99
+  22–28 ms à 50 req/s.
 
 **Risque pour la démonstration, constaté le 23/10.** Le poste peut s'effondrer à **389 MHz même sur
 secteur**, batterie pleine, pour une utilisation de 13 %. C'est arrivé deux fois pendant le second
