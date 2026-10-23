@@ -9,6 +9,28 @@ Relancer : `bash tools/bench_evaluate/run.sh <dossier de résultats> [commit A] 
 (racine du dépôt, sur le poste ; la VM doit être joignable et avoir les images `postgres:16` et
 `eclipse-temurin:21-jdk-jammy`). Statistiques d'un dossier : `python tools/bench_evaluate/stats.py <dossier>`.
 
+## Constat NEM : les résultats du 21 et du 22/10 ne sont pas représentatifs
+
+Constaté le 2026-10-23 dans les journaux VirtualBox du poste (`VBox.log*` du serveur
+`UbuntuServer_24.04_VB_LinuxVMImages.COM`, ligne `HM: HMR3Init`) :
+
+| Démarrage de la VM (UTC) | Mode d'exécution |
+|---|---|
+| 2026-10-14 15:56, 2026-10-16 13:48, **2026-10-17 22:24** | `Attempting fall back to NEM: VT-x is not available` |
+| **2026-10-22 16:02** | `VT-x w/ nested paging and unrestricted guest execution hw support` |
+
+Hyper-V, actif sur le poste, empêchait VirtualBox d'utiliser VT-x. La VM tournait alors en **NEM**,
+le mode de secours sur l'API de Hyper-V, deux à trois fois plus lent et irrégulier. Hyper-V a été
+désactivé le 2026-10-22 à 16 h 57, heure locale : la VM tourne en VT-x depuis son démarrage de
+16 h 02 UTC le même jour.
+
+Les deux passages du banc ont tourné pendant le démarrage du 17/10 22:24, donc **sous NEM**. Leurs
+résultats restent dans le dépôt, à leur place (`results/2026-10-21/`, `results/2026-10-22/`),
+marqués **« mesurés sous NEM, non représentatifs »**. Rien n'est effacé. La conclusion qu'ils
+portaient, « ni c4a1167 ni ab44b64 ne tiennent 50 req/s », peut être un artefact du mode NEM : elle
+n'est plus défendable en l'état. Le passage de référence est celui de `results/<date>/vm-vtx/`, avec
+le même `run.sh`, les mêmes commits et la même méthode (carte débit, #58).
+
 ## Pourquoi pas T3-07
 
 `T307ReplayTest` appelle `RuleEngine` directement : ni contrôleur, ni journal, ni transaction, aucun
@@ -73,9 +95,10 @@ pèse sur les deux. La base est créée par le `init.sql` du commit B. Entre `c4
 - Le rythme de 50 req/s tient 12 s, pas 10 min.
 - Le banc et PostgreSQL se partagent les 4 vCPU de la VM.
 
-## Résultats
+## Résultats du 21 et du 22/10 — mesurés sous NEM, non représentatifs
 
-Médiane / p95 en ms, 600 échantillons par cellule (deux tours de 300).
+Conservés tels qu'ils ont été mesurés et écrits, voir « Constat NEM » plus haut. Médiane / p95 en
+ms, 600 échantillons par cellule (deux tours de 300).
 
 | Régime | Cas | 21/10 c4a1167 | 21/10 ab44b64 | 22/10 c4a1167 | 22/10 ab44b64 |
 |---|---|---|---|---|---|
@@ -91,8 +114,9 @@ Débit saturé (`sat16`) : 21/10, `c4a1167` 28 à 37 req/s, `ab44b64` 23 à 32 r
 
 - Le 21/10, la base contenait déjà les entrées du passage écarté (exécution à la main, mêmes
   étapes que `run.sh`). Le 22/10, `run.sh` est parti d'une base neuve.
-- Seul ce qui suit est établi : NI `c4a1167` NI `ab44b64` ne tiennent 50 req/s sur ce mélange.
-  L'écart imputable au commit 1 est de 4 à 10 ms de médiane en séquentiel, et de 15 à 37 % de débit
-  saturé (par tour : −19 et −15 % le 21/10, −37 et −33 % le 22/10).
+- Écrit le 22/10, avant le constat NEM, et caduc depuis : « Seul ce qui suit est établi : NI
+  `c4a1167` NI `ab44b64` ne tiennent 50 req/s sur ce mélange. L'écart imputable au commit 1 est de
+  4 à 10 ms de médiane en séquentiel, et de 15 à 37 % de débit saturé (par tour : −19 et −15 % le
+  21/10, −37 et −33 % le 22/10). »
 - Résultats bruts : `results/<date>/vm/result-<commit>-<tour>.csv` (une ligne par requête :
   phase, cas, décision, durée en µs, `latencyMs` rendu par le contrôleur) ; `stats.txt` à côté.
