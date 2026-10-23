@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# A1 + A3 — preuve EN BASE REELLE : machine a etats de confiance (pdp.trust_state), application du
-# FREEZE (DecisionEnforcer), operations differees du coeur (core.transaction).
+# A1 + A3 + A4 — preuve EN BASE REELLE : machine a etats de confiance (pdp.trust_state), application
+# du FREEZE (DecisionEnforcer), chaine complete de /evaluate (EvaluateChainDbTest), operations
+# differees du coeur (core.transaction).
 #
 # Lance dans la VM une instance PostgreSQL JETABLE : meme image (postgres:16), meme
 # infra/init/init.sql et memes roles que la pile, SANS toucher a la pile en service. Son port
@@ -52,9 +53,10 @@ trap 'kill $tunnel' EXIT
 sleep 3
 
 URL="jdbc:postgresql://127.0.0.1:$PORT/identishield"
-echo ">>> pdp : TrustStateMachineDbTest, DecisionEnforcerDbTest (role isc_pdp_app)"
+echo ">>> pdp : TrustStateMachineDbTest, DecisionEnforcerDbTest, EvaluateChainDbTest (role isc_pdp_app)"
 (cd pdp && ISC_TEST_PG_URL="$URL" ISC_TEST_PG_USER=isc_pdp_app ISC_TEST_PG_PASSWORD="$pdp_pw" \
-  ./gradlew --quiet cleanTest test --tests 'cm.identishield.pdp.trust.*')
+  ./gradlew --quiet cleanTest test --tests 'cm.identishield.pdp.trust.*' \
+  --tests 'cm.identishield.pdp.web.EvaluateChainDbTest')
 echo ">>> core : TransactionRepositoryDbTest (role isc_core_app)"
 (cd core && ISC_TEST_PG_URL="$URL" ISC_TEST_PG_CORE_USER=isc_core_app \
   ISC_TEST_PG_CORE_PASSWORD="$core_pw" \
@@ -63,6 +65,7 @@ echo ">>> core : TransactionRepositoryDbTest (role isc_core_app)"
 # Preuve que les tests ont TOURNE (et non ete ignores faute de base).
 grep -h -o '<testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' \
   pdp/build/test-results/test/TEST-cm.identishield.pdp.trust.*.xml \
+  pdp/build/test-results/test/TEST-cm.identishield.pdp.web.EvaluateChainDbTest.xml \
   core/build/test-results/test/TEST-cm.identishield.core.transaction.*.xml
 echo "verify_trust_state : VERT"
 echo "Retrait de la base jetable (a faire a la main) : ssh $VM docker rm -f $NAME"

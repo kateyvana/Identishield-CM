@@ -153,7 +153,8 @@ test: unit
 abuse:
 	@echo ">>> abuse : tests des cas d'abus T-AC (ENF-09) — exige la pile debout (make up)"
 	@echo "    hors pile (ex. poste sans Docker), les T-AC s'ignorent proprement ; ils tournent en VM/CI."
-	@(cd evaluation && uv run --quiet pytest -q -rs)
+	@# Depuis la RACINE : les tests trouvent l'outil attaquant par os.getcwd()/attacker/src (CI-01).
+	@uv run --quiet --project evaluation pytest -q -rs evaluation/tests
 
 evaluate:
 	@echo "non implémenté — jalon M4 (protocole ISC-EVAL)"

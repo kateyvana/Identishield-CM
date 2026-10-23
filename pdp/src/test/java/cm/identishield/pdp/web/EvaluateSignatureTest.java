@@ -78,7 +78,7 @@ class EvaluateSignatureTest {
                     .filter(p -> inv.getArgument(0).equals(p.get("decisionId")))
                     .findFirst());
     EvaluateController controller =
-        new EvaluateController(
+        NeutralChain.controller(
             auditLog,
             Clock.fixed(T0, ZoneOffset.UTC),
             new RuleSet("rs-test", Map.of()),
@@ -101,7 +101,8 @@ class EvaluateSignatureTest {
         {"decisionId":"%s","accountId":"acc-000123","msisdn":"677000123",
          "currentImsi":"624019900001230","channel":"APP","type":"P2P","amountXaf":%d,
          "beneficiaryId":"acc-000456","serverTimestamp":"2026-10-06T09:15:00Z",
-         "deviceKeyId":"dk-7f3a2b","signature":"%s","nonce":"%s","proofType":"SIGNATURE"}"""
+         "deviceKeyId":"dk-7f3a2b","signature":"%s","nonce":"%s","proofType":"SIGNATURE",
+         "balanceXaf":1000000}"""
         .formatted(decisionId, amount, signature, NONCE);
   }
 

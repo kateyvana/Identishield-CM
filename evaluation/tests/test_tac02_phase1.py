@@ -101,15 +101,20 @@ def _set_mode(*, layerless: bool) -> None:
 
 def _seed_victim() -> None:
     """État initial déterministe (ISC-TEST §4 préconditions) : victime approvisionnée, SIM d'origine,
-    aucun résidu d'une exécution précédente. `docker exec -i` : le SQL passe par stdin."""
+    aucun résidu d'une exécution précédente. `docker exec -i` : le SQL passe par stdin.
+
+    Le compte de la victime est RECRÉÉ à chaque passage, donc avec un identifiant neuf : l'état de
+    confiance du PDP (probation, gel) est tenu par identifiant de compte, dans le schéma du PDP, que
+    ce test ne possède pas. Réutiliser le compte ferait dépendre le résultat de ce qui a tourné avant
+    (un gel laissé par un passage précédent rend REJECTED au lieu de FREEZE)."""
     sql = f"""
     DELETE FROM core.transaction WHERE account_id IN
       (SELECT id FROM core.account WHERE msisdn IN ('{VICTIM}','{BENEFICIARY}'));
     DELETE FROM core.notification WHERE msisdn='{VICTIM}';
     DELETE FROM core.otp WHERE msisdn='{VICTIM}';
     DELETE FROM core.hlr_reassignment WHERE msisdn='{VICTIM}';
-    INSERT INTO core.account(msisdn, balance_xaf, created_at) VALUES ('{VICTIM}', {INITIAL_BALANCE}, now())
-      ON CONFLICT (msisdn) DO UPDATE SET balance_xaf={INITIAL_BALANCE};
+    DELETE FROM core.account WHERE msisdn='{VICTIM}';
+    INSERT INTO core.account(msisdn, balance_xaf, created_at) VALUES ('{VICTIM}', {INITIAL_BALANCE}, now());
     INSERT INTO core.account(msisdn, balance_xaf, created_at) VALUES ('{BENEFICIARY}', 0, now())
       ON CONFLICT (msisdn) DO NOTHING;
     INSERT INTO core.hlr_subscriber(msisdn, current_imsi, updated_at) VALUES ('{VICTIM}', '{VICTIM_IMSI}', now())
@@ -269,7 +274,7 @@ def test_tac02_phase1_attaque_reussit_sans_couche():
     # On vérifie l'absence via l'audit du decisionId ; sans couche il n'y a de toute façon aucune entrée.
     defensive = _sql(
         f"SELECT count(*) FROM pdp.audit_entry WHERE payload->>'decisionId'='{did}' "
-        f"AND (payload->>'decision' IN ('FREEZE','STEP_UP','DENY') OR payload->>'vetoApplied' <> 'NONE')"
+        f"AND (payload->>'decision' IN ('FREEZE','STEP_UP','REJECTED') OR payload->>'vetoApplied' <> 'NONE')"
     )
     assert defensive == "0", (
         f"[négative] AUCUNE décision de gel, de step-up ou de refus émise ; le compte n'est jamais "
@@ -301,6 +306,7 @@ def test_la_couche_active_ferait_echouer_la_phase1():
     decision = _sql(
         f"SELECT payload->>'decision' FROM pdp.audit_entry WHERE payload->>'decisionId'='{did}'"
     )
-    assert decision in ("ALLOW", "STEP_UP", "FREEZE", "DENY"), (
+    # Les décisions de contracts/evaluate.yaml (le contrat fait foi ; REJECTED existe depuis A4).
+    assert decision in ("ALLOW", "STEP_UP", "FREEZE", "REJECTED"), (
         f"la décision journalisée doit être une décision de la couche, constaté {decision!r}"
     )

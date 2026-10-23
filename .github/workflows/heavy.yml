@@ -1,13 +1,20 @@
 # Portes lourdes (ISC-DEPLOY §5.2, §5.3) : executeur auto-heberge `isc-vm`
-# dans la machine virtuelle. Tant que l'executeur n'est pas installe, ces
-# travaux restent en attente : comportement accepte, pas une panne (ADR-023).
+# dans la machine virtuelle.
+#
+# CI-01 (2026-10-22) : AUCUN executeur n'est inscrit, et ce flux n'a jamais
+# tourne. Il ne se declenche donc plus ni sur pull request ni chaque nuit :
+# des travaux qui restent indefiniment en attente laissaient croire a une
+# verification qui n'avait pas lieu. Sur un depot PUBLIC, un executeur
+# auto-heberge executerait en outre dans la VM le code de toute pull request,
+# forks compris. Les portes lourdes sont verifiees A LA MAIN dans la VM
+# (make up, make check-stack, make abuse) ; procedure et resultats :
+# docs/03-revues/2026-10-22-ci-01-verification-manuelle.md.
+# Lancement manuel possible le jour ou un executeur est inscrit (ADR-023,
+# amendement CI-01).
 name: heavy
 
 on:
-  pull_request:
-    branches: [main]
-  schedule:
-    - cron: '0 2 * * *' # chaque nuit, 02:00 UTC
+  workflow_dispatch:
 
 jobs:
   portes-lourdes:

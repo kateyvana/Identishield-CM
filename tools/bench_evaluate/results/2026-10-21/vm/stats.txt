@@ -1,0 +1,43 @@
+phase  cas     commit   tour     n  med_ms  p95_ms  p99_ms   max_ms
+sat16  ALLOW   ab44b64  1      300   477.7  1646.0  2045.5   2668.8
+sat16  ALLOW   ab44b64  2      300   348.2  1005.5  1398.8   1652.4
+sat16  ALLOW   ab44b64  tous   600   421.3  1372.2  1915.8   2668.8
+sat16  ALLOW   c4a1167  1      300   367.3   971.6  1263.5   1588.6
+sat16  ALLOW   c4a1167  2      300   258.3   800.4   937.2   1075.3
+sat16  ALLOW   c4a1167  tous   600   309.0   856.2  1148.8   1588.6
+sat16  FREEZE  ab44b64  1      300   676.7  1533.1  1847.6   3999.4
+sat16  FREEZE  ab44b64  2      300   527.1  1196.6  1754.8   1908.0
+sat16  FREEZE  ab44b64  tous   600   589.2  1453.6  1826.1   3999.4
+sat16  FREEZE  c4a1167  1      300   611.6  1403.8  2067.9   2105.6
+sat16  FREEZE  c4a1167  2      300   492.5  1063.9  1322.3   1558.8
+sat16  FREEZE  c4a1167  tous   600   552.6  1233.9  1771.0   2105.6
+seq    ALLOW   ab44b64  1      300    42.1    67.8    84.0    113.9
+seq    ALLOW   ab44b64  2      300    35.9    51.5    59.9    159.4
+seq    ALLOW   ab44b64  tous   600    37.7    62.1    77.9    159.4
+seq    ALLOW   c4a1167  1      300    34.0    60.1    93.2     96.3
+seq    ALLOW   c4a1167  2      300    31.6    43.6    46.9     58.2
+seq    ALLOW   c4a1167  tous   600    32.8    53.0    70.1     96.3
+seq    FREEZE  ab44b64  1      300    76.5   139.2   169.0    211.2
+seq    FREEZE  ab44b64  2      300    65.2   102.1   116.9    137.4
+seq    FREEZE  ab44b64  tous   600    70.0   123.1   164.6    211.2
+seq    FREEZE  c4a1167  1      300    68.5   120.7   176.3    345.8
+seq    FREEZE  c4a1167  2      300    63.1    82.5    92.6    117.9
+seq    FREEZE  c4a1167  tous   600    65.7    96.3   162.2    345.8
+sq30   ALLOW   ab44b64  1      300  1842.1  8200.3 11844.9  14844.8
+sq30   ALLOW   ab44b64  2      300  1540.2  5868.5  8332.7   9354.0
+sq30   ALLOW   ab44b64  tous   600  1744.2  6916.2 10456.1  14844.8
+sq30   ALLOW   c4a1167  1      300  1920.4  7870.7 12073.8  13124.2
+sq30   ALLOW   c4a1167  2      300  1286.5  4890.8  8189.9  10953.9
+sq30   ALLOW   c4a1167  tous   600  1500.7  6583.6 10953.9  13124.2
+sq30   FREEZE  ab44b64  1      300  1422.0  6968.3 11716.4  15349.8
+sq30   FREEZE  ab44b64  2      300  1231.6  5733.0  7562.7   9811.2
+sq30   FREEZE  ab44b64  tous   600  1346.3  6236.7  8926.5  15349.8
+sq30   FREEZE  c4a1167  1      300  2257.0  7624.4 11136.1  17149.7
+sq30   FREEZE  c4a1167  2      300  1645.8  5158.7  7243.4  11896.1
+sq30   FREEZE  c4a1167  tous   600  1902.2  6733.1 10106.0  17149.7
+
+débit saturé (sat16, ALLOW + FREEZE)
+ab44b64  tour 1 : moyenne  698.9 ms, ~ 22.9 req/s
+ab44b64  tour 2 : moyenne  508.7 ms, ~ 31.5 req/s
+c4a1167  tour 1 : moyenne  564.2 ms, ~ 28.4 req/s
+c4a1167  tour 2 : moyenne  430.8 ms, ~ 37.1 req/s

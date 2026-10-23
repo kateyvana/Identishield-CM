@@ -44,6 +44,9 @@ class DecisionEnforcerDbTest {
   private static final Instant T0 = Instant.parse("2026-10-16T08:00:00Z");
   private static final Duration HOUR = Duration.ofHours(1);
 
+  /** Solde figé à l'entrée en PROBATION (V4, carte A4) ; valeur de test sans incidence ici. */
+  private static final long ENTRY_BALANCE = 100_000;
+
   private static JdbcTemplate jdbc;
   private static DataSourceTransactionManager transactions;
 
@@ -92,7 +95,7 @@ class DecisionEnforcerDbTest {
 
   @Test
   void aFreezeDuringProbation_neitherConsumesNorResetsCarImsi() {
-    trust.imsiChanged(acc, "624010000000123", "624010000000999", T0);
+    trust.imsiChanged(acc, "624010000000123", "624010000000999", T0, ENTRY_BALANCE);
     clock.setInstant(T0.plus(HOUR));
     assertEquals(
         Effect.ACCOUNT_FROZEN, enforcer.apply(acc, UUID.randomUUID().toString(), Decision.FREEZE));
