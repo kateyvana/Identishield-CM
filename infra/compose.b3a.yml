@@ -1,0 +1,15 @@
+# Surcouche de composition du couloir B, carte B3a (décision de la propriétaire du 2026-10-23).
+# Le fichier partagé docker-compose.yml n'est PAS modifié : cette surcouche s'active en passant
+# les deux fichiers à la commande, depuis infra/ :
+#   docker compose -f docker-compose.yml -f compose.b3a.yml up -d --build
+# Elle ne fait que deux choses, sur le seul service core :
+#   - profil Spring « demo » : l'amorçage des comptes de test (DemoAccountSeeder) ne s'exécute
+#     que sous ce profil ;
+#   - montage en lecture seule de la source unique des comptes de test, partagée avec le faux
+#     serveur (tools/mobile-mock/fixtures.json), au chemin lu par core.demo.fixtures-path.
+services:
+  core:
+    environment:
+      SPRING_PROFILES_ACTIVE: demo
+    volumes:
+      - ../tools/mobile-mock/fixtures.json:/fixtures/fixtures.json:ro

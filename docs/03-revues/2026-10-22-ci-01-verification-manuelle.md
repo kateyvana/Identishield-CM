@@ -33,9 +33,18 @@ Un exécuteur n'est pas attaché maintenant pour deux raisons :
   make reset && make up            # seulement si init.sql a changé ; sinon make up
   make check-stack
   PATH=$HOME/.local/bin:$PATH make abuse
+  (cd infra && docker compose -f docker-compose.yml -f compose.b3a.yml up -d)   # profil demo
+  bash tools/verify_mobile_contract.sh   # contrat mobile contre le VRAI cœur (B3a, #46)
   ```
 
   Le résultat de chaque passage est consigné ici, avec la date et le commit déployé.
+- **Test de contrat mobile contre le vrai cœur** (ajouté le 2026-10-23, carte B3a #46, décision de
+  la propriétaire) : les tests de contrat de `make check` ne valident que le FAUX serveur ; rien
+  d'autre ne vérifie que le VRAI cœur respecte `contracts/mobile-api.yaml`. Il exige la pile
+  démarrée avec la surcouche du couloir B (`infra/compose.b3a.yml` : profil demo, comptes de test),
+  et il est **rejoué avant chaque démonstration**. Les succès de `/enrolment/complete` et
+  `/recovery-code/confirm` demandent en plus une vraie attestation de téléphone : ils ne sont pas
+  couverts par ce script.
 
 ## Passages
 
