@@ -368,3 +368,35 @@ GRANT SELECT, INSERT ON pdp.recovery_code TO isc_pdp_app;
 -- celle qu'active le code de recuperation de l'usager. /device/register REVOQUE d'abord toute cle
 -- EN ATTENTE du compte (DeviceRegistry.registerPending).
 CREATE UNIQUE INDEX device_one_pending_per_account ON pdp.device (account_id) WHERE state = 'PENDING';
+
+-- B3a, schema core (ADR-041 §6, ED-01) : enrolement, PIN, sessions. Aucune reference au schema pdp.
+-- PIN applicatif : empreinte PBKDF2-HMAC-SHA256 a sel aleatoire, jamais le PIN (carte B3a, decision 2).
+ALTER TABLE core.account
+    ADD COLUMN pin_hash       text,       -- base64 ; NULL = aucun PIN pose
+    ADD COLUMN pin_salt       text,       -- base64, propre au compte
+    ADD COLUMN pin_iterations integer CHECK (pin_iterations > 0);
+
+-- Enrolement en cours : OTP (code envoye) -> BIND (OTP valide, defi d'attestation emis) -> CONFIRM
+-- (cle EN ATTENTE au PDP, code de recuperation emis) -> DONE (CONSOMME : confirmation reussie, ou
+-- devance par une autre liaison ; toute reprise recoit 410). Expire a created_at + ENROL_TTL.
+CREATE TABLE core.enrolment (
+    id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),   -- UUID v4 (ED-09)
+    account_id            uuid        NOT NULL REFERENCES core.account (id),
+    stage                 text        NOT NULL CHECK (stage IN ('OTP', 'BIND', 'CONFIRM', 'DONE')),
+    otp_failures          integer     NOT NULL DEFAULT 0 CHECK (otp_failures >= 0),
+    attestation_challenge text,       -- base64, emis a la validation de l'OTP (ES-25)
+    device_id             text,       -- cle EN ATTENTE enregistree au PDP (identifiant seul)
+    expires_at            timestamptz NOT NULL,
+    created_at            timestamptz NOT NULL    -- fourni par l'app (ED-04)
+);
+
+-- Session minimale (carte B3a, decision 4) : SEULE l'empreinte SHA-256 du jeton est conservee,
+-- jamais le jeton ; echeance fixe APP_SESSION_TTL, aucun autre minuteur (carte B4).
+CREATE TABLE core.session (
+    token_hash  text PRIMARY KEY,   -- SHA-256 hexadecimal du jeton
+    account_id  uuid        NOT NULL REFERENCES core.account (id),
+    device_id   text        NOT NULL,
+    expires_at  timestamptz NOT NULL,
+    created_at  timestamptz NOT NULL
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON core.enrolment, core.session TO isc_core_app;
