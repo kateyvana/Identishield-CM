@@ -14,6 +14,9 @@
 # Rien n'est supprimé ici (CLAUDE.md §4, commandes destructrices) : les commandes de retrait sont
 # affichées à la fin.
 #
+# Durée de la phase à 50 req/s : ISC_BENCH_SQ30_SECONDS, 600 s par défaut (les dix minutes de
+# SQ-30) ; les passages du 21 au 23/10 ont tourné avec 12 s.
+#
 # Usage (racine du dépôt, poste) :
 #   bash tools/bench_evaluate/run.sh <dossier de résultats> [commit A] [commit B] [isc@<vm>]
 set -euo pipefail
@@ -70,6 +73,7 @@ for round in 1 2; do
       -e ISC_TEST_PG_URL=jdbc:postgresql://127.0.0.1:$PORT/identishield \
       -e ISC_TEST_PG_USER=isc_pdp_app -e ISC_TEST_PG_PASSWORD=$pdp_pw \
       -e ISC_BENCH_OUT=/b/result-$c-$round.csv -e ISC_BENCH_TAG=$c-$round \
+      -e ISC_BENCH_SQ30_SECONDS=${ISC_BENCH_SQ30_SECONDS:-600} \
       eclipse-temurin:21-jdk-jammy \
       sh -c 'java -cp \"\$(cat cp.txt)\" cm.identishield.pdp.web.BenchMain' 2>&1 \
       | grep -E 'Exception|ERROR' || true"
