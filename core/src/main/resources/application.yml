@@ -58,6 +58,15 @@ core:
       iterations: 44000
       salt-bytes: 16
       key-bits: 256
+  # Surface mobile en HTTPS (L7-a ; ADR-036 amendé). UN SEUL INTERRUPTEUR pour le connecteur 8443
+  # ET le refus des routes /mobile/v1/* en clair sur 8080. Éteint : rien ne change. Allumé sans
+  # la feuille core-mobile lisible : le cœur ne démarre pas (cause nommée). Fichiers émis par
+  # l'infrastructure (L7-b, couloir A) ; noms à confirmer avec elle.
+  mobile-tls:
+    enabled: false
+    port: 8443
+    cert-path: /certs/core-mobile.crt
+    key-path: /certs/core-mobile.key
   # Comptes de test (B3a, décision 6), lus SEULEMENT sous le profil demo, depuis la source unique
   # partagée avec le faux serveur. Le montage du fichier dans le conteneur est une carte infra.
   demo:
