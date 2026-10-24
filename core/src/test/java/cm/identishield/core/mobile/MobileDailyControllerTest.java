@@ -118,7 +118,7 @@ class MobileDailyControllerTest {
   @Test
   void holder_badMsisdn_is400_afterTheSessionWasTouched() {
     alive();
-    for (String m : new String[] {"67700", "699001101", "677001101x", ""}) {
+    for (String m : new String[] {"67700", "6770011011", "677001101x", ""}) {
       ResponseEntity<Map<String, Object>> r = controller.holder(m, http);
       assertEquals(400, r.getStatusCode().value(), m);
       assertEquals(Map.of("reason", "REQUEST_INVALID"), r.getBody());
