@@ -62,12 +62,21 @@ incorrect » à l'envoi. Correction côté application (sondage ou requête de m
 premier plan, verrouillage local à l'arrière-plan) : carte B6/B7, **avant** le test sur vrai
 téléphone.
 
-**L-B4-3 — Compteur de PIN en mémoire, par origine réseau.** (a) Un redémarrage du cœur remet les
-compteurs à zéro ; l'attaquant ne redémarre pas le cœur. (b) L'origine est l'adresse distante vue
-par le cœur : derrière un NAT commun, un évaluateur maladroit bloque les autres 15 min ; à travers
-Tailscale chaque téléphone a sa propre adresse `100.x`, **à vérifier au montage de L7-b** (que le
-cœur voie bien l'adresse du téléphone et non la passerelle Docker). ADR-030 nomme aussi un
-« identifiant d'installation » : absent du contrat, question ouverte posée pour B3b.
+**L-B4-3 — Compteur de PIN en mémoire, par origine réseau** (complétée le 2026-10-24 sur ordre du
+superviseur technique).
+(a) **Il est remis à zéro à chaque redémarrage du cœur** : les compteurs vivent en mémoire
+(`PinAttempts`), pas en base. Un attaquant ne redémarre pas le cœur ; un redéploiement en pleine
+attaque, lui, efface l'ardoise.
+(b) **Il dépend de l'adresse RÉELLE du téléphone**, telle que le cœur la voit
+(`HttpServletRequest.getRemoteAddr()`). Si le cœur ne voit qu'une adresse commune (passerelle Docker,
+NAT, mandataire), toutes les origines n'en font qu'une : **cinq PIN faux, de n'importe qui,
+bloqueraient alors tout le monde pendant 15 minutes**. La preuve exigée pour #67 (L7-b, condition de
+clôture d'ADR-030 : deux adresses tailnet DISTINCTES vues distinctement par le cœur) **vaut aussi pour
+ce compteur** ; tant qu'elle n'est pas faite, cette limite est OUVERTE et le risque ci-dessus est
+réel. À travers Tailscale, chaque téléphone a sa propre adresse `100.x` : c'est ce que la preuve doit
+constater. ADR-030 nomme aussi un « identifiant d'installation » : absent du contrat, décision de la
+propriétaire du 2026-10-24 (B3b) : on l'ajoute ; sa forme (en-tête ou champ) est proposée avant
+d'écrire.
 
 **L-B4-4 — Demande de correction documentaire (le document n'est pas modifié).** ISC-MOB-SPEC v1.3
 §6 (« Jeton de session expiré → nouvelle signature de défi, transparente pour l'usager ») et §12.4
