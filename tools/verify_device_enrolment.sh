@@ -62,13 +62,14 @@ echo ">>> pdp : DeviceEnrolmentDbTest (role isc_pdp_app)"
 (cd pdp && ISC_TEST_PG_URL="$URL" ISC_TEST_PG_USER=isc_pdp_app ISC_TEST_PG_PASSWORD="$pdp_pw" \
   ./gradlew --quiet cleanTest test --tests 'cm.identishield.pdp.device.DeviceEnrolmentDbTest')
 
-echo ">>> coeur : MobileEnrolmentDbTest (role isc_core_app)"
+echo ">>> coeur : MobileEnrolmentDbTest + SessionLivenessDbTest (role isc_core_app)"
 (cd core && ISC_TEST_PG_URL="$URL" ISC_TEST_PG_USER=isc_core_app ISC_TEST_PG_PASSWORD="$core_pw" \
-  ./gradlew --quiet cleanTest test --tests 'cm.identishield.core.mobile.MobileEnrolmentDbTest')
+  ./gradlew --quiet cleanTest test --tests 'cm.identishield.core.mobile.MobileEnrolmentDbTest' --tests 'cm.identishield.core.mobile.SessionLivenessDbTest')
 
 # Preuve que les tests ont TOURNE (et non ete ignores faute de base).
 grep -h -o '<testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' \
   pdp/build/test-results/test/TEST-cm.identishield.pdp.device.DeviceEnrolmentDbTest.xml \
-  core/build/test-results/test/TEST-cm.identishield.core.mobile.MobileEnrolmentDbTest.xml
+  core/build/test-results/test/TEST-cm.identishield.core.mobile.MobileEnrolmentDbTest.xml \
+  core/build/test-results/test/TEST-cm.identishield.core.mobile.SessionLivenessDbTest.xml
 echo "verify_device_enrolment : VERT"
 echo "Retrait de la base jetable (a faire a la main) : ssh $VM docker rm -f $NAME"

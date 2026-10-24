@@ -35,19 +35,28 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class MobileEnrolment {
 
-  /** Réponse de route : code HTTP, corps, et Retry-After à poser (réponses transitoires). */
-  public record Answer(int status, Map<String, Object> body, boolean retryAfter) {
+  /**
+   * Réponse de route : code HTTP, corps, Retry-After à poser (réponses transitoires : le délai du
+   * disjoncteur PDP ; origine bloquée : les secondes restantes).
+   */
+  public record Answer(
+      int status, Map<String, Object> body, boolean retryAfter, long throttledSeconds) {
     static Answer ok(Map<String, Object> body) {
-      return new Answer(200, body, false);
+      return new Answer(200, body, false, 0);
     }
 
     static Answer refused(int status, String reason) {
-      return new Answer(status, Map.of("reason", reason), false);
+      return new Answer(status, Map.of("reason", reason), false, 0);
     }
 
     /** PDP ou réseau SMS injoignable : transitoire, l'enrôlement est GARDÉ à son étape. */
     static Answer unavailable() {
-      return new Answer(503, Map.of("reason", "SERVICE_UNAVAILABLE"), true);
+      return new Answer(503, Map.of("reason", "SERVICE_UNAVAILABLE"), true, 0);
+    }
+
+    /** Origine réseau bloquée après trop de PIN faux (P-11) : jamais le compte. */
+    static Answer throttled(long seconds) {
+      return new Answer(429, Map.of("reason", "THROTTLED"), false, Math.max(1, seconds));
     }
   }
 
@@ -55,11 +64,13 @@ public class MobileEnrolment {
 
   private final PinStore pins;
   private final PinHasher hasher;
+  private final PinAttempts attempts;
   private final DeviceClient device;
   private final Enrolments enrolments;
   private final OtpService otp;
   private final SmsGateway sms;
   private final SessionTokens sessions;
+  private final MobileSession session;
   private final RuleSet ruleSet;
   private final Clock clock;
   private final TransactionTemplate tx;
@@ -68,40 +79,59 @@ public class MobileEnrolment {
   public MobileEnrolment(
       PinStore pins,
       PinHasher hasher,
+      PinAttempts attempts,
       DeviceClient device,
       Enrolments enrolments,
       OtpService otp,
       SmsGateway sms,
       SessionTokens sessions,
+      MobileSession session,
       RuleSet ruleSet,
       Clock clock,
       TransactionTemplate tx) {
     this.pins = pins;
     this.hasher = hasher;
+    this.attempts = attempts;
     this.device = device;
     this.enrolments = enrolments;
     this.otp = otp;
     this.sms = sms;
     this.sessions = sessions;
+    this.session = session;
     this.ruleSet = ruleSet;
     this.clock = clock;
     this.tx = tx;
   }
 
   /**
-   * POST /enrolment/start. Le PIN est vérifié AVANT toute question au PDP : compte inconnu, sans
-   * PIN ou PIN faux reçoivent la MÊME réponse, après le même calcul (ES-22). Puis le PDP énonce le
-   * fait de liaison, le cœur arbitre : ACTIVE → RECOVERY ; NONE et PENDING → OTP (une clé EN
-   * ATTENTE jamais activée n'a lié personne). PDP injoignable : 503, JAMAIS l'OTP.
+   * POST /enrolment/start (ES-17b, ES-26). Origine bloquée après trop de PIN faux (P-11) : 429
+   * avant tout calcul. Le PIN est vérifié AVANT toute question au PDP : compte inconnu, sans PIN ou
+   * PIN faux reçoivent la MÊME réponse, après le même calcul (ES-22), et l'échec compte pour
+   * l'origine. Puis le PDP énonce le fait de liaison, le cœur arbitre : NONE et PENDING → OTP (une
+   * clé EN ATTENTE jamais activée n'a lié personne) ; ACTIVE et signature du défi par la clé liée →
+   * SESSION (carte B4) ; ACTIVE sans signature valide → RECOVERY. PDP injoignable : 503, JAMAIS
+   * l'OTP.
    *
-   * <p>Partiel en B3a : la branche SESSION (signature de l'appareil lié) est la carte B4, et la
-   * branche RECOVERY ne porte pas encore d'enrolmentId (/enrolment/recover est la carte B3b).
+   * <p>Partiel : la branche RECOVERY ne porte pas encore d'enrolmentId (/enrolment/recover est la
+   * carte B3b).
    */
-  public Answer start(String msisdn, String pin) {
+  public Answer start(
+      String msisdn,
+      String pin,
+      String origin,
+      String deviceId,
+      String challenge,
+      String signature) {
+    Optional<Long> locked = attempts.lockedFor(origin);
+    if (locked.isPresent()) {
+      return Answer.throttled(locked.get());
+    }
     Optional<AccountPin> account = pins.find(msisdn);
     if (!hasher.matches(pin, account.map(AccountPin::pin).orElse(null))) {
+      attempts.failed(origin);
       return Answer.refused(401, "CREDENTIALS_INVALID");
     }
+    attempts.succeeded(origin);
     UUID accountId = account.orElseThrow().accountId();
     Reply fact = device.state(accountId.toString());
     if (fact.status() != 200 || fact.text("state") == null) {
@@ -109,6 +139,30 @@ public class MobileEnrolment {
     }
     // Le PDP énonce, le cœur arbitre.
     if ("ACTIVE".equals(fact.text("state"))) {
+      if (deviceId != null && challenge != null && signature != null) {
+        MobileSession.Outcome o = session.prove(accountId, deviceId, challenge, signature);
+        switch (o.proof()) {
+          case VALID -> {
+            return Answer.ok(
+                Map.of(
+                    "next",
+                    "SESSION",
+                    "sessionToken",
+                    o.session().token(),
+                    "expiresInSeconds",
+                    o.session().expiresInSeconds()));
+          }
+          case REVOKED -> {
+            return Answer.refused(403, "KEY_REVOKED");
+          }
+          case UNAVAILABLE -> {
+            return Answer.unavailable();
+          }
+          case INVALID -> {
+            // Compte lié, signature qui ne vaut rien : la preuve la plus forte, le code.
+          }
+        }
+      }
       return Answer.ok(Map.of("next", "RECOVERY"));
     }
     Instant now = clock.instant();

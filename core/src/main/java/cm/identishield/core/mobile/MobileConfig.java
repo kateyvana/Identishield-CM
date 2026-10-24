@@ -30,6 +30,16 @@ public class MobileConfig {
 
   @Bean
   SessionTokens sessionTokens(JdbcTemplate jdbc, Clock clock, RuleSet ruleSet) {
-    return new SessionTokens(jdbc, clock, ruleSet.appSessionTtl());
+    return new SessionTokens(
+        jdbc,
+        clock,
+        ruleSet.appSessionTtl(),
+        ruleSet.appSessionBackgroundTtl(),
+        ruleSet.appSessionMaxTtl());
+  }
+
+  @Bean
+  PinAttempts pinAttempts(Clock clock, RuleSet ruleSet) {
+    return new PinAttempts(clock, ruleSet.appPinMaxAttempts(), ruleSet.appPinOriginLock());
   }
 }

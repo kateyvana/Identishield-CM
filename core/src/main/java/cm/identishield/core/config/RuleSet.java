@@ -115,16 +115,58 @@ public record RuleSet(String version, Map<String, Object> parameters) {
   }
 
   /**
-   * Échéance fixe du jeton de session de l'application (carte B3a, décision 4 : aucun autre
-   * minuteur), depuis APP_SESSION_TTL du jeu de règles. Aucune exigence du SRS ne nomme cette
-   * échéance : le marqueur renvoie au paramètre nommé versionné (ES-15).
+   * Inactivité maximale d'une session de l'application (P-09, carte B4 : aucune requête de l'USAGER
+   * pendant cette durée, le jeton meurt), depuis APP_SESSION_TTL du jeu de règles. Aucune exigence
+   * du SRS ne nomme cette échéance : le marqueur renvoie au paramètre nommé versionné (ES-15).
    */
   // @implements ES-15
   public Duration appSessionTtl() {
-    Object v = parameters == null ? null : parameters.get("APP_SESSION_TTL");
+    return duration("APP_SESSION_TTL");
+  }
+
+  /**
+   * Verrouillage après passage en arrière-plan (P-09) : aucune requête, même automatique, pendant
+   * cette durée, le jeton meurt. Le serveur ne voit pas l'arrière-plan, il mesure l'écart entre
+   * deux requêtes (décision de la propriétaire du 2026-10-24). APP_SESSION_BACKGROUND_TTL.
+   */
+  // @implements ES-15
+  public Duration appSessionBackgroundTtl() {
+    return duration("APP_SESSION_BACKGROUND_TTL");
+  }
+
+  /** Durée maximale d'une session, inconditionnelle (P-09) : APP_SESSION_MAX_TTL. */
+  // @implements ES-15
+  public Duration appSessionMaxTtl() {
+    return duration("APP_SESSION_MAX_TTL");
+  }
+
+  /** Échecs de PIN tolérés par origine réseau avant blocage (P-11) : APP_PIN.max_attempts. */
+  // @implements ES-15
+  public int appPinMaxAttempts() {
+    if (parameters != null
+        && parameters.get("APP_PIN") instanceof Map<?, ?> m
+        && m.get("max_attempts") instanceof Number n) {
+      return n.intValue();
+    }
+    throw new IllegalStateException("APP_PIN.max_attempts absent du jeu de règles versionné");
+  }
+
+  /** Durée du blocage d'une origine réseau après le dépassement (P-11) : APP_PIN.origin_lock. */
+  // @implements ES-15
+  public Duration appPinOriginLock() {
+    if (parameters != null
+        && parameters.get("APP_PIN") instanceof Map<?, ?> m
+        && m.get("origin_lock") instanceof CharSequence s) {
+      return Duration.parse(s);
+    }
+    throw new IllegalStateException("APP_PIN.origin_lock absent du jeu de règles versionné");
+  }
+
+  private Duration duration(String name) {
+    Object v = parameters == null ? null : parameters.get(name);
     if (v instanceof CharSequence s) {
       return Duration.parse(s);
     }
-    throw new IllegalStateException("APP_SESSION_TTL absent du jeu de règles versionné");
+    throw new IllegalStateException(name + " absent du jeu de règles versionné");
   }
 }

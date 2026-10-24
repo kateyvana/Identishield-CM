@@ -36,7 +36,12 @@ class SessionTokensTest {
 
   private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
   private final SessionTokens tokens =
-      new SessionTokens(jdbc, Clock.fixed(T0, ZoneOffset.UTC), TTL);
+      new SessionTokens(
+          jdbc,
+          Clock.fixed(T0, ZoneOffset.UTC),
+          TTL,
+          Duration.ofSeconds(60),
+          Duration.ofMinutes(30));
 
   @Test
   void token_hasAtLeast256Bits_andOnlyItsSha256IsStored() throws Exception {
@@ -46,7 +51,14 @@ class SessionTokensTest {
     ArgumentCaptor<Object> stored = ArgumentCaptor.forClass(Object.class);
     verify(jdbc)
         .update(
-            eq(SessionTokens.INSERT_SQL), stored.capture(), eq(ACCOUNT), eq("dev-1"), any(), any());
+            eq(SessionTokens.INSERT_SQL),
+            stored.capture(),
+            eq(ACCOUNT),
+            eq("dev-1"),
+            any(),
+            any(),
+            any(),
+            any());
     String expected =
         HexFormat.of()
             .formatHex(

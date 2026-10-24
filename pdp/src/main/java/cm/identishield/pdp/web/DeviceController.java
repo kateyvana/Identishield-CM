@@ -4,10 +4,13 @@ import cm.identishield.pdp.device.DeviceEnrolment;
 import cm.identishield.pdp.device.DeviceEnrolment.Refused;
 import cm.identishield.pdp.device.DeviceEnrolment.Registered;
 import cm.identishield.pdp.device.DeviceRegistry;
+import cm.identishield.pdp.signature.NonceStore;
+import cm.identishield.pdp.signature.SignatureVerifier;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,10 +27,53 @@ public class DeviceController {
 
   private final DeviceEnrolment enrolment;
   private final DeviceRegistry registry;
+  private final NonceStore nonces;
+  private final SignatureVerifier signatures;
 
-  public DeviceController(DeviceEnrolment enrolment, DeviceRegistry registry) {
+  public DeviceController(
+      DeviceEnrolment enrolment,
+      DeviceRegistry registry,
+      NonceStore nonces,
+      SignatureVerifier signatures) {
     this.enrolment = enrolment;
     this.registry = registry;
+    this.nonces = nonces;
+    this.signatures = signatures;
+  }
+
+  /**
+   * Défi de session (carte B4 ; décision de la propriétaire du 2026-10-24, point 4) : le défi EST
+   * un nonce du PDP, émis pour le compte de la clé ACTIVE qui porte cet identifiant, à usage
+   * unique, valable NONCE_TTL. Aucune clé ACTIVE de cet identifiant : 404, et c'est le cœur qui
+   * rend la réponse uniforme à l'application (ES-22). Route interne, jamais atteignable depuis
+   * l'application.
+   */
+  // @implements ES-10
+  @GetMapping("/device/{deviceId}/nonce")
+  public ResponseEntity<Object> nonce(@PathVariable String deviceId) {
+    return registry
+        .findActiveById(deviceId)
+        .<ResponseEntity<Object>>map(
+            key ->
+                ResponseEntity.ok(new DeviceNonceResponse(nonces.issue(key.accountId()).value())))
+        .orElseGet(
+            () ->
+                ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiError("DEVICE_UNKNOWN", "no active device key with this id")));
+  }
+
+  /**
+   * Signature du défi de session par la clé ACTIVE {@code deviceId} du compte (ISC-MOB-SPEC §6 : «
+   * le PDP reconnaît la clé »). Verdict VALID (défi consommé), INVALID ou REVOKED ; le PDP énonce,
+   * le cœur arbitre. Le cœur ne l'appelle qu'APRÈS avoir vérifié le PIN.
+   */
+  // @implements ES-20
+  @PostMapping("/device/verify")
+  public VerifyResponse verify(@Valid @RequestBody VerifyRequest r) {
+    return new VerifyResponse(
+        signatures
+            .verifyChallenge(r.accountId(), r.deviceId(), r.challenge(), r.signature())
+            .name());
   }
 
   /**
