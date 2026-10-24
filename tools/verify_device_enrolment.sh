@@ -4,8 +4,9 @@
 # et session du coeur (core.enrolment, core.session, core.account), sous le role isc_core_app.
 #
 # Meme methode que tools/verify_trust_state.sh (couloir A) : PostgreSQL JETABLE dans la VM, meme
-# image (postgres:16), meme infra/init/init.sql et memes roles que la pile, SANS toucher a la pile
-# en service. Port lie a 127.0.0.1 dans la VM, amene sur le poste par un tunnel SSH.
+# image (postgres:16), meme infra/init/init.sql, memes migrations (le schema B3a est la migration
+# 002) et memes roles que la pile, SANS toucher a la pile en service. Port lie a 127.0.0.1 dans la
+# VM, amene sur le poste par un tunnel SSH.
 # Mots de passe : aleatoires, ephemeres, jamais ecrits sur disque ni dans le depot.
 # Le conteneur n'est PAS supprime ici (CLAUDE.md §4, commandes destructrices) : la commande de
 # retrait est affichee a la fin.
@@ -16,19 +17,23 @@ set -euo pipefail
 VM="${1:-isc@100.93.166.19}"
 NAME=isc-b3a-pg
 PORT=55433
-DIR=/tmp/isc-b3a
 
 admin_pw=$(openssl rand -hex 16)
 core_pw=$(openssl rand -hex 16)
 pdp_pw=$(openssl rand -hex 16)
 
 echo ">>> base jetable $NAME dans la VM ($VM)"
-ssh "$VM" "mkdir -p $DIR"
+# Dossier NEUF a chaque passage : aucune migration d'un passage precedent ne peut s'y glisser.
+DIR=$(ssh "$VM" "mktemp -d /tmp/isc-b3a.XXXXXX")
+ssh "$VM" "mkdir -p $DIR/migrations"
 scp -q infra/init/init.sql infra/init/01-apply.sh "$VM:$DIR/"
+scp -q infra/init/migrations/[0-9][0-9][0-9]-*.sql "$VM:$DIR/migrations/"
+ssh "$VM" "ls $DIR/migrations"
 ssh "$VM" "docker run -d --name $NAME \
   -e POSTGRES_USER=isc_admin -e POSTGRES_DB=identishield \
   -e POSTGRES_PASSWORD=$admin_pw -e ISC_CORE_APP_PASSWORD=$core_pw -e ISC_PDP_APP_PASSWORD=$pdp_pw \
   -v $DIR/init.sql:/opt/isc/init.sql:ro -v $DIR/01-apply.sh:/docker-entrypoint-initdb.d/01-apply.sh:ro \
+  -v $DIR/migrations:/opt/isc/migrations:ro \
   -p 127.0.0.1:$PORT:5432 postgres:16" >/dev/null
 
 echo ">>> attente de la fin d'init.sql"

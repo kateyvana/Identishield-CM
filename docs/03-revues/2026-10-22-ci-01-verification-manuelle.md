@@ -30,7 +30,8 @@ Un exécuteur n'est pas attaché maintenant pour deux raisons :
 - Les portes lourdes se vérifient **à la main dans la VM**, après chaque déploiement :
 
   ```
-  make reset && make up            # seulement si init.sql a changé ; sinon make up
+  make migrate && make up          # migrations du schéma, puis le nouveau code ; jamais make reset,
+                                   # qui détruit l'autorité TLS épinglée (infra/init/migrations/README.md)
   make check-stack
   PATH=$HOME/.local/bin:$PATH make abuse
   (cd infra && docker compose -f docker-compose.yml -f compose.b3a.yml up -d)   # profil demo
