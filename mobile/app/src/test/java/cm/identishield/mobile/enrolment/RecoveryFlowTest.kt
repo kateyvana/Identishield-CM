@@ -45,6 +45,8 @@ private class FakeRecoveryServer : EnrolmentRepository {
     val codesSent = mutableListOf<String>()
     var startResult: ApiResult<StartResponse> = ApiResult.Ok(StartResponse(next = "RECOVERY", enrolmentId = "e-d"))
     val recoverResults = ArrayDeque<ApiResult<BindResponse>>()
+    val completeResults = ArrayDeque<ApiResult<RecoveryCodeIssued>>()
+    val completeCodes = mutableListOf<String?>() // B3b : la clé part à /complete, avec l'attestation
     var completeResult: ApiResult<RecoveryCodeIssued> =
         ApiResult.Ok(RecoveryCodeIssued("c-d", NEW_CODE, deviceId = DEVICE_ID))
 
@@ -68,7 +70,11 @@ private class FakeRecoveryServer : EnrolmentRepository {
             ?: ApiResult.Ok(BindResponse("BIND", Base64.getEncoder().encodeToString(CHALLENGE)))
     }
 
-    override suspend fun complete(request: CompleteRequest) = completeResult.also { calls += "complete" }
+    override suspend fun complete(request: CompleteRequest): ApiResult<RecoveryCodeIssued> {
+        calls += "complete"
+        completeCodes += request.recoveryCode
+        return completeResults.removeFirstOrNull() ?: completeResult
+    }
 
     override suspend fun confirm(request: ConfirmRequest): ApiResult<SessionResponse> =
         ApiResult.Ok(SessionResponse("jeton-d", 300)).also { calls += "confirm" }
@@ -174,24 +180,34 @@ class RecoveryFlowTest {
         assertTrue(keys.log.isEmpty())
     }
 
+    /** B3b (ADR-041) : une tentative = clé tapée (E-20) → clé créée et défi signé (E-07) → /complete. */
+    private fun attempt(vm: EnrolmentViewModel, code: String) {
+        vm.submitRecoveryCode(code)
+        if (vm.step.value is EnrolStep.Securing) vm.secureDevice(unlockOk)
+    }
+
     @Test
-    fun aWrongKey_firstTime_isTheSameMessageForEveryone() {
-        server.recoverResults += invalid
+    fun aWrongKey_isRefusedAtComplete_withTheAttestation_andIsTheSameMessageForEveryone() {
+        server.completeResults += invalid
         val vm = vm()
         untilRecovery(vm)
-        vm.submitRecoveryCode("AAAA-BBBB-CCCC-DDDD-EEEE")
+        attempt(vm, "AAAA-BBBB-CCCC-DDDD-EEEE")
         assertEquals(EnrolStep.Recovery(EnrolError.RECOVERY_INVALID), vm.step.value)
-        assertTrue(keys.log.isEmpty())
+        // /recover n'a rien vérifié ; la clé est partie avec l'attestation, à /complete (ADR-041).
+        assertEquals(listOf("start", "recover", "complete"), server.calls)
+        assertEquals(listOf("AAAABBBBCCCCDDDDEEEE"), server.completeCodes)
+        // La clé matérielle créée pour cet essai est détruite : aucune clé orpheline.
+        assertEquals(listOf("delete", "generate", "delete"), keys.log)
     }
 
     @Test
     fun afterTheFreeAttempts_thisDeviceWaits_andSendsNothingUntilTheEnd() {
-        repeat(BuildConfig.REENROL_ATTEMPTS + 1) { server.recoverResults += invalid }
+        repeat(BuildConfig.REENROL_ATTEMPTS + 1) { server.completeResults += invalid }
         val vm = vm()
         untilRecovery(vm)
-        repeat(BuildConfig.REENROL_ATTEMPTS) { vm.submitRecoveryCode("AAAA") }
+        repeat(BuildConfig.REENROL_ATTEMPTS) { attempt(vm, "AAAA") }
         assertEquals(EnrolStep.RecoveryWait(clock.now.plus(base)), vm.step.value)
-        val sent = server.calls.count { it == "recover" }
+        val sent = server.calls.count { it == "complete" }
         // Application relancée pendant l'attente : E-21 directement, sans requête.
         val restarted = vm()
         untilRecovery(restarted)
@@ -201,35 +217,38 @@ class RecoveryFlowTest {
         clock.advance(base.minusSeconds(1))
         vm.recoveryWaitOver()
         assertTrue("toujours en attente", vm.step.value is EnrolStep.RecoveryWait)
-        assertEquals(sent, server.calls.count { it == "recover" })
+        assertEquals(sent, server.calls.count { it == "complete" })
         clock.advance(Duration.ofSeconds(1))
         vm.recoveryWaitOver()
         assertEquals(EnrolStep.Recovery(), vm.step.value)
-        vm.submitRecoveryCode("AAAA")
+        attempt(vm, "AAAA")
         assertEquals("le délai double", EnrolStep.RecoveryWait(clock.now.plus(base.multipliedBy(2))), vm.step.value)
+        // Après le premier défi, l'enrôlement reste à BIND côté serveur : un seul /recover en tout.
+        assertEquals(1, server.calls.count { it == "recover" })
     }
 
     @Test
-    fun aServer429_showsItsWait_withoutCountingAFailure() {
-        server.recoverResults += ApiResult.Refused(429, "THROTTLED", 600)
+    fun aServer429_atComplete_showsItsWait_withoutCountingAFailure() {
+        server.completeResults += ApiResult.Refused(429, "THROTTLED", 600)
         val vm = vm()
         untilRecovery(vm)
-        vm.submitRecoveryCode("AAAA")
+        attempt(vm, "AAAA")
         assertEquals(EnrolStep.RecoveryWait(clock.now.plusSeconds(600)), vm.step.value)
         assertEquals(0, throttleStore.state.failures)
     }
 
     @Test
     fun aValidKey_deletesTheOldKeyBeforeCreatingTheNew_thenE22_thenTheNewKey() {
-        server.recoverResults += invalid // un échec d'abord : le succès doit remettre le compteur à zéro
+        server.completeResults += invalid // un échec d'abord : le succès doit remettre le compteur à zéro
         val vm = vm()
         untilRecovery(vm)
-        vm.submitRecoveryCode("AAAA")
+        attempt(vm, "AAAA")
         assertEquals(1, throttleStore.state.failures)
+        keys.log.clear()
         vm.submitRecoveryCode(OLD_CODE.lowercase().chunked(3).joinToString("-"))
-        assertEquals("normalisée : majuscules, sans tirets", listOf("AAAA", OLD_CODE), server.codesSent)
         assertEquals(EnrolStep.Securing(SecuringStage.CREATING_KEY), vm.step.value)
         vm.secureDevice(unlockOk)
+        assertEquals("normalisée : majuscules, sans tirets", listOf("AAAA", OLD_CODE), server.completeCodes)
         assertEquals(listOf("delete", "generate"), keys.log)
         assertTrue("la nouvelle clé naît avec le défi du serveur", CHALLENGE.contentEquals(keys.generatedWith))
         assertEquals(EnrolStep.Rebound(NUMBER), vm.step.value)
@@ -246,16 +265,16 @@ class RecoveryFlowTest {
 
     @Test
     fun theRecoveryCode_isNeverStored_onlyWhatIsTypedIsSent() {
-        server.recoverResults += invalid
+        server.completeResults += invalid
         val vm = vm()
         untilRecovery(vm)
-        vm.submitRecoveryCode(OLD_CODE)
+        attempt(vm, OLD_CODE)
         vm.submitRecoveryCode(NEW_CODE) // deuxième saisie : seule la saisie du moment part au serveur
-        assertEquals(listOf(OLD_CODE, NEW_CODE), server.codesSent)
+        vm.secureDevice(unlockOk)
+        assertEquals(listOf(OLD_CODE, NEW_CODE), server.completeCodes)
         throttleStore.saved.forEach { assertFalse("mémoire du délai : jamais la clé", it.toString().contains(OLD_CODE)) }
         assertFalse("préférences : jamais la clé", remembered.device.toString().contains(OLD_CODE))
         // Seul le PIN est encore en mémoire ici (comme au flux A) ; il est effacé à l'accueil :
-        vm.secureDevice(unlockOk)
         vm.showNewKey()
         vm.keyWrittenDown()
         vm.confirmCode(NEW_CODE)

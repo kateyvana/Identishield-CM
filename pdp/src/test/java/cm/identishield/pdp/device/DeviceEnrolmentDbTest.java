@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import cm.identishield.pdp.config.TestRuleSet;
 import cm.identishield.pdp.device.DeviceRegistry.BindingState;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
@@ -72,6 +73,95 @@ class DeviceEnrolmentDbTest {
     assertThrows(
         DataIntegrityViolationException.class,
         () -> jdbc.update("UPDATE pdp.device SET state = 'BOGUS' WHERE id = ?", id));
+  }
+
+  // ---- carte B3b : compteur d'échecs en base (ADR-030) et révocation à l'activation ----------
+
+  @Test
+  void theThrottle_countsPerKey_locksOriginAfterNAttempts_neverTheAccount_andClearsOnSuccess() {
+    init();
+    cm.identishield.pdp.time.VirtualClock clock = new cm.identishield.pdp.time.VirtualClock(T0);
+    cm.identishield.pdp.config.RuleSet rs = TestRuleSet.load();
+    EnrolmentThrottle throttle = new EnrolmentThrottle(jdbc, clock, rs);
+    String origin = "100.64.0." + (int) (Math.random() * 250);
+    List<EnrolmentThrottle.Key> keys =
+        List.of(
+            EnrolmentThrottle.Key.origin(origin + "/" + acc), EnrolmentThrottle.Key.account(acc));
+    long attempts = rs.integer("REENROL_ATTEMPTS");
+    for (int i = 1; i < attempts; i++) {
+      throttle.failed(keys);
+      assertTrue(throttle.lockedFor(keys).isEmpty(), "échec " + i + " : encore libre");
+    }
+    throttle.failed(keys);
+    assertEquals(
+        Optional.of(rs.duration("LOCK_BASE").toSeconds()),
+        throttle.lockedFor(keys),
+        "N-ième : LOCK_BASE");
+    // Le compte est compté, jamais bloqué.
+    assertTrue(throttle.lockedFor(List.of(EnrolmentThrottle.Key.account(acc))).isEmpty());
+    assertEquals(
+        (int) attempts,
+        jdbc.queryForObject(
+            "SELECT failures FROM pdp.enrolment_attempt WHERE kind = 'ACCOUNT' AND counter_key = ?",
+            Integer.class,
+            acc));
+    clock.advance(rs.duration("LOCK_BASE"));
+    assertTrue(throttle.lockedFor(keys).isEmpty(), "délai écoulé");
+    throttle.failed(keys);
+    assertEquals(
+        Optional.of(rs.duration("LOCK_BASE").multipliedBy(2).toSeconds()),
+        throttle.lockedFor(keys),
+        "échec suivant : doublé");
+    throttle.succeeded(keys);
+    assertTrue(throttle.lockedFor(keys).isEmpty());
+    assertEquals(
+        0,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pdp.enrolment_attempt WHERE counter_key IN (?, ?)",
+            Integer.class,
+            origin + "/" + acc,
+            acc));
+  }
+
+  @Test
+  void activation_revokesTheOldActiveKey_inTheSameTransaction_andNeverLeavesZeroOrTwoActive() {
+    init();
+    org.springframework.jdbc.datasource.DriverManagerDataSource ds =
+        new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            System.getenv("ISC_TEST_PG_URL"),
+            System.getenv("ISC_TEST_PG_USER"),
+            System.getenv("ISC_TEST_PG_PASSWORD"));
+    DeviceEnrolment enrolment =
+        new DeviceEnrolment(
+            new AttestationVerifier(),
+            registry,
+            codes,
+            new EnrolmentThrottle(
+                jdbc, java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC), TestRuleSet.load()),
+            new org.springframework.jdbc.datasource.DataSourceTransactionManager(ds),
+            java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC));
+    String old = registry.registerPending(acc, "cGs=", T0);
+    String oldCode = codes.issue(old, T0);
+    assertTrue(
+        enrolment.activate(acc, old, oldCode), "première activation : aucune clé à révoquer");
+    String fresh = registry.registerPending(acc, "cGsy", T0);
+    String freshCode = codes.issue(fresh, T0);
+    // Code faux : rien ne bouge, l'ancienne reste ACTIVE (la révocation est annulée avec la
+    // transaction).
+    assertFalse(enrolment.activate(acc, fresh, "WRONG1"));
+    assertEquals(Optional.of("ACTIVE"), registry.stateOf(acc, old));
+    assertEquals(Optional.of("PENDING"), registry.stateOf(acc, fresh));
+    // Bon code : l'ancienne RÉVOQUÉE et la nouvelle ACTIVE, ensemble.
+    assertTrue(enrolment.activate(acc, fresh, freshCode));
+    assertEquals(Optional.of("REVOKED"), registry.stateOf(acc, old));
+    assertEquals(Optional.of("ACTIVE"), registry.stateOf(acc, fresh));
+    assertEquals(fresh, registry.findActive(acc).orElseThrow().id());
+    assertEquals(
+        1,
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pdp.device WHERE account_id = ? AND state = 'ACTIVE'",
+            Integer.class,
+            acc));
   }
 
   /** Carte B4 : seule une clé ACTIVE a un défi de session ; l'état d'une clé nommée est énoncé. */

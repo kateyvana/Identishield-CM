@@ -124,6 +124,11 @@ services:
         condition: service_completed_successfully
     environment:
       CORE_MODE: ${CORE_MODE:-service}
+      # L7-a/L7-b : le connecteur HTTPS 8443 de la surface mobile est opt-in dans le coeur
+      # (core.mobile-tls.enabled, liaison souple Spring -> CORE_MOBILETLS_ENABLED). La pile le
+      # publie (8443 sur ISC_MOBILE_BIND) donc elle l'ACTIVE : constate le 2026-10-24, port
+      # publie sans ecouteur (docs/03-revues/2026-10-24-deploiement-main.md, etape 6).
+      CORE_MOBILETLS_ENABLED: "true"
       # Passerelle SMS : le coeur REMET l'OTP au reseau simule (isc-sim), jamais il ne le relit.
       SIM_URL: http://sim:8080
     volumes:

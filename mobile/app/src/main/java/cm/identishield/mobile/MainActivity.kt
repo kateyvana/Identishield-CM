@@ -39,7 +39,9 @@ import cm.identishield.mobile.data.RetrofitAlertRepository
 import cm.identishield.mobile.data.RetrofitDailyRepository
 import cm.identishield.mobile.data.RetrofitEnrolmentRepository
 import cm.identishield.mobile.data.SessionHolder
+import cm.identishield.mobile.data.PrefsInstallationId
 import cm.identishield.mobile.data.buildMobileApi
+import cm.identishield.mobile.data.defaultHttpClient
 import cm.identishield.mobile.enrolment.CheckingScreen
 import cm.identishield.mobile.enrolment.ConfirmKeyScreen
 import cm.identishield.mobile.enrolment.DeviceIncompatibleScreen
@@ -88,7 +90,8 @@ class MainActivity : FragmentActivity() {
     // Injection manuelle (ADR-037) : les dépendances sont construites ici et passées par constructeur.
     private val keys by lazy { AndroidKeystoreDeviceKeyManager() }
     private val boundDevice by lazy { PrefsBoundDeviceStore(applicationContext) }
-    private val api by lazy { buildMobileApi(BuildConfig.API_BASE_URL) }
+    // ADR-030 (B3b) : identifiant d'installation en en-tête sur les routes d'enrôlement et de défi.
+    private val api by lazy { buildMobileApi(BuildConfig.API_BASE_URL, defaultHttpClient(PrefsInstallationId(applicationContext))) }
 
     // Flux D (M-08) : délai croissant local, mêmes paramètres nommés que le serveur. L'horloge système
     // n'est lue qu'ici, au point d'assemblage ; partout ailleurs, elle est injectée.

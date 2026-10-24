@@ -215,4 +215,243 @@ le 8443 répond. Tant que cette preuve n'est pas faite, **aucun évaluateur n'es
 
 ## Compte rendu d'exécution
 
-_À remplir au moment de l'exécution, preuves collées._
+### Préconditions constatées (2026-10-24, 17:58Z → 18:28Z)
+
+- P1 : #88 fusionnée (d4ff537, 17:03Z) ; `main` = **33979d2** (#91, #94), CI `success`.
+- P2 : #93 fusionnée (a958f97). P5 : #92 fusionnée (a5121df). P7 : fichier présent (voir § État constaté).
+- P3 — **posé par la propriétaire** (`sudo bash ~/isc-p3-docker-user.sh`, script déposé par A, une
+  ligne à taper), sortie collée telle quelle :
+
+```text
+>>> 1. règles (sans doublon)
+>>> 2. vérification : iptables -S DOCKER-USER
+-N DOCKER-USER
+-A DOCKER-USER -i br-isc-mobile -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+-A DOCKER-USER -i br-isc-mobile -j DROP
+>>> 3. persistance : unité systemd isc-docker-user.service
+● isc-docker-user.service - IdentiShield-CM - DOCKER-USER : aucune sortie du sous-reseau isc-mobile (L7-3)
+     Loaded: loaded (/etc/systemd/system/isc-docker-user.service; enabled; preset: enabled)
+     Active: active (exited) since Sat 2026-10-24 18:27:16 UTC; 5ms ago
+    Process: 283146 ExecStart=/bin/sh -c ... -j RETURN (code=exited, status=0/SUCCESS)
+    Process: 283149 ExecStart=/bin/sh -c ... -j DROP (code=exited, status=0/SUCCESS)
+>>> P3 : TERMINÉ.
+```
+
+  Écart avec la sortie annoncée au § P3 : **pas** de ligne finale `-A DOCKER-USER -j RETURN` — cette
+  version de Docker ne la pose pas ; la fin de chaîne revient au même (retour à `FORWARD`). Les deux
+  règles sont dans l'ordre exigé. **Incident annexe** : le mot de passe `sudo` de `isc`, donné
+  oralement le 2026-08-29 (SPIKE-5), figurait dans les notes locales d'une session ; effacé le
+  2026-10-24, absent du dépôt et de son historique (`git grep`, `git log -S`) ; à **changer** par la
+  propriétaire (`passwd`).
+- P4 : non fait (acte de la propriétaire dans la console Tailscale) ; non bloquant pour déployer,
+  bloquant pour inviter un évaluateur.
+- P6 : témoin du couloir B présent jusqu'à 19:05:43Z (preuves B3b sur bases jetables) : le
+  déploiement attend son retrait.
+
+### Exécution (2026-10-24, à partir de 18:56Z)
+
+**Étape 1 — témoin** : `couloir: A / depuis: 2026-10-24T18:56:14Z / jusqu-a: 2026-10-24T19:56:14Z`
+(retrait de celui de B à 18:5x, annoncé par B). Pile avant : 5 conteneurs `Up`, `main` 8929a3f.
+
+**Étape 2 — export (rédacteur arrêté)** : `docker stop isc-core isc-pdp`, puis :
+
+```text
+export            : /home/isc/audit-exports/audit-export-2026-10-24T185639Z.csv
+entrées exportées : 120280
+sha256            : 975ee9ed12406fea2ea2d9b59384f3fc68f43b6377ca36803a07755e908ae405
+ruptures (verify) : 0
+ancre             : entry_count=120280 (réel 120280), last_seq=120280 (réel 120280), head_matches=true
+export-audit: VERT (chaîne intacte, ancre conforme, export complet)
+```
+
+**Étape 3 — dépôt** : `git pull` → `fatal: unable to access … Could not resolve host: github.com`
+(le DNS de la VM, qui répondait à 16:3x, ne répondait plus). **Repli prévu** : bundle depuis le
+poste (`git bundle create … 8929a3f..origin/main`, `git bundle verify` OK des deux côtés), fetch +
+`merge --ff-only` → `33979d28 Merge pull request #91`. `infra/init/migrations/` : 002, 003, 005.
+
+**Étapes 4 / 4 bis — `.env`** : `6:ISC_MOBILE_BIND=100.93.166.19` ; `7:ISC_DEMO_SEED_CSV=/home/isc/.isc/seed-comptes-demo.csv`.
+
+**Étape 5 — premier `make up` (19:01Z) : ÉCHEC, construction de l'image du cœur** :
+
+```text
+profil demo : compose.b3a.yml inclus (ISC_DEMO_SEED_CSV dans infra/.env)
+#40 0.341 Downloading https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+#40 20.55 Exception in thread "main" java.net.UnknownHostException: services.gradle.org
+target core: failed to solve: … "./gradlew --no-daemon clean bootJar" did not complete successfully: exit code: 1
+FIN_MAKE_UP_RC=2
+```
+
+Cause : DNS de la VM. `isc-core`/`isc-pdp` étaient arrêtés (étape 2) → **service rétabli d'abord**
+(`docker start isc-pdp isc-core`, anciens conteneurs, `isc-pdp (healthy)` à 19:0xZ). Diagnostic :
+`resolvectl` → `Current DNS Server: 192.168.1.1` (routeur Wi-Fi du portable, injoignable depuis le
+NAT VirtualBox : 5 résolutions sur 5 en échec à ~4 s), alors que `nslookup … 10.0.2.3` (DNS NAT
+VirtualBox) et `1.1.1.1` répondent. **Correctif posé par la propriétaire** (`sudo bash
+~/isc-dns-fix.sh`, script déposé par A) :
+
+```text
+>>> 1. DNS immédiat sur enp0s3 : 10.0.2.3 puis 1.1.1.1
+       DNS Servers: 10.0.2.3 1.1.1.1
+>>> 2. persistance (netplan, fichier 70-isc-dns.yaml, validé sans appliquer à chaud)
+netplan generate : OK
+>>> 3. vérification : 5 résolutions de services.gradle.org
+essai 1 : 2606:4700::6810:4965 services.gradle.org (133 ms)
+essai 2 : 2606:4700::6810:4965 services.gradle.org (2 ms)
+essai 3 : 2606:4700::6810:4965 services.gradle.org (3 ms)
+essai 4 : 2606:4700::6810:4865 services.gradle.org (2 ms)
+essai 5 : 2606:4700::6810:4965 services.gradle.org (3 ms)
+>>> DNS : 5/5 réussites.
+```
+
+Puis, depuis un **conteneur** (chemin réel de la construction) : `services.gradle.org`,
+`plugins.gradle.org`, `repo.maven.apache.org` joignables en HTTPS (`CONTENEUR_OK`, `PLUGINS_OK`,
+`MAVEN_OK`). Observation non bloquante : `curl -4` **depuis l'hôte** vers `services.gradle.org`
+échoue encore ; `curl -6` : code 000 (IPv6 de la VM cassé, connu).
+
+**Étape 2 refaite (19:22:08Z)** avant la reprise : `docker stop isc-core isc-pdp`, export
+`audit-export-2026-10-24T192208Z.csv`, **120280 entrées, même sha `975ee9ed…ae405`** (aucune
+écriture entre les deux), `export-audit: VERT`.
+
+**Étape 5 — second `make up` (19:22:10Z) : ÉCHEC** aussi, cette fois sur le **délai** du wrapper :
+
+```text
+#41 103.0 Exception in thread "main" java.io.IOException: Downloading from https://services.gradle.org/distributions/gradle-8.14.3-bin.zip failed: timeout (10000ms)
+#41 103.0 Caused by: java.net.SocketTimeoutException: Read timed out
+target pdp: failed to solve: … "./gradlew --no-daemon clean bootJar" did not complete successfully: exit code: 1
+FIN_MAKE_UP_RC=2
+```
+
+Service **rétabli** aussitôt (`docker start isc-pdp isc-core`, anciens conteneurs, `isc-pdp (healthy)`).
+Un `wget` du même zip depuis un conteneur n'aboutit pas en 150 s : le lien réseau de la VM ne permet
+pas une construction d'image. Constat annexe : Tailscale route poste→VM par un **relais** (« relay
+sao ») — d'où les expirations SSH ; bascule de la session sur le chemin **host-only** direct
+`192.168.56.10` (même clé, même utilisateur), sans effet sur la pile.
+
+**Décision A de la propriétaire, sur avis du superviseur (19:4xZ), cinq conditions :**
+
+1. *Retour arrière possible* : `docker tag isc-core:latest isc-core:avant-33979d2` et idem `isc-pdp`
+   — fait, `0aed2c5d9761` / `2fdb042bd851` (images du 22/10).
+2. *Images depuis les jars du poste* : jars compilés par le `make check` du poste à 8ffe543
+   (sources `core/`, `pdp/`, `config/` **identiques** à 33979d2 : `git diff --stat` vide), copiés
+   par host-only, **empreintes identiques** des deux côtés :
+   `f41071ce76d39c0f5c51a7d4a2745c3cca759eed4390c6164aed63def0142aee` (cœur, 23 431 690 o),
+   `4139e755f6d46425720d6d37052ebdc78e3c35bb2e3a35049b5e9a58626a7d3f` (PDP, 35 231 599 o).
+   Dockerfiles minimaux = étage final du dépôt à l'identique (`FROM eclipse-temurin:21-jre-jammy`,
+   `WORKDIR /app`, `COPY app.jar`, `EXPOSE 8443` pour le PDP, même `ENTRYPOINT`). Images :
+   `isc-core:latest 75f284a923aa`, `isc-pdp:latest aab7c4a50d72`. `isc-console` et `isc-tools`
+   **inchangés** : `git diff --stat 8929a3f 33979d2 -- console/ infra/ca/Dockerfile.tools` vide
+   (`gen-ca.sh` est monté en volume, pas dans l'image).
+3. *Démarrage avec exactement les fichiers et l'environnement de `make up`* : export final d'abord
+   (`audit-export-2026-10-24T195132Z.csv`, 120280 entrées, **même sha `975ee9ed…ae405`**, VERT), puis
+   `docker compose -f docker-compose.yml -f compose.b3a.yml up -d --wait` **sans `--build`**
+   (`up-sansbuild-20261024T195137Z.log`) → `FIN_UP_RC=0`, tous `Healthy`.
+
+**Preuves de l'étape 5 (CONSTATÉ, 19:5xZ)** :
+
+```text
+$ docker logs isc-migrate
+[apply-migrations] 002-b3a-premier-enrolement.sql
+[apply-migrations] 003-holder-name.sql
+[apply-migrations] 005-b4-session-liveness.sql
+[apply-migrations] 3 migration(s) appliquee(s) depuis /opt/isc/migrations
+$ docker logs isc-ca-init
+[ca-init] 2026-10-24T19:51:38Z CA deja presente dans le volume -> REUTILISATION (Q9), pas de regeneration
+[ca-init] empreinte CA : 70:58:2E:19:59:A6:C3:47:5D:46:87:B6:94:ED:2B:44:32:74:0A:2F:06:07:FC:1D:01:B2:85:39:C3:1A:BA:2F
+[ca-init] feuille core-mobile ABSENTE -> signee avec la CA existante (CA inchangee)
+[ca-init] 1 feuille(s) ajoutee(s) ; empreinte CA apres : 70:58:2E:19:…:1A:BA:2F
+$ docker logs isc-core | grep amorçage
+… DemoAccountSeeder : amorçage démo : 5 comptes techniques, 20 comptes de démonstration, noms des titulaires alignés
+$ docker port isc-core          → 8443/tcp -> 100.93.166.19:8443
+$ docker port isc-console       → 3000/tcp -> 127.0.0.1:3000
+$ docker port isc-pdp           → (rien)
+$ docker network inspect isc-mobile → br-isc-mobile 172.21.0.0/16 ; ip link : br-isc-mobile UP
+$ docker exec isc-core bash -c '</dev/tcp/1.1.1.1/443' → SORTIE_BLOQUEE   (P3 efficace)
+```
+
+**Étape 6 — depuis le poste** : `curl http://100.93.166.19:8080/` → `Could not connect` (8080 non
+publié) ; `curl http://100.93.166.19:3000/` → `Could not connect` ; tunnel
+`ssh -L 3000:127.0.0.1:3000` → `http=200` ; `curl http://192.168.56.10:3000/` → expiré (boucle locale
+seule). **8443 : NE RÉPOND PAS** — ni par Tailscale, ni depuis la VM (`s_client` sur
+`100.93.166.19:8443`). Cause lue : le cœur n'écoute que sur 8080 (`Tomcat started on port 8080`) car
+`core.mobile-tls.enabled: false` dans `application.yml` (L7-a, livré opt-in, « noms à confirmer avec
+l'infra ») et la composition publie le port sans l'activer. **Câblage manquant A↔B**, pas une panne.
+
+**Activation du connecteur (19:58Z)**, interrupteur confirmé par le couloir B dans son code
+(`MobileTlsProperties`, `@ConfigurationProperties("core.mobile-tls")` → variable
+**`CORE_MOBILETLS_ENABLED=true`**, liaison souple Spring ; `CORE_MOBILE_TLS_ENABLED` ne lierait pas) :
+prérequis vérifiés (`core-mobile.key` 600 root, processus du cœur uid 0 → lisible ; `.crt` 644) ;
+variable ajoutée à `infra/.env` (ligne 8) pour ce soir, et au service `core` de
+`docker-compose.yml` par la PR du compte rendu ; recréation par `docker compose … up -d --wait` sans
+`--build` → `isc-core Healthy`. Effet de bord constaté : **`isc-postgres` a été recréé aussi**
+(`env_file: .env` partagé : tout changement de `.env` recrée tous les services qui le lisent) ; données
+intactes (volume), chaîne d'audit vérifiée après (étape 7). À retenir : poser toutes les variables
+`.env` **avant** le premier `up`.
+
+```text
+$ docker logs isc-core
+… TomcatWebServer : Tomcat initialized with ports 8080 (http), 8443 (https)
+… NioEndpoint.certificate : Connector [https-jsse-nio-8443], TLS virtual host [_default_] …
+… TomcatWebServer : Tomcat started on ports 8080 (http), 8443 (https) with context path '/'
+… DemoAccountSeeder : amorçage démo : 5 comptes techniques, 20 comptes de démonstration, noms des titulaires alignés
+```
+
+**Étape 6 — preuves 8443 (CONSTATÉ, depuis le poste par le tailnet ET depuis la VM)** :
+
+```text
+$ openssl s_client -connect 100.93.166.19:8443 -servername isc-vm.tail3824f1.ts.net -CAfile ca.crt
+subject=CN=isc-core
+issuer=CN=IdentiShield-CM Local CA
+Verify return code: 0 (ok)                      (depuis la VM : New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384)
+X509v3 Subject Alternative Name:
+    DNS:isc-core, DNS:isc-vm, DNS:isc-vm.tail3824f1.ts.net, IP Address:100.93.166.19
+sha256 Fingerprint=2C:1B:E8:8E:2C:CD:77:39:00:C0:7C:87:97:F6:C4:F2:11:E4:40:9A:5B:48:CA:43:91:1B:0E:ED:7F:90:67:DE
+notAfter=Oct 24 19:51:38 2027 GMT
+```
+
+CA servie = CA du volume (empreinte `70:58:2E:19…1A:BA:2F`, inchangée depuis le 16/10 : l'épinglage
+futur des téléphones ne sera pas affecté).
+
+**Étape 6 bis — 25 comptes et rejouabilité (avec le couloir B, sous le témoin A)** : ligne
+d'amorçage identique aux deux démarrages du cœur (19:51:55Z et 19:58:49Z) ;
+`SELECT count(*) FROM core.account WHERE holder_name IS NOT NULL` (isc_admin) → **25**. Aucun PIN, aucune
+empreinte, aucun nom au rapport. Validation de B : voir sa réponse au message de 20:0xZ.
+
+**Étape 8 — ADR-036 point 5, rejoué sur le cœur déployé (CONSTATÉ)** :
+
+```text
+8443 (tailnet, poste) :  GET  /health                       -> 403    (ONLY_MOBILE_HERE)
+                         GET  /flux                         -> 403
+                         POST /mobile/v1/enrolment/start {} -> 400    (route servie, corps hors contrat)
+8080 (isc-net, interne): POST /mobile/v1/enrolment/start {} -> 403 « Refuse : les routes /mobile/v1/* ne sont servies qu'en HTTPS »
+                         GET  /flux                         -> 200
+                         GET  /account?msisdn=677000001     -> 200
+                         GET  /health                       -> 404    (le cœur n'a pas de /health : route du PDP)
+```
+
+Rouge/vert tenu : une route hors `/mobile/v1` est refusée sur le 8443 ; une route `/mobile/v1` y est
+servie ; le 8080 refuse `/mobile/v1` et sert le reste, et n'est pas publié.
+
+**Validation du couloir B (20:1xZ, sur ces sorties)** : étape 6 bis — « rejouabilité CONSTATÉE sur le
+serveur réel, cohérente avec ma preuve en pile isolée (27 lignes identiques dont 25 amorcées) » ;
+point 5 d'ADR-036 — tenu (L7-a + L7-b), **ce qui clôt la condition L7 de
+`docs/03-revues/2026-10-22-limites-declarees-B3a.md`** ; le couloir B référencera ce document depuis
+ses limites B3a à sa prochaine PR docs. Prérequis constaté tel quel : `core-mobile.key` **600 root**
+et processus du cœur **uid 0** → lisible ; **si un jour le cœur passe non-root, ce prérequis casse**
+(à traiter avec les droits posés par `gen-ca.sh`). Reste pour L7 : **L7-c**, le téléphone de bout en
+bout (étape du vrai téléphone), et la condition ADR-030 de #67 (adresse réelle de deux téléphones).
+
+**Étape 7 — second export (20:03:43Z)** : `audit-export-2026-10-24T200343Z.csv`, **120280 entrées**,
+0 rupture, ancre conforme, VERT ; `sha256` des 120281 premières lignes du second =
+`975ee9ed12406fea2ea2d9b59384f3fc68f43b6377ca36803a07755e908ae405` = sha du premier export
+(19:51:32Z) : **chaîne ancienne intacte, aucune entrée perdue ni altérée** ; nombre d'entrées ≥ avant
+(égal : aucune transaction pendant le déploiement). Cœur et PDP relancés, `isc-pdp (healthy)`.
+
+**Condition 5 de la décision A** : carte **#96** « make up doit reconstruire seul dans la VM
+(--build compris) » créée, « À faire », condition de clôture = un `make up` complet réussi une fois
+dans la VM, journal collé.
+
+**État final (20:04Z)** : `main` 33979d2 déployé ; 5 conteneurs `Up`, `isc-pdp` `(healthy)` ; images
+`isc-core:latest 75f284a923aa`, `isc-pdp:latest aab7c4a50d72` (retour arrière : `avant-33979d2`) ;
+migrations 002/003/005 appliquées ; 8443 servi avec `core-mobile` ; console sur la boucle locale ;
+sortie Internet du sous-réseau mobile bloquée ; 25 comptes amorcés. **Non fait** : P4 (ACL Tailscale,
+propriétaire) ; `check-stack` (gel VEL jusqu'au 25/10 15:48:31Z) ; condition ADR-030 de #67 (adresse
+réelle de deux téléphones : exige des téléphones sur le tailnet).

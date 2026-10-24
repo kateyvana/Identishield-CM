@@ -4,9 +4,12 @@ import cm.identishield.pdp.device.DeviceEnrolment;
 import cm.identishield.pdp.device.DeviceEnrolment.Refused;
 import cm.identishield.pdp.device.DeviceEnrolment.Registered;
 import cm.identishield.pdp.device.DeviceRegistry;
+import cm.identishield.pdp.device.EnrolmentThrottle.Key;
 import cm.identishield.pdp.signature.NonceStore;
 import cm.identishield.pdp.signature.SignatureVerifier;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -95,23 +98,40 @@ public class DeviceController {
     return ResponseEntity.ok(new DeviceStateResponse(registry.bindingState(accountId).name()));
   }
 
+  /**
+   * Premier enrôlement, ou réenrôlement si le compte a déjà une clé ACTIVE (ADR-041 : l'ancien code
+   * est vérifié ici, avec l'attestation ; réponse uniforme RECOVERY_INVALID ; 429 THROTTLED avec
+   * Retry-After quand l'appelant est bloqué, ES-21).
+   */
   @PostMapping("/device/register")
   public ResponseEntity<Object> register(@Valid @RequestBody RegisterRequest r) {
+    List<Key> keys = new ArrayList<>(List.of(Key.origin(r.origin())));
+    if (r.installationId() != null && !r.installationId().isBlank()) {
+      keys.add(Key.installation(r.installationId()));
+    }
     DeviceEnrolment.Registration outcome =
         enrolment.register(
             r.accountId(),
             r.publicKey(),
             r.attestationChain(),
             r.attestationChallenge(),
-            r.challengeSignature());
+            r.challengeSignature(),
+            r.recoveryCode(),
+            keys);
     if (outcome instanceof Registered ok) {
       return ResponseEntity.ok(new RegisterResponse(ok.deviceId(), ok.recoveryCode()));
     }
-    return switch (((Refused) outcome).reason()) {
-      case ALREADY_BOUND ->
-          ResponseEntity.status(HttpStatus.CONFLICT)
+    Refused refused = (Refused) outcome;
+    return switch (refused.reason()) {
+      case RECOVERY_INVALID ->
+          ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+              .body(new ApiError("RECOVERY_INVALID", "recovery code or attestation rejected"));
+      case THROTTLED ->
+          ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+              .header("Retry-After", Long.toString(refused.retryAfterSeconds()))
               .body(
-                  new ApiError("DEVICE_ALREADY_BOUND", "account already has an active device key"));
+                  new ThrottledError(
+                      "THROTTLED", "too many failed attempts", refused.retryAfterSeconds()));
       case DEVICE_UNSUPPORTED ->
           ResponseEntity.unprocessableEntity()
               .body(new ApiError("DEVICE_UNSUPPORTED", "hardware-backed key required"));

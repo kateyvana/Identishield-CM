@@ -93,6 +93,7 @@ public class TrustStateMachine {
           + " ON CONFLICT (account_id) DO NOTHING";
   private static final String LOCK_SQL =
       "SELECT * FROM pdp.trust_state WHERE account_id = ? FOR UPDATE";
+  private static final String READ_SQL = "SELECT * FROM pdp.trust_state WHERE account_id = ?";
   private static final String SAVE_SQL =
       "UPDATE pdp.trust_state SET state = ?, since = ?, reference_imsi = ?, current_imsi = ?,"
           + " probation_until = ?, freeze_cause = ?, freeze_until = ?, reenrol_frozen_until = ?,"
@@ -125,6 +126,25 @@ public class TrustStateMachine {
     this.rules = rules;
   }
 
+  /**
+   * LECTURE SEULE de l'état d'un compte (GET /trust/{accountId}, ADR-041 amendement du 2026-10-24)
+   * : la ligne telle qu'enregistrée, les échéances passées appliquées EN MÉMOIRE par les mêmes
+   * règles que {@link #current} ({@code settle}), mais rien n'est écrit — ni l'état, ni une
+   * transition, ni une entrée d'audit. L'état rendu est celui que la prochaine décision
+   * constaterait. Vide si le PDP n'a jamais vu le compte (aucune ligne : A1-5 dit TRUSTED, la route
+   * répond 404).
+   */
+  public Optional<Trust> peek(String accountId) {
+    Instant now = clock.instant();
+    return jdbc.query(READ_SQL, (rs, i) -> Row.read(rs), accountId).stream()
+        .findFirst()
+        .map(
+            r -> {
+              settle(r, now, false);
+              return r.snapshot();
+            });
+  }
+
   /** État courant, échéances appliquées. Un compte jamais vu est TRUSTED (A1-5). */
   public Trust current(String accountId) {
     return tx.execute(
@@ -133,7 +153,7 @@ public class TrustStateMachine {
           return lock(accountId)
               .map(
                   r -> {
-                    settle(r, now);
+                    settle(r, now, true);
                     save(r);
                     return r.snapshot();
                   })
@@ -313,7 +333,7 @@ public class TrustStateMachine {
           if (r.state != State.FROZEN) {
             throw new Refused("account not frozen: " + accountId);
           }
-          unfreeze(r, now, "RELEASE", Map.of("actor", actor));
+          unfreeze(r, now, "RELEASE", Map.of("actor", actor), true);
         });
   }
 
@@ -323,25 +343,31 @@ public class TrustStateMachine {
           Instant now = clock.instant();
           jdbc.update(ENSURE_SQL, accountId, utc(now));
           Row r = lock(accountId).orElseThrow();
-          settle(r, now);
+          settle(r, now, true);
           operation.accept(r, now);
-          settle(r, now);
+          settle(r, now, true);
           save(r);
           return r.snapshot();
         });
   }
 
-  /** Applique, dans l'ordre et à leur instant, les échéances passées (ADR-019). */
-  private void settle(Row r, Instant now) {
+  /**
+   * Applique, dans l'ordre et à leur instant, les échéances passées (ADR-019). {@code record} vrai
+   * : chaque échéance franchie est une transition écrite (table + audit) ; faux : la ligne est
+   * seulement mise à jour en mémoire ({@link #peek}, lecture seule), mêmes règles.
+   */
+  private void settle(Row r, Instant now, boolean record) {
     while (true) {
       if (r.state == State.PROBATION && !now.isBefore(r.probationUntil)) {
         Instant at = r.probationUntil;
         endProbation(r);
         r.state = State.TRUSTED;
         r.since = at;
-        transition(r, State.PROBATION, EVENT_PROBATION_EXPIRED, "CAR_IMSI_EXPIRED", at, Map.of());
+        if (record) {
+          transition(r, State.PROBATION, EVENT_PROBATION_EXPIRED, "CAR_IMSI_EXPIRED", at, Map.of());
+        }
       } else if (r.freezeCause == FreezeCause.FREEZE_DECISION && !now.isBefore(r.freezeUntil)) {
-        unfreeze(r, r.freezeUntil, "TTL_FREEZE_EXPIRED", Map.of());
+        unfreeze(r, r.freezeUntil, "TTL_FREEZE_EXPIRED", Map.of(), record);
       } else {
         return;
       }
@@ -352,7 +378,8 @@ public class TrustStateMachine {
    * Sortie de FROZEN (A1-2) : PROBATION si l'échéance CAR_IMSI d'origine n'est pas atteinte à
    * {@code at}, sinon TRUSTED.
    */
-  private void unfreeze(Row r, Instant at, String cause, Map<String, Object> extra) {
+  private void unfreeze(
+      Row r, Instant at, String cause, Map<String, Object> extra, boolean record) {
     boolean probationRunning = r.probationUntil != null && at.isBefore(r.probationUntil);
     if (!probationRunning) {
       endProbation(r);
@@ -361,7 +388,9 @@ public class TrustStateMachine {
     r.since = at;
     r.freezeCause = null;
     r.freezeUntil = null;
-    transition(r, State.FROZEN, EVENT_UNFROZEN, cause, at, extra);
+    if (record) {
+      transition(r, State.FROZEN, EVENT_UNFROZEN, cause, at, extra);
+    }
   }
 
   /** Fin d'une période CAR_IMSI : l'IMSI courant devient l'IMSI de référence (A1-1). */

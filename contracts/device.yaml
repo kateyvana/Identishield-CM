@@ -39,9 +39,16 @@ paths:
         RÉVOQUE la clé EN ATTENTE précédente du compte (réponse perdue, nouvel essai), dont le code
         de récupération ne peut plus rien activer.
 
-        Premier enrôlement seulement (carte B3a). Invariant R1 (amendement du 2026-10-17) : si le
-        compte possède déjà une clé ACTIVE, la route refuse ; le réenrôlement, qui fournira l'ancien
-        code de récupération, est décrit par la carte B3b.
+        **Réenrôlement (carte B3b ; ADR-041 amendement du 2026-10-17 ; décisions de la propriétaire
+        du 2026-10-24).** Invariant R1 : si le compte possède déjà une clé ACTIVE, la route EXIGE
+        `recoveryCode`, l'ancien code, vérifié ICI avec l'attestation, en une seule fois — jamais par
+        une route à part (oracle). Réponse UNIFORME : code faux ou absent, attestation ou signature
+        refusée → 401 RECOVERY_INVALID, mêmes corps et durée (toutes les vérifications sont faites,
+        quoi qu'il arrive). Chaque échec compte pour `origin`, `installationId` (si connu) et le
+        compte (ADR-030, ES-24) ; après REENROL_ATTEMPTS, l'origine et l'installation attendent
+        LOCK_BASE doublé, plafonné LOCK_MAX → 429 THROTTLED + Retry-After (ES-21) ; le compte n'est
+        JAMAIS bloqué. La clé ACTIVE RESTE ACTIVE : elle n'est révoquée qu'à `/device/activate`,
+        dans la même transaction que l'activation de la nouvelle (ES-14b, ES-20).
       requestBody:
         required: true
         content:
@@ -58,20 +65,40 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          description: Le compte possède déjà une clé ACTIVE (invariant R1) ; aucun enregistrement.
+          description: >-
+            RECOVERY_INVALID (compte déjà lié : code faux ou absent, attestation ou signature
+            refusée, sans dire lequel), ou MTLS_REQUIRED si le certificat client manque.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                code: DEVICE_ALREADY_BOUND
-                message: account already has an active device key
+                code: RECOVERY_INVALID
+                message: recovery code or attestation rejected
+        '429':
+          description: >-
+            THROTTLED (ES-21) : l'appelant (origine ou installation) est bloqué après
+            REENROL_ATTEMPTS échecs, durée LOCK_BASE doublée à chaque palier, plafonnée LOCK_MAX ;
+            le compte est compté mais jamais bloqué. Rendu AVANT tout calcul. Même valeur dans
+            l'en-tête Retry-After et dans retryAfterSeconds.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Secondes à attendre avant un nouvel essai.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThrottledError'
+              example:
+                code: THROTTLED
+                message: too many failed attempts
+                retryAfterSeconds: 60
         '422':
           description: >-
-            ATTESTATION_REJECTED (chaîne, défi ou signature refusés) ou DEVICE_UNSUPPORTED (clé
-            logicielle, émulateur).
+            ATTESTATION_REJECTED (premier enrôlement : chaîne, défi ou signature refusés) ou
+            DEVICE_UNSUPPORTED (clé logicielle, émulateur ; nommée même au réenrôlement : elle parle
+            de l'appareil, pas du code).
           content:
             application/json:
               schema:
@@ -209,6 +236,50 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /trust/{accountId}:
+    get:
+      operationId: readTrustState
+      summary: Lit l'état de confiance d'un compte (TRUSTED, PROBATION, FROZEN) — lecture seule
+      description: |
+        ADR-041, amendement du 2026-10-24 (décision du superviseur technique). Route INTERNE du PDP
+        (mTLS cœur↔PDP, jamais servie sur le 8443), LECTURE SEULE : aucune écriture en base, aucune
+        entrée d'audit. Le cœur la consomme pour GET /mobile/v1/account (champ `state`), jamais pour
+        décider : le refus d'une sortie d'un compte gelé reste la décision de POST /evaluate (REJECTED,
+        vetoApplied ACCOUNT_FROZEN).
+
+        Les échéances passées (fin de probation CAR_IMSI, TTL de gel) sont appliquées en mémoire par
+        les mêmes règles que /evaluate : l'état renvoyé est celui que la prochaine décision
+        constaterait. Compte que le PDP n'a jamais vu (aucune ligne pdp.trust_state) : 404.
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: État de confiance du compte.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustResponse'
+              example:
+                state: FROZEN
+                since: '2026-10-24T15:48:31.529168Z'
+                probationUntil: null
+                freezeUntil: '2026-10-25T15:48:31.529168Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Aucun état de confiance pour ce compte (ACCOUNT_UNKNOWN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: ACCOUNT_UNKNOWN
+                message: no trust state for this account
+
 components:
   securitySchemes:
     mtls:
@@ -239,7 +310,7 @@ components:
     RegisterRequest:
       type: object
       additionalProperties: false
-      required: [accountId, publicKey, attestationChain, attestationChallenge, challengeSignature]
+      required: [accountId, publicKey, attestationChain, attestationChallenge, challengeSignature, origin]
       properties:
         accountId:
           type: string
@@ -258,6 +329,19 @@ components:
         challengeSignature:
           type: string
           description: Signature du défi d'attestation par la clé présentée (base64).
+        recoveryCode:
+          type: string
+          description: >-
+            Réenrôlement seulement : l'ancien code de récupération, retapé par l'usager, vérifié
+            ici avec l'attestation (ADR-041). Jamais conservé en clair par le cœur.
+        origin:
+          type: string
+          description: Origine réseau de l'appelant (adresse vue par le cœur) ; clé de comptage ADR-030.
+        installationId:
+          type: string
+          description: >-
+            Identifiant d'installation de l'application (étiquette aléatoire, ni secret ni
+            facteur) ; clé de comptage ADR-030, absent si l'application ne l'a pas envoyé.
     RegisterResponse:
       type: object
       additionalProperties: false
@@ -335,6 +419,26 @@ components:
         verdict:
           type: string
           enum: [VALID, INVALID, REVOKED]
+    TrustResponse:
+      type: object
+      additionalProperties: false
+      required: [state, since, probationUntil, freezeUntil]
+      properties:
+        state:
+          type: string
+          enum: [TRUSTED, PROBATION, FROZEN]
+        since:
+          type: string
+          format: date-time
+          description: Entrée dans l'état courant (UTC).
+        probationUntil:
+          type: [string, 'null']
+          format: date-time
+          description: Fin de la période CAR_IMSI en cours ; null hors probation.
+        freezeUntil:
+          type: [string, 'null']
+          format: date-time
+          description: Fin du gel issu d'une décision FREEZE (TTL_FREEZE) ; null hors gel, ou gel « ce n'est pas moi » (sans échéance).
     Error:
       type: object
       required: [code, message]
@@ -343,3 +447,17 @@ components:
           type: string
         message:
           type: string
+    ThrottledError:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryAfterSeconds]
+      properties:
+        code:
+          type: string
+          enum: [THROTTLED]
+        message:
+          type: string
+        retryAfterSeconds:
+          type: integer
+          minimum: 1
+          description: Reprise de l'en-tête Retry-After, lue par le cœur pour la réponse mobile 429.

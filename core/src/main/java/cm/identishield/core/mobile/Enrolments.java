@@ -34,7 +34,7 @@ public class Enrolments {
 
   private static final String INSERT_SQL =
       "INSERT INTO core.enrolment (account_id, stage, expires_at, created_at) "
-          + "VALUES (?, 'OTP', ?, ?) RETURNING id";
+          + "VALUES (?, ?, ?, ?) RETURNING id";
   private static final String FIND_SQL =
       "SELECT e.id, e.account_id, a.msisdn, e.stage, e.otp_failures, e.attestation_challenge,"
           + " e.device_id, e.expires_at FROM core.enrolment e"
@@ -46,8 +46,21 @@ public class Enrolments {
     this.jdbc = jdbc;
   }
 
+  /** Premier enrôlement (flux A) : l'OTP est la première étape. */
   public UUID open(UUID accountId, Instant now, Instant expiresAt) {
-    return jdbc.queryForObject(INSERT_SQL, UUID.class, accountId, utc(expiresAt), utc(now));
+    return open(accountId, "OTP", now, expiresAt);
+  }
+
+  /**
+   * Réenrôlement (flux D, carte B3b) : le compte est déjà lié, aucun OTP (EF-46) ; la première
+   * étape est le code de récupération, vérifié par le PDP avec l'attestation à l'étape BIND.
+   */
+  public UUID openRecovery(UUID accountId, Instant now, Instant expiresAt) {
+    return open(accountId, "RECOVERY", now, expiresAt);
+  }
+
+  private UUID open(UUID accountId, String stage, Instant now, Instant expiresAt) {
+    return jdbc.queryForObject(INSERT_SQL, UUID.class, accountId, stage, utc(expiresAt), utc(now));
   }
 
   public Optional<Enrolment> find(UUID id) {
@@ -78,11 +91,17 @@ public class Enrolments {
    * OTP validé : le défi d'attestation est émis (ES-25). Vrai si CET appel a fait la transition.
    */
   public boolean toBind(UUID id, String attestationChallenge) {
+    return toBind(id, attestationChallenge, "OTP");
+  }
+
+  /** Depuis {@code fromStage} (OTP au premier enrôlement, RECOVERY au réenrôlement). */
+  public boolean toBind(UUID id, String attestationChallenge, String fromStage) {
     return jdbc.update(
             "UPDATE core.enrolment SET stage = 'BIND', attestation_challenge = ?"
-                + " WHERE id = ? AND stage = 'OTP'",
+                + " WHERE id = ? AND stage = ?",
             attestationChallenge,
-            id)
+            id,
+            fromStage)
         == 1;
   }
 
