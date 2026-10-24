@@ -34,6 +34,11 @@ public class DeviceClient {
     String text(String field) {
       return body.get(field) instanceof String s ? s : null;
     }
+
+    /** Entier du corps, ou 0 s'il est absent ou d'une autre forme. */
+    long number(String field) {
+      return body.get(field) instanceof Number n ? n.longValue() : 0;
+    }
   }
 
   private final HttpClient http;
@@ -67,21 +72,35 @@ public class DeviceClient {
             .GET());
   }
 
-  /** POST /device/register : clé EN ATTENTE et code de récupération émis une fois. */
+  /**
+   * POST /device/register : clé EN ATTENTE et code de récupération émis une fois. Au réenrôlement,
+   * {@code recoveryCode} est l'ancien code, vérifié par le PDP avec l'attestation (ADR-041) ; le
+   * cœur ne le garde jamais. {@code origin} et {@code installationId} (peut être nul) sont les clés
+   * de comptage des échecs (ADR-030).
+   */
   public Reply register(
       String accountId,
       String publicKey,
       List<String> attestationChain,
       String attestationChallenge,
-      String challengeSignature) {
-    return post(
-        "/device/register",
-        Map.of(
-            "accountId", accountId,
-            "publicKey", publicKey,
-            "attestationChain", attestationChain,
-            "attestationChallenge", attestationChallenge,
-            "challengeSignature", challengeSignature));
+      String challengeSignature,
+      String recoveryCode,
+      String origin,
+      String installationId) {
+    Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("accountId", accountId);
+    body.put("publicKey", publicKey);
+    body.put("attestationChain", attestationChain);
+    body.put("attestationChallenge", attestationChallenge);
+    body.put("challengeSignature", challengeSignature);
+    if (recoveryCode != null) {
+      body.put("recoveryCode", recoveryCode);
+    }
+    body.put("origin", origin);
+    if (installationId != null) {
+      body.put("installationId", installationId);
+    }
+    return post("/device/register", body);
   }
 
   /**

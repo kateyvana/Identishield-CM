@@ -78,8 +78,8 @@ class MobileSessionControllerTest {
       assertEquals(400, r.getStatusCode().value(), b);
       assertEquals(Map.of("reason", "REQUEST_INVALID"), r.getBody(), b);
     }
-    assertEquals(400, controller.challenge(null).getStatusCode().value());
-    assertEquals(400, controller.challenge("x").getStatusCode().value());
+    assertEquals(400, controller.challenge(null, http).getStatusCode().value());
+    assertEquals(400, controller.challenge("x", http).getStatusCode().value());
     verifyNoInteractions(service);
   }
 
@@ -104,6 +104,6 @@ class MobileSessionControllerTest {
     assertNull(r.getHeaders().getFirst("Retry-After"));
 
     when(service.challenge(DEVICE)).thenReturn(Answer.ok(Map.of("challenge", NONCE)));
-    assertEquals(Map.of("challenge", NONCE), controller.challenge(DEVICE).getBody());
+    assertEquals(Map.of("challenge", NONCE), controller.challenge(DEVICE, http).getBody());
   }
 }

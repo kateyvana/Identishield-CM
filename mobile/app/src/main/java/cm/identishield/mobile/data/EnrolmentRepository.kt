@@ -65,24 +65,31 @@ val ContractJson =
         explicitNulls = false
     }
 
+/**
+ * Client HTTP de l'application. [installation] : identifiant d'installation (ADR-030, carte B3b),
+ * posé en en-tête sur les seules routes d'enrôlement et de défi ; null = aucun en-tête (tests).
+ */
+fun defaultHttpClient(installation: InstallationId? = null): OkHttpClient =
+    OkHttpClient
+        .Builder()
+        // MOB-NF-03 : APP_NETWORK_TIMEOUT du jeu de règles, lu à la construction.
+        .connectTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .callTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        // SPEC §7.4 : jamais de renvoi automatique. Par défaut, OkHttp rejoue une requête
+        // coupée sur une connexion réutilisée, ce qui rejouerait un envoi d'argent déjà reçu.
+        // Amendement d'ADR-037 (M-07).
+        .retryOnConnectionFailure(false)
+        // ADR-039 (D9) : une connexion inactive est rendue AVANT que le serveur ne la ferme
+        // (APP_CONN_KEEPALIVE < SERVER_CONN_KEEPALIVE) ; les lectures seules sont rejouées une fois.
+        .connectionPool(ConnectionPool(MAX_IDLE_CONNECTIONS, BuildConfig.APP_CONN_KEEPALIVE_SECONDS, TimeUnit.SECONDS))
+        .addInterceptor(ReadRetryInterceptor())
+        .apply { if (installation != null) addInterceptor(InstallationHeaderInterceptor(installation)) }
+        .build()
+
 fun buildMobileApi(
     baseUrl: String,
-    client: OkHttpClient =
-        OkHttpClient
-            .Builder()
-            // MOB-NF-03 : APP_NETWORK_TIMEOUT du jeu de règles, lu à la construction.
-            .connectTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .readTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .callTimeout(BuildConfig.NETWORK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            // SPEC §7.4 : jamais de renvoi automatique. Par défaut, OkHttp rejoue une requête
-            // coupée sur une connexion réutilisée, ce qui rejouerait un envoi d'argent déjà reçu.
-            // Amendement d'ADR-037 (M-07).
-            .retryOnConnectionFailure(false)
-            // ADR-039 (D9) : une connexion inactive est rendue AVANT que le serveur ne la ferme
-            // (APP_CONN_KEEPALIVE < SERVER_CONN_KEEPALIVE) ; les lectures seules sont rejouées une fois.
-            .connectionPool(ConnectionPool(MAX_IDLE_CONNECTIONS, BuildConfig.APP_CONN_KEEPALIVE_SECONDS, TimeUnit.SECONDS))
-            .addInterceptor(ReadRetryInterceptor())
-            .build(),
+    client: OkHttpClient = defaultHttpClient(),
 ): MobileApi =
     Retrofit
         .Builder()

@@ -33,8 +33,10 @@ public class MobileSessionController {
 
   @GetMapping("/session/challenge")
   public ResponseEntity<Map<String, Object>> challenge(
-      @RequestParam(required = false) String deviceId) {
-    if (!MobileEnrolmentController.isDeviceId(deviceId)) {
+      @RequestParam(required = false) String deviceId, HttpServletRequest http) {
+    if (!MobileEnrolmentController.isDeviceId(deviceId)
+        || MobileEnrolmentController.MALFORMED_INSTALLATION.equals(
+            MobileEnrolmentController.installationId(http))) {
       return MobileEnrolmentController.invalid();
     }
     return shapes.answer(session.challenge(deviceId));

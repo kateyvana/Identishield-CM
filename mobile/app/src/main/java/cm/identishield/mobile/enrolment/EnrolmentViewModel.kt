@@ -142,7 +142,10 @@ class EnrolmentViewModel(
     private var recovery: IssuedCode? = null
     private var redisplayUsed = false
     private var inFlight = false
-    private var rebinding = false // flux D : la clé de récupération a été validée par le serveur
+    private var rebinding = false // flux D : le défi d'attestation a été émis pour un compte déjà lié
+    // Flux D (B3b, ADR-041) : la clé de récupération tapée part à /enrolment/complete AVEC
+    // l'attestation ; le serveur la vérifie là, en une fois. Mémoire vive seulement, effacée après.
+    private var pendingRecoveryCode: String? = null
     private var beforeKeyLost: EnrolStep? = null
 
     private data class IssuedCode(
@@ -341,9 +344,12 @@ class EnrolmentViewModel(
                     publicKey = key.publicKey,
                     attestationChain = key.attestationChain,
                     challengeSignature = Base64.getEncoder().encodeToString(signature),
+                    recoveryCode = if (rebinding) pendingRecoveryCode else null, // flux D (ADR-041)
                 )
             when (val r = repository.complete(request)) {
                 is ApiResult.Ok -> {
+                    pendingRecoveryCode = null // la clé tapée a servi : elle ne vaut plus rien ici
+                    if (rebinding) throttle?.recordSuccess()
                     // L'appareil est lié dès cette réponse : on mémorise ce que le flux B exige.
                     val number = msisdn
                     val deviceId = r.value.deviceId
@@ -358,15 +364,31 @@ class EnrolmentViewModel(
                 }
                 is ApiResult.Refused -> {
                     keys.delete() // le serveur n'a pas enregistré la clé : elle ne vaut rien
+                    val wait = r.retryAfterSeconds?.let(Duration::ofSeconds)
                     _step.value =
-                        EnrolStep.Securing(
-                            SecuringStage.REGISTERING,
-                            when (r.reason) {
-                                REASON_ATTESTATION_REJECTED, REASON_DEVICE_UNSUPPORTED -> EnrolError.DEVICE_REFUSED
-                                REASON_ENROLMENT_EXPIRED -> EnrolError.SESSION_EXPIRED
-                                else -> EnrolError.UNEXPECTED
-                            },
-                        )
+                        when (r.reason) {
+                            // Flux D : la clé de récupération a été refusée ICI (ADR-041). Retour à
+                            // E-20, ou E-21 si CET appareil doit attendre ; le compte n'est jamais bloqué.
+                            REASON_RECOVERY_INVALID -> {
+                                pendingRecoveryCode = null
+                                throttle?.recordFailure(wait)?.let { EnrolStep.RecoveryWait(it) }
+                                    ?: EnrolStep.Recovery(EnrolError.RECOVERY_INVALID)
+                            }
+                            REASON_THROTTLED -> {
+                                pendingRecoveryCode = null
+                                throttle?.let { EnrolStep.RecoveryWait(it.serverWait(wait)) }
+                                    ?: EnrolStep.Recovery(EnrolError.UNEXPECTED)
+                            }
+                            else ->
+                                EnrolStep.Securing(
+                                    SecuringStage.REGISTERING,
+                                    when (r.reason) {
+                                        REASON_ATTESTATION_REJECTED, REASON_DEVICE_UNSUPPORTED -> EnrolError.DEVICE_REFUSED
+                                        REASON_ENROLMENT_EXPIRED -> EnrolError.SESSION_EXPIRED
+                                        else -> EnrolError.UNEXPECTED
+                                    },
+                                )
+                        }
                 }
                 ApiResult.Unreachable -> {
                     keys.delete() // « Connexion perdue. Recommencez. » ; la clé locale est détruite
@@ -409,21 +431,26 @@ class EnrolmentViewModel(
         // recoveryEntry() consulte le délai avant d'afficher E-20 (prouvé par les tests).
         val id = enrolmentId ?: return begin()
         val code = raw.uppercase().filter { it.isLetterOrDigit() }
+        // B3b (ADR-041 ; décision de la propriétaire du 2026-10-24) : /enrolment/recover ne vérifie
+        // RIEN ; la clé part à /enrolment/complete AVEC l'attestation, où le serveur la vérifie en une
+        // fois (le coût d'un essai est matériel, pas réseau). Après un refus à /complete, l'enrôlement
+        // est resté à l'étape BIND côté serveur : on ne redemande pas de défi, on repart à E-07.
+        if (rebinding && attestationChallenge != null) {
+            pendingRecoveryCode = code
+            _step.value = securingEntry()
+            return
+        }
         exclusive {
             when (val r = repository.recover(id, code)) {
                 is ApiResult.Ok -> {
-                    gate.recordSuccess()
                     rebinding = true
-                    attestationChallenge = r.value.attestationChallenge // ES-25 : liaison après validation
+                    pendingRecoveryCode = code
+                    attestationChallenge = r.value.attestationChallenge // ES-25 : liaison après le défi
                     _step.value = securingEntry()
                 }
                 is ApiResult.Refused ->
                     _step.value =
                         when (r.reason) {
-                            REASON_RECOVERY_INVALID ->
-                                gate.recordFailure(r.retryAfterSeconds?.let(Duration::ofSeconds))?.let { EnrolStep.RecoveryWait(it) }
-                                    ?: EnrolStep.Recovery(EnrolError.RECOVERY_INVALID)
-                            REASON_THROTTLED -> EnrolStep.RecoveryWait(gate.serverWait(r.retryAfterSeconds?.let(Duration::ofSeconds)))
                             REASON_ACCOUNT_FROZEN -> EnrolStep.Recovery(EnrolError.REENROL_FROZEN)
                             REASON_ENROLMENT_EXPIRED -> msisdn?.let { EnrolStep.Pin(it, EnrolError.SESSION_EXPIRED) } ?: EnrolStep.Number()
                             else -> EnrolStep.Recovery(EnrolError.UNEXPECTED)
@@ -505,6 +532,7 @@ class EnrolmentViewModel(
         recovery = null
         attestationChallenge = null
         enrolmentId = null
+        pendingRecoveryCode = null
         session?.token = sessionToken // mémoire vive seulement (MOB-S-10)
         when (val r = repository.account(sessionToken)) {
             is ApiResult.Ok -> _step.value = EnrolStep.Home(r.value)
@@ -526,7 +554,8 @@ class EnrolmentViewModel(
     }
 
     /** Pour les tests : aucun secret ne survit à l'arrivée sur l'accueil. */
-    internal fun holdsSecrets(): Boolean = pin != null || recovery != null || attestationChallenge != null
+    internal fun holdsSecrets(): Boolean =
+        pin != null || recovery != null || attestationChallenge != null || pendingRecoveryCode != null
 
     class Factory(
         private val repository: EnrolmentRepository,
