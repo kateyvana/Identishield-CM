@@ -284,6 +284,7 @@ def daily_without_session(junk):
     transfer = "11111111-2222-4333-8444-555555555555"
     for name, method, template, path, body in [
         ("nonce sans jeton", "POST", "/nonce", "/nonce", None),
+        ("compte sans jeton", "GET", "/account", "/account", None),
         ("historique sans jeton", "GET", "/transactions", "/transactions", None),
         (
             "titulaire sans jeton",

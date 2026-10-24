@@ -27,6 +27,11 @@ public class MobileDailyController {
 
   record CancelRequest(String nonce, String signature) {}
 
+  record TransferRequest(
+      String type, Long amountXaf, String beneficiaryId, String nonce, String signature, String pin) {}
+
+  private static final String P2P = "P2P";
+
   private static final Pattern NONCE = Pattern.compile("^[0-9a-f]{32}$");
   private static final Pattern UUID =
       Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
@@ -47,6 +52,11 @@ public class MobileDailyController {
     return guarded(http, true, daily::nonce);
   }
 
+  @GetMapping("/account")
+  public ResponseEntity<Map<String, Object>> account(HttpServletRequest http) {
+    return guarded(http, true, daily::account);
+  }
+
   @GetMapping("/transactions")
   public ResponseEntity<Map<String, Object>> transactions(HttpServletRequest http) {
     return guarded(http, true, daily::transactions);
@@ -62,6 +72,39 @@ public class MobileDailyController {
             MobileEnrolmentController.isMsisdn(msisdn)
                 ? daily.holder(s, msisdn)
                 : Answer.refused(400, "REQUEST_INVALID"));
+  }
+
+  /**
+   * Envoi signé (flux C). La signature est facultative dans la FORME (son absence est la décision
+   * REJECTED du PDP, pas une erreur de requête) ; le PIN et le nonce ne le sont pas.
+   */
+  @PostMapping("/transfers")
+  public ResponseEntity<Map<String, Object>> transfer(
+      @RequestBody String body, HttpServletRequest http) {
+    return guarded(
+        http,
+        true,
+        s -> {
+          TransferRequest r = shapes.read(body, TransferRequest.class);
+          if (r == null
+              || !P2P.equals(r.type())
+              || r.amountXaf() == null
+              || r.amountXaf() < 1
+              || !MobileEnrolmentController.isMsisdn(r.beneficiaryId())
+              || !NONCE.matcher(nullToEmpty(r.nonce())).matches()
+              || (r.signature() != null && !MobileEnrolmentController.isBase64(r.signature()))
+              || !MobileEnrolmentController.isPin(r.pin())) {
+            return Answer.refused(400, "REQUEST_INVALID");
+          }
+          return daily.transfer(
+              s,
+              r.amountXaf(),
+              r.beneficiaryId(),
+              r.nonce(),
+              r.signature(),
+              r.pin(),
+              http.getRemoteAddr());
+        });
   }
 
   @PostMapping("/transfers/{transferId}/cancel")

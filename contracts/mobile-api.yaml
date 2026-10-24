@@ -248,6 +248,10 @@ paths:
     get:
       operationId: getAccount
       summary: Solde, état du compte, opérations différées
+      description: |
+        L'état de confiance vient du PDP (route interne `GET /trust/{accountId}`, décision du
+        superviseur technique du 2026-10-24) ; un compte que le PDP n'a jamais vu est TRUSTED, l'état
+        qu'il donne lui-même à un compte sans histoire. PDP injoignable : 503 transitoire.
       responses:
         '200':
           description: Compte du titulaire de la session.
@@ -257,6 +261,8 @@ paths:
                 $ref: '#/components/schemas/Account'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /transactions:
     get:
       operationId: listTransactions

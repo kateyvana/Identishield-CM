@@ -77,6 +77,7 @@ class MobileDailyControllerTest {
       List<ResponseEntity<Map<String, Object>>> answers =
           List.of(
               controller.nonce(http),
+              controller.account(http),
               controller.transactions(http),
               controller.holder("677001101", http),
               controller.cancel(TRANSFER, cancelBody(NONCE, "c2ln"), http),
@@ -107,12 +108,14 @@ class MobileDailyControllerTest {
     when(daily.nonce(LIVE)).thenReturn(Answer.ok(Map.of("nonce", NONCE)));
     when(daily.transactions(LIVE)).thenReturn(Answer.ok(Map.of("items", List.of())));
     when(daily.holder(LIVE, "677001101")).thenReturn(Answer.ok(Map.of()));
+    when(daily.account(LIVE)).thenReturn(Answer.ok(Map.of()));
     controller.alerts(http);
     verify(tokens).touch(BEARER_VALUE, false);
     controller.nonce(http);
+    controller.account(http);
     controller.transactions(http);
     controller.holder("677001101", http);
-    verify(tokens, org.mockito.Mockito.times(3)).touch(BEARER_VALUE, true);
+    verify(tokens, org.mockito.Mockito.times(4)).touch(BEARER_VALUE, true);
   }
 
   @Test
@@ -124,6 +127,65 @@ class MobileDailyControllerTest {
       assertEquals(Map.of("reason", "REQUEST_INVALID"), r.getBody());
     }
     verifyNoInteractions(daily);
+  }
+
+  private static String transferBody(String type, String amount, String beneficiary, String pin) {
+    return "{\"type\":\""
+        + type
+        + "\",\"amountXaf\":"
+        + amount
+        + ",\"beneficiaryId\":\""
+        + beneficiary
+        + "\",\"nonce\":\""
+        + NONCE
+        + "\",\"signature\":\"c2ln\",\"pin\":\""
+        + pin
+        + "\"}";
+  }
+
+  @Test
+  void transfer_badShapes_are400_beforeAnyWork_signatureMayBeAbsentButNotMalformed() {
+    alive();
+    for (String b :
+        new String[] {
+          transferBody("CASH_OUT", "5000", "677001101", "4096"),
+          transferBody("P2P", "0", "677001101", "4096"),
+          transferBody("P2P", "\"5000\"", "677001101", "4096"),
+          transferBody("P2P", "5000", "67700", "4096"),
+          transferBody("P2P", "5000", "677001101", "40a6"),
+          "{\"type\":\"P2P\",\"amountXaf\":5000,\"beneficiaryId\":\"677001101\",\"nonce\":\"court\",\"pin\":\"4096\"}",
+          "{\"type\":\"P2P\",\"amountXaf\":5000,\"beneficiaryId\":\"677001101\",\"nonce\":\""
+              + NONCE
+              + "\",\"signature\":\"pas base64!\",\"pin\":\"4096\"}",
+          "{\"type\":\"P2P\",\"amountXaf\":5000,\"beneficiaryId\":\"677001101\",\"pin\":\"4096\"}",
+          transferBody("P2P", "5000", "677001101", "4096").replace("}", ",\"extra\":1}"),
+          "null"
+        }) {
+      ResponseEntity<Map<String, Object>> r = controller.transfer(b, http);
+      assertEquals(400, r.getStatusCode().value(), b);
+      assertEquals(Map.of("reason", "REQUEST_INVALID"), r.getBody(), b);
+    }
+    verifyNoInteractions(daily);
+  }
+
+  @Test
+  void transfer_wellFormed_reachesTheService_withTheOrigin_signatureOptional() {
+    alive();
+    when(http.getRemoteAddr()).thenReturn("100.64.0.9");
+    when(daily.transfer(LIVE, 5_000L, "677001101", NONCE, "c2ln", "4096", "100.64.0.9"))
+        .thenReturn(Answer.ok(Map.of("transferId", TRANSFER)));
+    assertEquals(
+        200,
+        controller.transfer(transferBody("P2P", "5000", "677001101", "4096"), http)
+            .getStatusCode()
+            .value());
+    when(daily.transfer(LIVE, 5_000L, "677001101", NONCE, null, "4096", "100.64.0.9"))
+        .thenReturn(Answer.ok(Map.of("transferId", TRANSFER)));
+    String unsigned =
+        "{\"type\":\"P2P\",\"amountXaf\":5000,\"beneficiaryId\":\"677001101\",\"nonce\":\""
+            + NONCE
+            + "\",\"pin\":\"4096\"}";
+    assertEquals(200, controller.transfer(unsigned, http).getStatusCode().value());
   }
 
   @Test

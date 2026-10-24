@@ -36,13 +36,19 @@ intervalle `POLL_FOREGROUND`, arrêt dès l'arrière-plan, trois preuves sur vra
 
 ## Limites déclarées
 
-- **L-B6-1 · `GET /account` non servie à ce stade.** Le contrat exige `state` (TRUSTED / PROBATION /
-  FROZEN / LOCKED), que seul le PDP connaît ; aucune route de lecture de l'état de confiance
-  n'existe dans `contracts/evaluate.yaml` (couloir A). Demande d'une route `GET /trust/{accountId}`
-  portée par le couloir A à la propriétaire et au superviseur le 2026-10-24 au soir. Le couloir B
-  n'écrit rien dans `evaluate.yaml` et n'invente pas d'état. Un virement vers un compte GELÉ est
-  quand même refusé : `/evaluate` répond `REJECTED` avec le veto `ACCOUNT_FROZEN`
-  (`EvaluateController`), que le cœur rendra 403 `ACCOUNT_FROZEN`.
+- **L-B6-1 · `GET /account.state` : route PDP `GET /trust/{accountId}` — décision consignée.**
+  Décision du superviseur technique du 2026-10-24 (transmise par le couloir A, qui la rédige en
+  amendement PROPOSÉ d'ADR-041 dans `contracts/device.yaml`, branche `t4-trust-route`) : route
+  INTERNE du PDP, lecture seule, mTLS, aucune écriture d'audit, réponse `{ state ∈
+  TRUSTED|PROBATION|FROZEN, since, probationUntil, freezeUntil }` (ISO-8601 UTC, `null` si sans
+  objet), 404 `ACCOUNT_UNKNOWN` si le PDP n'a jamais vu le compte. Le cœur recopie `state` sans
+  l'interpréter (`MobileDaily.account`). **404 → `TRUSTED`** : c'est l'état que le PDP donne
+  lui-même à un compte sans histoire (`TrustStateMachine`, « un compte jamais vu est TRUSTED »,
+  A1-5). Réserve : la première opération d'un compte jamais vu dont l'IMSI a changé dans la fenêtre
+  d'amorçage (AC-13, ISC-TM v1.3) l'enverra en PROBATION ; l'écran aura montré TRUSTED jusque-là,
+  faute d'IMSI dans une lecture. `LOCKED` (contrat) n'est jamais rendu par le PDP. Un virement
+  vers un compte GELÉ est refusé par `/evaluate` (`REJECTED`, veto `ACCOUNT_FROZEN`), que le cœur
+  rendra 403 `ACCOUNT_FROZEN`.
 - **L-B6-2 · `POST /transfers` non servie à ce stade.** `TransferService.buildRequest` (couloir A)
   envoie toujours `proofType: NONE`. Le couloir A livre la surcharge minimale sur sa branche
   `t4-transfer-proof` (record `Proof(deviceKeyId, signature, nonce)`, `operate(…, channel, Proof)`,

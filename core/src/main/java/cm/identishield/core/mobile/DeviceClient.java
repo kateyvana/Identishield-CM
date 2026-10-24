@@ -125,6 +125,19 @@ public class DeviceClient {
     return post("/device/verify", body);
   }
 
+  /**
+   * GET /trust/{accountId} (contracts/device.yaml, décision du superviseur du 2026-10-24) : l'état
+   * de confiance du compte, lecture seule, sans écriture d'audit ; 404 ACCOUNT_UNKNOWN si le PDP n'a
+   * jamais vu le compte. Le PDP énonce, le cœur recopie.
+   */
+  public Reply trust(String accountId) {
+    return send(
+        HttpRequest.newBuilder(
+                URI.create(
+                    baseUrl + "/trust/" + URLEncoder.encode(accountId, StandardCharsets.UTF_8)))
+            .GET());
+  }
+
   /** GET /nonce?accountId= (contrats/evaluate.yaml, ES-10) : nonce pour une opération signée. */
   public Reply nonceForAccount(String accountId) {
     return send(
