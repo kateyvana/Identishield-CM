@@ -236,6 +236,50 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /trust/{accountId}:
+    get:
+      operationId: readTrustState
+      summary: Lit l'état de confiance d'un compte (TRUSTED, PROBATION, FROZEN) — lecture seule
+      description: |
+        ADR-041, amendement du 2026-10-24 (décision du superviseur technique). Route INTERNE du PDP
+        (mTLS cœur↔PDP, jamais servie sur le 8443), LECTURE SEULE : aucune écriture en base, aucune
+        entrée d'audit. Le cœur la consomme pour GET /mobile/v1/account (champ `state`), jamais pour
+        décider : le refus d'une sortie d'un compte gelé reste la décision de POST /evaluate (REJECTED,
+        vetoApplied ACCOUNT_FROZEN).
+
+        Les échéances passées (fin de probation CAR_IMSI, TTL de gel) sont appliquées en mémoire par
+        les mêmes règles que /evaluate : l'état renvoyé est celui que la prochaine décision
+        constaterait. Compte que le PDP n'a jamais vu (aucune ligne pdp.trust_state) : 404.
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: État de confiance du compte.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustResponse'
+              example:
+                state: FROZEN
+                since: '2026-10-24T15:48:31.529168Z'
+                probationUntil: null
+                freezeUntil: '2026-10-25T15:48:31.529168Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Aucun état de confiance pour ce compte (ACCOUNT_UNKNOWN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: ACCOUNT_UNKNOWN
+                message: no trust state for this account
+
 components:
   securitySchemes:
     mtls:
@@ -368,6 +412,28 @@ components:
         verdict:
           type: string
           enum: [VALID, INVALID, REVOKED]
+    TrustResponse:
+      type: object
+      additionalProperties: false
+      required: [state, since, probationUntil, freezeUntil]
+      properties:
+        state:
+          type: string
+          enum: [TRUSTED, PROBATION, FROZEN]
+        since:
+          type: string
+          format: date-time
+          description: Entrée dans l'état courant (UTC).
+        probationUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: Fin de la période CAR_IMSI en cours ; null hors probation.
+        freezeUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: Fin du gel issu d'une décision FREEZE (TTL_FREEZE) ; null hors gel, ou gel « ce n'est pas moi » (sans échéance).
     Error:
       type: object
       required: [code, message]
