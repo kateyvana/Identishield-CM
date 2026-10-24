@@ -25,11 +25,17 @@ pdp_pw=$(openssl rand -hex 16)
 
 echo ">>> base jetable $NAME dans la VM ($VM)"
 ssh "$VM" "mkdir -p $DIR"
-scp -q infra/init/init.sql infra/init/01-apply.sh "$VM:$DIR/"
+scp -q infra/init/init.sql infra/init/01-apply.sh infra/init/apply-migrations.sh "$VM:$DIR/"
+ssh "$VM" "mkdir -p $DIR/migrations"
+for f in infra/init/migrations/[0-9][0-9][0-9]-*.sql; do
+  [ -e "$f" ] && scp -q "$f" "$VM:$DIR/migrations/"
+done
 ssh "$VM" "docker run -d --name $NAME \
   -e POSTGRES_USER=isc_admin -e POSTGRES_DB=identishield \
   -e POSTGRES_PASSWORD=$admin_pw -e ISC_CORE_APP_PASSWORD=$core_pw -e ISC_PDP_APP_PASSWORD=$pdp_pw \
   -v $DIR/init.sql:/opt/isc/init.sql:ro -v $DIR/01-apply.sh:/docker-entrypoint-initdb.d/01-apply.sh:ro \
+  -v $DIR/apply-migrations.sh:/opt/isc/apply-migrations.sh:ro \
+  -v $DIR/migrations:/opt/isc/migrations:ro \
   -p 127.0.0.1:$PORT:5432 postgres:16" >/dev/null
 
 echo ">>> attente de la fin d'init.sql"

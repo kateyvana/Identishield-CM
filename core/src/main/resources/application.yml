@@ -45,3 +45,20 @@ core:
     breaker:
       failure-threshold: 3
       cooldown-ms: 5000
+  # Routes /device/* du PDP (B3a) : délai DISTINCT de celui d'/evaluate, fixé d'après la mesure
+  # de la dérivation PBKDF2 du code de récupération ; le calcul est dans ADR-042.
+  device:
+    timeout-ms: 1000
+  # PIN applicatif (B3a, décision 2 ; ADR-042) : empreinte PBKDF2-HMAC-SHA256. Le nombre
+  # d'itérations est fixé par un BUDGET (une dérivation <= 50 ms en médiane sur la machine de
+  # démonstration, en régime chaud), pas par la recommandation pour mots de passe. Même nombre
+  # que le code de récupération du PDP.
+  pin:
+    pbkdf2:
+      iterations: 44000
+      salt-bytes: 16
+      key-bits: 256
+  # Comptes de test (B3a, décision 6), lus SEULEMENT sous le profil demo, depuis la source unique
+  # partagée avec le faux serveur. Le montage du fichier dans le conteneur est une carte infra.
+  demo:
+    fixtures-path: /fixtures/fixtures.json
