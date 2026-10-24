@@ -7,7 +7,15 @@ import java.time.Instant;
  * différée (STEP_UP résolu par DEFER), {@code detail} porte l'échéance d'exécution (instant UTC au
  * format ISO).
  */
-public record TransferResult(State state, String decisionId, String detail) {
+public record TransferResult(State state, String decisionId, String detail, String vetoApplied) {
+
+  /** Aucun veto : valeur du PDP pour une décision rendue par le moteur ou une opération sans /evaluate. */
+  public static final String NO_VETO = "NONE";
+
+  /** Sans veto (toutes les issues sauf un REJECTED décidé par un veto du PDP). */
+  public TransferResult(State state, String decisionId, String detail) {
+    this(state, decisionId, detail, NO_VETO);
+  }
 
   public enum State {
     EXECUTED,
@@ -25,6 +33,16 @@ public record TransferResult(State state, String decisionId, String detail) {
 
   public static TransferResult rejected(String decisionId, String detail) {
     return new TransferResult(State.REJECTED, decisionId, detail);
+  }
+
+  /**
+   * REJECTED décidé par le PDP : {@code vetoApplied} est la chaîne du PDP (ACCOUNT_FROZEN,
+   * SIGNATURE_INVALID, PROBATION_VIOLATION, …, ou NONE quand c'est le score), jamais réinterprétée
+   * par le cœur ; la route mobile en fait sa réponse (403 ACCOUNT_FROZEN / DECISION_REJECTED).
+   */
+  public static TransferResult rejected(String decisionId, String detail, String vetoApplied) {
+    return new TransferResult(
+        State.REJECTED, decisionId, detail, vetoApplied == null ? NO_VETO : vetoApplied);
   }
 
   public static TransferResult cancelled(String decisionId, String detail) {

@@ -157,6 +157,21 @@ public class TransferService {
    */
   public TransferResult operate(
       String msisdn, OperationType type, long amountXaf, String counterparty, String channel) {
+    return operate(msisdn, type, amountXaf, counterparty, channel, null);
+  }
+
+  /**
+   * Même opération, portant la {@link Proof} de l'appareil lié (route mobile, carte B6) : les
+   * trois champs partent au PDP avec {@code proofType=SIGNATURE} ; le cœur ne vérifie rien. Sans
+   * preuve ({@code proof == null} : USSD, console), {@code proofType=NONE} comme avant.
+   */
+  public TransferResult operate(
+      String msisdn,
+      OperationType type,
+      long amountXaf,
+      String counterparty,
+      String channel,
+      Proof proof) {
     Account initiator = account(msisdn);
     Instant now = clock.instant();
     // Les opérations différées échues du compte s'exécutent avant toute nouvelle opération (A3).
@@ -190,7 +205,8 @@ public class TransferService {
 
     EvaluateOutcome outcome =
         pdp.evaluate(
-            buildRequest(tx.decisionId(), initiator, type, counterparty, amountXaf, channel, now));
+            buildRequest(
+                tx.decisionId(), initiator, type, counterparty, amountXaf, channel, now, proof));
 
     if (outcome.available()) {
       if (outcome.isAllow()) {
@@ -199,9 +215,12 @@ public class TransferService {
       if (outcome.isStepUp()) {
         return resolveStepUp(tx, channel, now);
       }
-      // FREEZE (le compte est gelé par le PDP, A1) ou REJECTED : la transaction est bloquée.
+      // FREEZE (le compte est gelé par le PDP, A1) ou REJECTED : la transaction est bloquée. Le
+      // veto appliqué (ACCOUNT_FROZEN, SIGNATURE_INVALID, …, ou NONE) remonte tel quel : la route
+      // mobile en fait sa réponse, le cœur ne le réinterprète pas.
       transactions.markRejected(tx.id());
-      return TransferResult.rejected(tx.decisionId(), "decision=" + outcome.decision());
+      return TransferResult.rejected(
+          tx.decisionId(), "decision=" + outcome.decision(), outcome.vetoApplied());
     }
 
     // PDP indisponible : le fail-closed (ES-11) ne protège que les SORTIES. Une entrée (CASH_IN)
@@ -279,7 +298,8 @@ public class TransferService {
       String counterparty,
       long amountXaf,
       String channel,
-      Instant at) {
+      Instant at,
+      Proof proof) {
     Map<String, Object> req = new LinkedHashMap<>();
     req.put("decisionId", decisionId);
     req.put("accountId", from.id().toString());
@@ -301,7 +321,16 @@ public class TransferService {
     req.put("amountXaf", amountXaf);
     req.put("beneficiaryId", counterparty);
     req.put("serverTimestamp", DateTimeFormatter.ISO_INSTANT.format(at));
-    req.put("proofType", "NONE");
+    // Preuve de l'appareil lié (B6, ADR-018) : transmise telle quelle, jamais vérifiée ici ; une
+    // signature nulle part aussi (proofType SIGNATURE), et c'est le PDP qui refuse (ES-02).
+    if (proof == null) {
+      req.put("proofType", "NONE");
+    } else {
+      req.put("proofType", "SIGNATURE");
+      req.put("deviceKeyId", proof.deviceKeyId());
+      req.put("signature", proof.signature());
+      req.put("nonce", proof.nonce());
+    }
     // A4 (V4) : solde courant, que le PDP fige à l'entrée en PROBATION et compare au montant.
     req.put("balanceXaf", from.balanceXaf());
     // A4 (Q4) : date du dernier changement d'IMSI, lue dans l'historique HLR immuable (EF-08,
@@ -340,6 +369,7 @@ public class TransferService {
         beneficiaryMsisdn,
         amountXaf,
         channel,
-        clock.instant());
+        clock.instant(),
+        null);
   }
 }
