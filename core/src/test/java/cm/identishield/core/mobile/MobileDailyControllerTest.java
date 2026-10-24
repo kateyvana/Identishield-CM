@@ -35,7 +35,7 @@ class MobileDailyControllerTest {
   private static final String DEVICE = "6f0a2c1e-0000-4000-8000-000000000001";
   private static final String NONCE = "9f86d081884c7d659a2feaa0c55ad015";
   private static final String TRANSFER = "11111111-2222-4333-8444-555555555555";
-  private static final String TOKEN = "jeton-de-session";
+  private static final String BEARER_VALUE = "jeton-de-session";
   private static final LiveSession LIVE = new LiveSession(ACCOUNT, DEVICE);
 
   private final SessionTokens tokens = mock(SessionTokens.class);
@@ -62,8 +62,8 @@ class MobileDailyControllerTest {
   }
 
   private void alive() {
-    bearer(TOKEN);
-    when(tokens.touch(eq(TOKEN), anyBoolean())).thenReturn(Optional.of(LIVE));
+    bearer(BEARER_VALUE);
+    when(tokens.touch(eq(BEARER_VALUE), anyBoolean())).thenReturn(Optional.of(LIVE));
   }
 
   private static String cancelBody(String nonce, String signature) {
@@ -93,8 +93,8 @@ class MobileDailyControllerTest {
 
   @Test
   void deadToken_is401_evenWithABadlyShapedRequest() {
-    bearer(TOKEN);
-    when(tokens.touch(eq(TOKEN), anyBoolean())).thenReturn(Optional.empty());
+    bearer(BEARER_VALUE);
+    when(tokens.touch(eq(BEARER_VALUE), anyBoolean())).thenReturn(Optional.empty());
     ResponseEntity<Map<String, Object>> r = controller.cancel("pas-un-uuid", "null", http);
     assertEquals(401, r.getStatusCode().value());
     verifyNoInteractions(daily);
@@ -108,11 +108,11 @@ class MobileDailyControllerTest {
     when(daily.transactions(LIVE)).thenReturn(Answer.ok(Map.of("items", List.of())));
     when(daily.holder(LIVE, "677001101")).thenReturn(Answer.ok(Map.of()));
     controller.alerts(http);
-    verify(tokens).touch(TOKEN, false);
+    verify(tokens).touch(BEARER_VALUE, false);
     controller.nonce(http);
     controller.transactions(http);
     controller.holder("677001101", http);
-    verify(tokens, org.mockito.Mockito.times(3)).touch(TOKEN, true);
+    verify(tokens, org.mockito.Mockito.times(3)).touch(BEARER_VALUE, true);
   }
 
   @Test
