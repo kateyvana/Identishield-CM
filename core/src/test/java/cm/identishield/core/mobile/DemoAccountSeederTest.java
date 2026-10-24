@@ -3,6 +3,7 @@ package cm.identishield.core.mobile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
@@ -10,7 +11,6 @@ import cm.identishield.core.account.AccountRepository;
 import cm.identishield.core.hlr.HlrService;
 import cm.identishield.core.transfer.TransferService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -59,14 +59,22 @@ class DemoAccountSeederTest {
   }
 
   /**
-   * Aucun IMSI de démonstration n'est égal au PLACEHOLDER_IMSI du cœur (carte A5-00) : une
-   * collision serait incompréhensible à déboguer. La constante est lue dans TransferService.
+   * Carte A5-00 (#57, #80) : le cœur n'a PLUS de PLACEHOLDER_IMSI, il refuse toute opération d'un
+   * numéro sans IMSI dans le HLR. Ce test gardait auparavant « aucun IMSI de démonstration ne vaut
+   * le placeholder du cœur » en lisant la constante par réflexion ; la constante a été retirée par
+   * cette carte. Il garde maintenant deux invariants plus forts : (1) le cœur n'a aucun placeholder
+   * (si quelqu'un en réintroduit un, ce test rougit) ; (2) aucun IMSI de démonstration ne vaut
+   * l'ANCIEN littéral, qui survit dans les exports d'audit et l'historique : une collision y
+   * resterait incompréhensible à déboguer. L'amorçage inscrit chaque compte dans le HLR ({@code
+   * hlr.ensureSubscriber}) : les comptes de démonstration peuvent transiger sous A5-00.
    */
   @Test
-  void noDemoImsi_equalsTheCorePlaceholderImsi() throws Exception {
-    Field f = TransferService.class.getDeclaredField("PLACEHOLDER_IMSI");
-    f.setAccessible(true);
-    String placeholder = (String) f.get(null);
+  void noDemoImsi_equalsTheFormerPlaceholder_andTheCoreHasNone() throws Exception {
+    assertThrows(
+        NoSuchFieldException.class,
+        () -> TransferService.class.getDeclaredField("PLACEHOLDER_IMSI"),
+        "le cœur ne doit plus porter d'IMSI factice (A5-00)");
+    String placeholder = "624010000000000"; // ancien PLACEHOLDER_IMSI, retiré par A5-00
     List<String> msisdns = new ArrayList<>(List.of("677000000", "677009999"));
     new ObjectMapper()
         .readTree(Files.readString(Path.of("../tools/mobile-mock/fixtures.json")))
