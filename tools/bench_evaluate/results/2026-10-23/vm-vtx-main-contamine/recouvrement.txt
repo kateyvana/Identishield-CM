@@ -1,0 +1,6 @@
+tour 1 seq   16:48:52 -> 16:48:57  recouvrement make check B : ['16:47:26-16:49:29']
+tour 1 sq30  16:48:57 -> 16:58:57  recouvrement make check B : ['16:47:26-16:49:29']
+tour 1 sat16 16:58:57 -> 16:58:59  recouvrement make check B : aucun
+tour 2 seq   16:59:03 -> 16:59:08  recouvrement make check B : aucun
+tour 2 sq30  16:59:08 -> 17:09:08  recouvrement make check B : aucun
+tour 2 sat16 17:09:08 -> 17:09:09  recouvrement make check B : aucun

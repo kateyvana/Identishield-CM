@@ -54,7 +54,11 @@ class EvaluateLatencyBench {
   private record Case(String runId, String msisdn, String victimImsi, String beneficiary,
       String attackerImsi, long balance) {}
 
-  private record Sample(String phase, String kind, String decision, long micros, long latencyMs) {}
+  private record Sample(
+      String phase, String kind, String decision, long micros, long latencyMs, long atMs) {}
+
+  /** Origine des instants atMs (début de la phase séquentielle, après le rodage). */
+  private static volatile long origin;
 
   @Test
   void bench() throws Exception {
@@ -108,13 +112,15 @@ class EvaluateLatencyBench {
         run(c, "warmup", tag, plan.get(i % plan.size()), i % 2 == 0, out);
       }
       out.clear();
+      origin = System.nanoTime();
 
       // 1. Séquentiel : 300 FREEZE (plan AC-02 avec IMSI) + 300 ALLOW, alternés.
       for (int i = 0; i < plan.size(); i++) {
         run(c, "seq", tag, plan.get(i), true, out);
         run(c, "seq", tag, plan.get(i), false, out);
       }
-      // 2. Rythme SQ-30 : 50 requêtes/s, moitié FREEZE moitié ALLOW, 600 requêtes (12 s).
+      // 2. Rythme SQ-30 : 50 requêtes/s, moitié FREEZE moitié ALLOW, pendant ISC_BENCH_SQ30_SECONDS
+      //    (600 s par défaut : les dix minutes de SQ-30 ; 12 s jusqu'au 2026-10-23).
       paced(c, tag, plan, out);
       // 3. Saturation : 16 fils en boucle fermée, 600 requêtes.
       ExecutorService pool = Executors.newFixedThreadPool(16);
@@ -129,11 +135,12 @@ class EvaluateLatencyBench {
       }
       pool.shutdown();
 
-      StringBuilder sb = new StringBuilder("phase,kind,decision,micros,latencyMs\n");
+      StringBuilder sb = new StringBuilder("phase,kind,decision,micros,latencyMs,atMs\n");
       synchronized (out) {
         for (Sample s : out) {
           sb.append(s.phase).append(',').append(s.kind).append(',').append(s.decision).append(',')
-              .append(s.micros).append(',').append(s.latencyMs).append('\n');
+              .append(s.micros).append(',').append(s.latencyMs).append(',').append(s.atMs)
+              .append('\n');
         }
       }
       Files.writeString(Path.of(System.getenv("ISC_BENCH_OUT")), sb.toString());
@@ -146,13 +153,15 @@ class EvaluateLatencyBench {
     List<Future<?>> fs = new ArrayList<>();
     long start = System.nanoTime();
     long periodNanos = Duration.ofMillis(20).toNanos(); // 50/s
-    for (int i = 0; i < 2 * plan.size(); i++) {
+    String env = System.getenv("ISC_BENCH_SQ30_SECONDS");
+    int requests = 50 * Integer.parseInt(env == null || env.isBlank() ? "600" : env);
+    for (int i = 0; i < requests; i++) {
       long due = start + i * periodNanos;
       long wait = due - System.nanoTime();
       if (wait > 0) {
         TimeUnit.NANOSECONDS.sleep(wait);
       }
-      Case k = plan.get(i / 2);
+      Case k = plan.get((i / 2) % plan.size());
       boolean freeze = i % 2 == 0;
       fs.add(pool.submit(() -> run(c, "sq30", tag, k, freeze, out)));
     }
@@ -179,6 +188,13 @@ class EvaluateLatencyBench {
     if (!expected.equals(r.decision())) {
       throw new IllegalStateException(phase + " " + k.runId + " : " + r.decision());
     }
-    out.add(new Sample(phase, freeze ? "FREEZE" : "ALLOW", r.decision(), micros, r.latencyMs()));
+    out.add(
+        new Sample(
+            phase,
+            freeze ? "FREEZE" : "ALLOW",
+            r.decision(),
+            micros,
+            r.latencyMs(),
+            (t - origin) / 1_000_000));
   }
 }

@@ -1,0 +1,8 @@
+# Journal système Windows du poste, Microsoft-Windows-Kernel-Power, événement 105 (changement de source d'alimentation)
+# relevé le 2026-10-23 (lecture seule), capacité en mWh (pleine charge : 43030)
+heure_locale,heure_utc,AcOnline,RemainingCapacity
+10:57:02,09:57:02,true,3870
+13:46:54,12:46:54,false,43030
+15:40:38,14:40:38,true,19140
+15:45:38,14:45:38,false,21300
+16:24:03,15:24:03,true,2540
