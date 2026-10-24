@@ -5,7 +5,12 @@ SHELL := /bin/bash
 
 # MSYS_NO_PATHCONV empeche Git Bash de reecrire les chemins /... dans les arguments
 # docker ; la variable est ignoree partout ailleurs. Regle documentee dans le README.
-COMPOSE := MSYS_NO_PATHCONV=1 docker compose -f infra/docker-compose.yml
+# UNE seule commande de demarrage (ordre du superviseur du 2026-10-24) : `make up` inclut la
+# surcouche infra/compose.b3a.yml (profil Spring demo, fichier des comptes de demonstration,
+# carte #76) des que ISC_DEMO_SEED_CSV est defini dans infra/.env ; sans elle, pile sans profil
+# demo. La garde `:?` de compose.b3a.yml reste la seule source de verite sur la variable.
+DEMO_OVERLAY := $(shell grep -q '^ISC_DEMO_SEED_CSV=' infra/.env 2>/dev/null && echo -f infra/compose.b3a.yml)
+COMPOSE := MSYS_NO_PATHCONV=1 docker compose -f infra/docker-compose.yml $(DEMO_OVERLAY)
 PY      ?= $(shell command -v python >/dev/null 2>&1 && echo python || echo python3)
 GRADLE_PROJECTS := core pdp
 PY_PROJECTS     := simulator attacker hlr-agent evaluation tools/mobile-mock tools/survey
@@ -23,6 +28,7 @@ help:
 ## ---- pile ------------------------------------------------------------------
 up:
 	@bash infra/gen-secrets.sh
+	@if [ -n "$(DEMO_OVERLAY)" ]; then echo "profil demo : compose.b3a.yml inclus (ISC_DEMO_SEED_CSV dans infra/.env)"; else echo "profil demo : non (ISC_DEMO_SEED_CSV absent de infra/.env)"; fi
 	@$(COMPOSE) up -d --build --wait   # --build : jamais tourner sur une image perimee (cache Docker => quasi gratuit si rien n'a change)
 
 down:

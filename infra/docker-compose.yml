@@ -209,6 +209,10 @@ networks:
   isc-mobile:
     name: isc-mobile
     driver: bridge
+    # Nom FIXE du pont Linux : la regle DOCKER-USER de la proprietaire (L7-3, aucune sortie du
+    # sous-reseau isc-mobile) s'ecrit une fois sur ce nom, au lieu d'un br-<id> aleatoire.
+    driver_opts:
+      com.docker.network.bridge.name: br-isc-mobile
 
 volumes:
   pgdata:
