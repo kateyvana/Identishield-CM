@@ -121,6 +121,26 @@ réseau interne de la pile c'est tolérable ; dès que l'application tourne sur 
 Carte nommée, **PRIORITAIRE** — carte d'infrastructure : TLS de la surface mobile du cœur (8443,
 conforme au contrat), à régler AVANT la démonstration de soutenance.
 
+**Condition de clôture de L7 (décision de la propriétaire du 2026-10-24) : les sept tests de L7-a
+NE FERMENT PAS le point 5 d'ADR-036.** Ils prouvent le tri par port (commit `f15be65`) dans un
+MONTAGE MINIMAL : un Tomcat qui ne porte que la configuration L7-a et trois routes de sonde. Le
+point 5 exige qu'AUCUNE autre route du VRAI cœur ne soit joignable par le port publié. Or, filtre
+cassé, la traversée `/mobile/v1/../interne` est tombée en 404 et non en 200 : Spring ne
+l'aiguillait pas vers la route interne DANS CE MONTAGE ; rien ne dit qu'il en irait de même avec
+toutes les routes du cœur enregistrées. C'est le piège déjà vu pour les tests de contrat, qui
+validaient le faux serveur au lieu du vrai cœur.
+
+La preuve doit donc être REJOUÉE sur le vrai cœur déployé, interrupteur allumé, au montage de
+L7-b : par le port 8443 publié, chaque route interne réellement présente — liste à RELEVER sur le
+cœur déployé au moment de L7-b, car les routes évoluent ; relevé du 2026-10-24 sur cette branche :
+`/account`, `/audit/integrity`, `/flux`, `/hlr`, `/hlr/reassign`, `/mode`, `/notifications`,
+`/notifications/recent`, `/otp/issue`, `/otp/verify`, `/ussd/dial`, `/ussd/input`, plus `/error` et
+la racine `/` (`POST /operation` n'existe plus : remplacé par les routes USSD,
+`UssdController.java` ligne 19) —, en accès direct ET par traversée
+(`/mobile/v1/../<route>`), et les variantes `/mobile/v1x`, `/MOBILE/v1`, doit recevoir le 403 ;
+les routes `/mobile/v1/*` doivent répondre ; et par le 8080, les routes `/mobile/v1/*` doivent
+recevoir le 403. L7 n'est fermée qu'avec cette preuve, rouge/vert, copiée dans son rapport.
+
 ## L8 — Valeurs de transport
 
 - `Retry-After` du 503 SERVICE_UNAVAILABLE = délai de refroidissement du disjoncteur PDP
