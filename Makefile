@@ -13,12 +13,12 @@ PY_PROJECTS     := simulator attacker hlr-agent evaluation tools/mobile-mock too
 MOBILE_MOCK_PORT ?= 8089
 MOBILE_MOCK_DEMO ?=
 
-.PHONY: help up down reset check test abuse evaluate diagrams check-docs check-stack \
+.PHONY: help up down reset reset-db apk-publie apk-depublie check test abuse evaluate diagrams check-docs check-stack \
         build format unit arch contract secrets fictitious-msisdn named-params traceability \
         mobile-mock eval-tests
 
 help:
-	@echo "Cibles : up down reset check test abuse evaluate diagrams check-docs check-stack mobile-mock"
+	@echo "Cibles : up down reset reset-db apk-publie apk-depublie check test abuse evaluate diagrams check-docs check-stack mobile-mock"
 
 ## ---- pile ------------------------------------------------------------------
 up:
@@ -28,8 +28,33 @@ up:
 down:
 	@$(COMPOSE) down
 
+# Carte #68 (L7-2) : une fois l'APK publie (sentinelle /certs/APK-PUBLIE dans le volume isc-certs),
+# reset REFUSE : down -v detruirait l'autorite de certification epinglee par tous les telephones.
+# Le garde-fou est une commande SEULE ; s'il sort non nul, make s'arrete AVANT toute suppression.
 reset:
+	@bash tools/reset_guard.sh
 	@$(COMPOSE) down -v
+
+# Reinitialise la BASE seule (volume isc-pgdata) : l'autorite (isc-certs) et l'APK publie survivent.
+# Sert aux changements de schema apres publication. PRECONDITION inchangee : exporter la chaine
+# d'audit et la verifier intacte d'abord (regle du 2026-10-17). R-S : la cible est listee, puis
+# supprimee par une commande seule, sur une ligne a part.
+reset-db:
+	@$(COMPOSE) down
+	@docker volume ls --filter name=isc-pgdata
+	@docker volume rm isc-pgdata
+
+# Pose la sentinelle au moment de publier l'APK (acte de la proprietaire) : date, version de l'APK,
+# empreinte SHA-256 de la CA epinglee. APK_VERSION est obligatoire. La cle privee ne sort pas du volume.
+apk-publie:
+	@test -n "$(APK_VERSION)" || { echo "APK_VERSION manquante : make apk-publie APK_VERSION=<version de l'APK publie>"; exit 2; }
+	@MSYS_NO_PATHCONV=1 docker run --rm -v isc-certs:/certs -v "$(CURDIR)/tools/apk_publie.sh:/apk_publie.sh:ro" isc-tools:latest sh /apk_publie.sh "$(APK_VERSION)"
+
+# Retire la sentinelle (acte de la proprietaire, avant de publier un NOUVEL APK qui epinglera une
+# autre CA). La cible est listee, puis la suppression est une commande seule (R-S).
+apk-depublie:
+	@MSYS_NO_PATHCONV=1 docker run --rm -v isc-certs:/certs:ro alpine:latest ls -l /certs/APK-PUBLIE
+	@MSYS_NO_PATHCONV=1 docker run --rm -v isc-certs:/certs alpine:latest rm /certs/APK-PUBLIE
 
 check-stack:
 	@bash tools/check_stack.sh
