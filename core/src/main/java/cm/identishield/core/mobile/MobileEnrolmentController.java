@@ -90,8 +90,8 @@ public class MobileEnrolmentController {
   public MobileEnrolmentController(
       MobileEnrolment enrolment, ObjectMapper json, PdpClientProperties pdp) {
     this.enrolment = enrolment;
-    // Lecture stricte : aucun champ hors contrat, aucune coercition de type (B6 : « "5000" » n'est
-    // pas l'entier 5000 du contrat).
+    // Lecture stricte : aucun champ hors contrat, aucune coercition de type (B6 : un montant écrit
+    // entre guillemets n'est pas l'entier du contrat).
     this.strict =
         json.copy()
             .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
