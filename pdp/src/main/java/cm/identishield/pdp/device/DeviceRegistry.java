@@ -57,9 +57,9 @@ public class DeviceRegistry {
       "UPDATE pdp.device SET state = 'ACTIVE' WHERE id = ? AND account_id = ? AND state = 'PENDING'";
 
   /**
-   * ACTIVE → RÉVOQUÉE, la clé précédente du compte, au moment de l'ACTIVATION de la nouvelle et dans
-   * la même transaction (ES-14b, ES-20 ; décision de la propriétaire du 2026-10-24 : révoquer à
-   * l'enregistrement rouvrirait AC-02 si la confirmation n'arrivait jamais).
+   * ACTIVE → RÉVOQUÉE, la clé précédente du compte, au moment de l'ACTIVATION de la nouvelle et
+   * dans la même transaction (ES-14b, ES-20 ; décision de la propriétaire du 2026-10-24 : révoquer
+   * à l'enregistrement rouvrirait AC-02 si la confirmation n'arrivait jamais).
    */
   private static final String REVOKE_ACTIVE_SQL =
       "UPDATE pdp.device SET state = 'REVOKED', revoked_at = ? "
@@ -154,7 +154,9 @@ public class DeviceRegistry {
     jdbc.queryForList(LOCK_ACCOUNT_SQL, accountId);
   }
 
-  /** Révoque la clé ACTIVE du compte, s'il en a une ; renvoie le nombre de clés révoquées (0 ou 1). */
+  /**
+   * Révoque la clé ACTIVE du compte, s'il en a une ; renvoie le nombre de clés révoquées (0 ou 1).
+   */
   public int revokeActive(String accountId, Instant at) {
     return jdbc.update(REVOKE_ACTIVE_SQL, OffsetDateTime.ofInstant(at, ZoneOffset.UTC), accountId);
   }

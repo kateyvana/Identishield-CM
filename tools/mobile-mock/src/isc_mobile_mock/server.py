@@ -315,14 +315,23 @@ class MockState:
         frozen = acc["reenrolFrozenUntil"]
         if frozen is not None and frozen > self.clock():
             _err(403, "ACCOUNT_FROZEN")
+        # B3b (ADR-041 ; décision de la propriétaire du 2026-10-24) : cette route ne vérifie RIEN et
+        # ne garde rien ; l'application renvoie le code à /enrolment/complete, où il est vérifié
+        # avec l'attestation. Ici : défi d'attestation émis, étape BIND.
+        return self._bind(e)
+
+    def _check_recovery_at_complete(self, acc, code, origin):
+        """Réenrôlement : l'ancien code, vérifié à /enrolment/complete (ADR-041). Délai croissant
+        sur l'ORIGINE après REENROL_ATTEMPTS échecs, jamais sur le compte (ES-21) ; comptage par
+        compte pour l'alerte au téléphone lié (ES-24). Code absent = code faux."""
         now = self.clock()
         o = self.origins.setdefault(origin, {"failures": 0, "lockedUntil": None})
         if o["lockedUntil"] is not None and o["lockedUntil"] > now:
             wait = int((o["lockedUntil"] - now).total_seconds() + 0.999)
             _err(429, "THROTTLED", max(wait, 1))
-        if self._code_matches(acc, body["recoveryCode"]):
+        if code and self._code_matches(acc, code):
             o["failures"], o["lockedUntil"] = 0, None
-            return self._bind(e)
+            return
         # échec : délai croissant sur l'ORIGINE, jamais sur le compte (ES-21)
         o["failures"] += 1
         if o["failures"] >= self.p.reenrol_attempts:
@@ -344,6 +353,10 @@ class MockState:
 
     def enrolment_complete(self, body, token, origin):
         e = self._enrolment(body["enrolmentId"], "BIND")
+        if e["kind"] == "REENROL":
+            self._check_recovery_at_complete(
+                self.by_id[e["accountId"]], body.get("recoveryCode"), origin
+            )
         for cert in body["attestationChain"]:
             raw = cert.rstrip("=")
             if base64.b64decode(raw + "=" * (-len(raw) % 4))[:8] == b"SOFTWARE":  # règle de MOCK

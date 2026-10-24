@@ -19,8 +19,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * devient ACTIVE qu'après la confirmation du code de récupération retapé en entier (invariant D4).
  * Un échec ne fait jamais progresser l'état.
  *
- * <p>Enregistrement, dans l'ordre : appelant bloqué (ES-21) → refus avant tout calcul ; invariant R1
- * (amendement du 2026-10-17) : un compte qui possède déjà une clé ACTIVE EXIGE l'ancien code de
+ * <p>Enregistrement, dans l'ordre : appelant bloqué (ES-21) → refus avant tout calcul ; invariant
+ * R1 (amendement du 2026-10-17) : un compte qui possède déjà une clé ACTIVE EXIGE l'ancien code de
  * récupération, vérifié ICI, avec l'attestation, en une seule fois — jamais par une route à part,
  * qui serait un oracle ; attestation matérielle liée au défi émis par le cœur ({@link
  * AttestationVerifier}) ; signature de ce défi par la clé présentée. Seulement alors : clé EN
@@ -31,7 +31,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * invalide donnent le MÊME refus, et toutes les vérifications sont faites quoi qu'il arrive (le
  * PBKDF2 du code comme l'attestation) pour que la durée ne dise pas lequel a échoué (ES-22) ;
  * chaque échec compte pour l'origine, l'installation et le compte (ADR-030). Seule une clé
- * LOGICIELLE reste nommée (DEVICE_UNSUPPORTED) : elle parle de l'appareil de l'appelant, pas du code.
+ * LOGICIELLE reste nommée (DEVICE_UNSUPPORTED) : elle parle de l'appareil de l'appelant, pas du
+ * code.
  *
  * <p>Revue ligne à ligne requise : vérification de signature, machine à états de la clé.
  */
@@ -57,8 +58,8 @@ public class DeviceEnrolment {
 
   public enum Refusal {
     /**
-     * Compte déjà lié (R1) : code de récupération faux ou absent, attestation ou signature refusée —
-     * sans dire lequel.
+     * Compte déjà lié (R1) : code de récupération faux ou absent, attestation ou signature refusée
+     * — sans dire lequel.
      */
     RECOVERY_INVALID,
     /** Appelant bloqué après trop d'échecs (ES-21) ; {@code retryAfterSeconds} dit combien. */
@@ -114,7 +115,8 @@ public class DeviceEnrolment {
       List<Key> callerKeys) {
     Optional<DeviceKey> active = registry.findActive(accountId);
     if (active.isEmpty()) {
-      return firstEnrolment(accountId, publicKey, attestationChain, attestationChallenge, challengeSignature);
+      return firstEnrolment(
+          accountId, publicKey, attestationChain, attestationChallenge, challengeSignature);
     }
     List<Key> keys = new java.util.ArrayList<>(callerKeys);
     keys.add(Key.account(accountId));

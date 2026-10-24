@@ -14,6 +14,11 @@ Tout changement de schéma postérieur à `init.sql` est donc une **migration** 
    (décision du superviseur technique du 2026-10-24, après que les deux couloirs ont failli prendre
    le même) : un couloir qui veut écrire une migration demande son numéro au couloir A avant
    d'ouvrir le fichier, pour éviter qu'un numéro soit choisi deux fois en parallèle.
+   Un numéro attribué **n'est jamais réassigné**, même si la carte qui l'a reçu est abandonnée :
+   les trous dans la numérotation sont admis. Deux migrations de numéros voisins doivent être
+   **indépendantes** (aucune ne suppose que l'autre est passée), puisqu'elles peuvent être écrites
+   et fusionnées dans l'ordre inverse de leur attribution. Attribués : 001–003 (A), 004 = B3b,
+   005 = B4.
 2. **Chaque migration est enveloppée dans une transaction** : `BEGIN;` en première instruction,
    `COMMIT;` en dernière. Un `DROP CONSTRAINT` suivi d'un `ADD CONSTRAINT` qui échoue laisserait
    autrement la table **sans** contrainte, et `psql` valide chaque instruction séparément. La preuve
@@ -57,6 +62,10 @@ Avant la **première** migration appliquée à la base de la VM (après la fusio
 - [ ] la chaîne d'audit est **exportée** vers un fichier daté, hors du volume `isc-pgdata` ;
 - [ ] la vérification intégrale de la chaîne (`pdp.audit_verify()`) sort VERTE sur l'export ;
 - [ ] l'empreinte SHA-256 de l'export est consignée dans `docs/03-revues/`.
+
+Outil : `tools/export_audit_chain.sh` (dans la VM, `isc-pdp` arrêté ; export CSV daté, `audit_verify`,
+`audit_anchor_check`, SHA-256). Répétition générale consignée dans
+`docs/03-revues/2026-10-24-export-chaine-audit.md`.
 
 Motif : la chaîne d'audit est une contribution centrale du mémoire. Une migration
 transactionnelle qui échoue est annulée, mais le passage de 002 et des suivantes doit laisser une

@@ -73,8 +73,7 @@ class DeviceEnrolmentTest {
           mock(PlatformTransactionManager.class),
           Clock.fixed(T0, ZoneOffset.UTC));
   private static final List<Key> CALLER = List.of(Key.origin("100.64.0.9"));
-  private static final List<Key> COUNTED =
-      List.of(Key.origin("100.64.0.9"), Key.account("acc-1"));
+  private static final List<Key> COUNTED = List.of(Key.origin("100.64.0.9"), Key.account("acc-1"));
 
   private String sign(KeyPair key, byte[] data) {
     try {

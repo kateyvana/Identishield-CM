@@ -60,8 +60,7 @@ public class Enrolments {
   }
 
   private UUID open(UUID accountId, String stage, Instant now, Instant expiresAt) {
-    return jdbc.queryForObject(
-        INSERT_SQL, UUID.class, accountId, stage, utc(expiresAt), utc(now));
+    return jdbc.queryForObject(INSERT_SQL, UUID.class, accountId, stage, utc(expiresAt), utc(now));
   }
 
   public Optional<Enrolment> find(UUID id) {

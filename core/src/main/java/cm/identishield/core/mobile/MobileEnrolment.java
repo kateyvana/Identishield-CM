@@ -209,8 +209,8 @@ public class MobileEnrolment {
   }
 
   /**
-   * POST /enrolment/recover (flux D, carte B3b ; ADR-041 : « aucune route de vérification de code »).
-   * Cette route NE VÉRIFIE RIEN et ne garde rien : le code tapé est renvoyé par l'application à
+   * POST /enrolment/recover (flux D, carte B3b ; ADR-041 : « aucune route de vérification de code
+   * »). Cette route NE VÉRIFIE RIEN et ne garde rien : le code tapé est renvoyé par l'application à
    * /enrolment/complete, avec l'attestation, et c'est le PDP qui le vérifie en une seule fois, dans
    * /device/register (décision de la propriétaire du 2026-10-24, point 1 : le serveur ne détient
    * jamais un secret en clair, même transitoirement). Ici : le défi d'attestation est émis et

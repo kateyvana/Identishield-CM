@@ -6,7 +6,8 @@
     {
       "accountId": "acc-000200",
       "msisdn": "677000200",
-      "holderName": "Compte de test NEUF",
+      "holderName": "Hervé ESSOMBA",
+      "testRole": "compte-neuf-sans-appareil",
       "pin": "1234",
       "balanceXaf": 0
     },
@@ -35,7 +36,8 @@
     {
       "accountId": "acc-009999",
       "msisdn": "677009999",
-      "holderName": "Compte de test GEL",
+      "holderName": "Clarisse TCHOUAKE",
+      "testRole": "beneficiaire-scenario-gel",
       "balanceXaf": 0
     }
   ]

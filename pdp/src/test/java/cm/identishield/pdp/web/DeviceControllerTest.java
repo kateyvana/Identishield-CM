@@ -68,16 +68,31 @@ class DeviceControllerTest {
   }
 
   private final RegisterRequest register =
-      new RegisterRequest("acc-1", "cGs=", List.of("Y2VydA=="), "ZGVmaQ==", "c2ln", null, "100.64.0.9", null);
+      new RegisterRequest(
+          "acc-1", "cGs=", List.of("Y2VydA=="), "ZGVmaQ==", "c2ln", null, "100.64.0.9", null);
 
   private void willRefuse(Refusal reason) {
-    when(enrolment.register(eq("acc-1"), eq("cGs="), eq(List.of("Y2VydA==")), eq("ZGVmaQ=="), eq("c2ln"), isNull(), any()))
+    when(enrolment.register(
+            eq("acc-1"),
+            eq("cGs="),
+            eq(List.of("Y2VydA==")),
+            eq("ZGVmaQ=="),
+            eq("c2ln"),
+            isNull(),
+            any()))
         .thenReturn(new Refused(reason));
   }
 
   @Test
   void registered_is200_withDeviceIdAndCodeOnce() {
-    when(enrolment.register(eq("acc-1"), eq("cGs="), eq(List.of("Y2VydA==")), eq("ZGVmaQ=="), eq("c2ln"), isNull(), any()))
+    when(enrolment.register(
+            eq("acc-1"),
+            eq("cGs="),
+            eq(List.of("Y2VydA==")),
+            eq("ZGVmaQ=="),
+            eq("c2ln"),
+            isNull(),
+            any()))
         .thenReturn(new Registered("dev-1", "K7MQ3X"));
     ResponseEntity<Object> r = controller.register(register);
     assertEquals(200, r.getStatusCode().value());
@@ -91,12 +106,19 @@ class DeviceControllerTest {
     assertEquals(401, invalid.getStatusCode().value());
     assertEquals("RECOVERY_INVALID", ((ApiError) invalid.getBody()).code());
     when(enrolment.register(
-            eq("acc-1"), eq("cGs="), eq(List.of("Y2VydA==")), eq("ZGVmaQ=="), eq("c2ln"), isNull(), any()))
+            eq("acc-1"),
+            eq("cGs="),
+            eq(List.of("Y2VydA==")),
+            eq("ZGVmaQ=="),
+            eq("c2ln"),
+            isNull(),
+            any()))
         .thenReturn(new Refused(Refusal.THROTTLED, 37));
     ResponseEntity<Object> throttled = controller.register(register);
     assertEquals(429, throttled.getStatusCode().value());
     assertEquals("37", throttled.getHeaders().getFirst("Retry-After"));
-    assertEquals(new ThrottledError("THROTTLED", "too many failed attempts", 37), throttled.getBody());
+    assertEquals(
+        new ThrottledError("THROTTLED", "too many failed attempts", 37), throttled.getBody());
 
     willRefuse(Refusal.ATTESTATION_REJECTED);
     ResponseEntity<Object> rejected = controller.register(register);

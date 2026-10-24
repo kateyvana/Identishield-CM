@@ -733,7 +733,7 @@ components:
           $ref: '#/components/schemas/Base64'
         recoveryCode:
           type: string
-          description: >-
+          description: |
             Flux D seulement : l'ancien code de récupération, retapé, vérifié par le PDP avec
             l'attestation (ADR-041 ; décision de la propriétaire du 2026-10-24). Absent au premier
             enrôlement.

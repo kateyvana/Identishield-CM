@@ -20,17 +20,21 @@ from conftest import (
 V1 = "/mobile/v1"
 
 
-def _complete(mock, enrolment_id):
-    r = mock.call(
-        "POST",
-        f"{V1}/enrolment/complete",
-        {
-            "enrolmentId": enrolment_id,
-            "publicKey": b64("cle-publique"),
-            "attestationChain": [b64("certificat-feuille"), b64("certificat-racine")],
-            "challengeSignature": SIG,
-        },
-    )
+def _complete_raw(mock, enrolment_id, code=None):
+    """B3b : au réenrôlement, l'ancien code part AVEC l'attestation (ADR-041)."""
+    body = {
+        "enrolmentId": enrolment_id,
+        "publicKey": b64("cle-publique"),
+        "attestationChain": [b64("certificat-feuille"), b64("certificat-racine")],
+        "challengeSignature": SIG,
+    }
+    if code is not None:
+        body["recoveryCode"] = code
+    return mock.call("POST", f"{V1}/enrolment/complete", body)
+
+
+def _complete(mock, enrolment_id, code=None):
+    r = _complete_raw(mock, enrolment_id, code)
     assert r.status == 200, r.body
     return r.body
 
@@ -72,7 +76,7 @@ def test_flow_a_binding_is_active_only_after_the_code_is_confirmed(mock):
         "enrolmentId"
     ]
     assert _recover(mock, eid, RECOVERY).status == 200
-    issued = _complete(mock, eid)
+    issued = _complete(mock, eid, RECOVERY)  # B3b : le code part avec l'attestation (ADR-041)
     device = issued["deviceId"]
     ch = mock.call("GET", f"{V1}/session/challenge?deviceId={device}").body["challenge"]
     body = {
@@ -243,16 +247,17 @@ def test_flow_d_two_failures_retry_after_then_success(mock):
         "enrolmentId"
     ]
     bad = "A" * PARAMS.code_length
+    # B3b (ADR-041) : /recover ne vérifie rien ; le code est vérifié à /complete, avec l'attestation.
+    r = _recover(mock, eid, bad)
+    assert r.status == 200 and r.body["next"] == "BIND"
     for _ in range(PARAMS.reenrol_attempts):
-        r = _recover(mock, eid, bad)
+        r = _complete_raw(mock, eid, bad)
         assert (r.status, r.body["reason"]) == (401, "RECOVERY_INVALID")
-    r = _recover(mock, eid, RECOVERY)  # même avec la bonne clé : l'origine attend
+    r = _complete_raw(mock, eid, RECOVERY)  # même avec la bonne clé : l'origine attend
     assert (r.status, r.body["reason"]) == (429, "THROTTLED")
     assert int(r.headers["Retry-After"]) == int(PARAMS.lock_base.total_seconds())
     mock.clock.advance(PARAMS.lock_base)
-    r = _recover(mock, eid, RECOVERY)
-    assert r.status == 200 and r.body["next"] == "BIND"
-    issued = _complete(mock, eid)
+    issued = _complete(mock, eid, RECOVERY)
     assert issued["deviceId"] != BOUND_DEVICE
     assert _confirm(mock, issued).status == 200
     # ancien téléphone : jeton invalide, puis KEY_REVOKED ; notification informative (EF-47)
@@ -280,12 +285,16 @@ def test_flow_d_retry_after_doubles_and_account_never_blocked(mock):
         "enrolmentId"
     ]
     bad = "A" * PARAMS.code_length
+    assert _recover(mock, eid, bad).status == 200  # rien n'est vérifié ici (ADR-041)
     for _ in range(PARAMS.reenrol_attempts):
-        _recover(mock, eid, bad)
+        _complete_raw(mock, eid, bad)
     mock.clock.advance(PARAMS.lock_base)
-    assert _recover(mock, eid, bad).status == 401
-    r = _recover(mock, eid, bad)
+    assert _complete_raw(mock, eid, bad).status == 401
+    r = _complete_raw(mock, eid, bad)
     assert int(r.headers["Retry-After"]) == int(2 * PARAMS.lock_base.total_seconds())
+    # un code absent vaut un code faux : même refus
+    mock.clock.advance(2 * PARAMS.lock_base)
+    assert _complete_raw(mock, eid, None).status == 401
     # le titulaire, sur son téléphone lié, n'est jamais bloqué (ES-21)
     assert mock.session()
 

@@ -85,7 +85,8 @@ class DeviceEnrolmentDbTest {
     EnrolmentThrottle throttle = new EnrolmentThrottle(jdbc, clock, rs);
     String origin = "100.64.0." + (int) (Math.random() * 250);
     List<EnrolmentThrottle.Key> keys =
-        List.of(EnrolmentThrottle.Key.origin(origin + "/" + acc), EnrolmentThrottle.Key.account(acc));
+        List.of(
+            EnrolmentThrottle.Key.origin(origin + "/" + acc), EnrolmentThrottle.Key.account(acc));
     long attempts = rs.integer("REENROL_ATTEMPTS");
     for (int i = 1; i < attempts; i++) {
       throttle.failed(keys);
@@ -93,7 +94,9 @@ class DeviceEnrolmentDbTest {
     }
     throttle.failed(keys);
     assertEquals(
-        Optional.of(rs.duration("LOCK_BASE").toSeconds()), throttle.lockedFor(keys), "N-ième : LOCK_BASE");
+        Optional.of(rs.duration("LOCK_BASE").toSeconds()),
+        throttle.lockedFor(keys),
+        "N-ième : LOCK_BASE");
     // Le compte est compté, jamais bloqué.
     assertTrue(throttle.lockedFor(List.of(EnrolmentThrottle.Key.account(acc))).isEmpty());
     assertEquals(
@@ -133,15 +136,18 @@ class DeviceEnrolmentDbTest {
             new AttestationVerifier(),
             registry,
             codes,
-            new EnrolmentThrottle(jdbc, java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC), TestRuleSet.load()),
+            new EnrolmentThrottle(
+                jdbc, java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC), TestRuleSet.load()),
             new org.springframework.jdbc.datasource.DataSourceTransactionManager(ds),
             java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC));
     String old = registry.registerPending(acc, "cGs=", T0);
     String oldCode = codes.issue(old, T0);
-    assertTrue(enrolment.activate(acc, old, oldCode), "première activation : aucune clé à révoquer");
+    assertTrue(
+        enrolment.activate(acc, old, oldCode), "première activation : aucune clé à révoquer");
     String fresh = registry.registerPending(acc, "cGsy", T0);
     String freshCode = codes.issue(fresh, T0);
-    // Code faux : rien ne bouge, l'ancienne reste ACTIVE (la révocation est annulée avec la transaction).
+    // Code faux : rien ne bouge, l'ancienne reste ACTIVE (la révocation est annulée avec la
+    // transaction).
     assertFalse(enrolment.activate(acc, fresh, "WRONG1"));
     assertEquals(Optional.of("ACTIVE"), registry.stateOf(acc, old));
     assertEquals(Optional.of("PENDING"), registry.stateOf(acc, fresh));

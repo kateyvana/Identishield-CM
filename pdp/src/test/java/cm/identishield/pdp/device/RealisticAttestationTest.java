@@ -64,6 +64,7 @@ class RealisticAttestationTest {
             new AttestationVerifier(),
             registry,
             codes,
+            mock(EnrolmentThrottle.class),
             mock(PlatformTransactionManager.class),
             Clock.fixed(T0, ZoneOffset.UTC));
     Signature s = Signature.getInstance("SHA256withECDSA");
@@ -76,7 +77,9 @@ class RealisticAttestationTest {
             spki(device.getPublic()),
             chain(root, intermediate, device, realisticKeyDescription(CHALLENGE, TEE)),
             Base64.getEncoder().encodeToString(CHALLENGE),
-            Base64.getEncoder().encodeToString(s.sign()));
+            Base64.getEncoder().encodeToString(s.sign()),
+            null,
+            List.of(EnrolmentThrottle.Key.origin("100.64.0.9")));
 
     assertInstanceOf(Registered.class, r);
   }

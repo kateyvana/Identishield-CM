@@ -180,17 +180,33 @@ class MobileEnrolmentTest {
   void complete_withTheOldCode_passesItToThePdp_andMapsItsVerdicts() {
     enrolmentAt("BIND", NOW.plusSeconds(60));
     when(device.register(
-            anyString(), anyString(), any(), anyString(), anyString(), eq("OLD123"), eq(ORIGIN), any()))
+            anyString(),
+            anyString(),
+            any(),
+            anyString(),
+            anyString(),
+            eq("OLD123"),
+            eq(ORIGIN),
+            any()))
         .thenReturn(reply(401, Map.of("code", "RECOVERY_INVALID")));
-    Answer invalid = service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", "OLD123", ORIGIN, null);
+    Answer invalid =
+        service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", "OLD123", ORIGIN, null);
     assertEquals(new Answer(401, Map.of("reason", "RECOVERY_INVALID"), false, 0), invalid);
     // L'enrôlement reste en BIND : l'usager retape son code.
     verify(enrolments, never()).consume(any(), anyString());
 
     when(device.register(
-            anyString(), anyString(), any(), anyString(), anyString(), eq("OLD123"), eq(ORIGIN), any()))
+            anyString(),
+            anyString(),
+            any(),
+            anyString(),
+            anyString(),
+            eq("OLD123"),
+            eq(ORIGIN),
+            any()))
         .thenReturn(reply(429, Map.of("code", "THROTTLED", "retryAfterSeconds", 90)));
-    Answer throttled = service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", "OLD123", ORIGIN, null);
+    Answer throttled =
+        service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", "OLD123", ORIGIN, null);
     assertEquals(429, throttled.status());
     assertEquals(90, throttled.throttledSeconds());
     assertEquals(Map.of("reason", "THROTTLED"), throttled.body());
@@ -272,7 +288,9 @@ class MobileEnrolmentTest {
     when(session.prove(ACCOUNT, DEVICE, nonce, "c2ln"))
         .thenReturn(new MobileSession.Outcome(MobileSession.Proof.UNAVAILABLE, null));
     assertEquals(503, service.start(MSISDN, PIN, ORIGIN, DEVICE, nonce, "c2ln").status());
-    verifyNoInteractions(otp, sms, enrolments);
+    // Seule la signature INVALIDE ouvre un enrôlement RECOVERY (B3b) ; jamais d'OTP.
+    verify(enrolments).openRecovery(eq(ACCOUNT), any(), any());
+    verifyNoInteractions(otp, sms);
   }
 
   // ---- otp ------------------------------------------------------------------------------------
@@ -312,7 +330,8 @@ class MobileEnrolmentTest {
   @Test
   void registered_returnsTheCodeOnce_andMovesToConfirm() {
     enrolmentAt("BIND", NOW.plusSeconds(60));
-    when(device.register(anyString(), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
+    when(device.register(
+            anyString(), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
         .thenReturn(reply(200, Map.of("deviceId", DEVICE, "recoveryCode", "ABCDEF")));
     when(enrolments.toConfirm(ENROLMENT, DEVICE)).thenReturn(true);
 
@@ -321,13 +340,22 @@ class MobileEnrolmentTest {
     assertEquals(200, a.status());
     assertEquals(DEVICE, a.body().get("deviceId"));
     verify(device)
-        .register(ACCOUNT.toString(), "cGs=", List.of("Y2VydA=="), "Y2hhbGxlbmdl", "c2ln", null, ORIGIN, null);
+        .register(
+            ACCOUNT.toString(),
+            "cGs=",
+            List.of("Y2VydA=="),
+            "Y2hhbGxlbmdl",
+            "c2ln",
+            null,
+            ORIGIN,
+            null);
   }
 
   @Test
   void softwareKey_isDeviceUnsupported() {
     enrolmentAt("BIND", NOW.plusSeconds(60));
-    when(device.register(anyString(), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
+    when(device.register(
+            anyString(), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
         .thenReturn(reply(422, Map.of("code", "DEVICE_UNSUPPORTED")));
 
     assertEquals(
@@ -338,7 +366,8 @@ class MobileEnrolmentTest {
   @Test
   void pdpDownDuringComplete_keepsTheEnrolment() {
     enrolmentAt("BIND", NOW.plusSeconds(60));
-    when(device.register(anyString(), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
+    when(device.register(
+            anyString(), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
         .thenReturn(Reply.unreachable());
 
     Answer a = service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", null, ORIGIN, null);
@@ -351,13 +380,16 @@ class MobileEnrolmentTest {
   @Test
   void raceLostToAnotherBinding_is410_identicalToAnExpiredEnrolment() {
     enrolmentAt("BIND", NOW.plusSeconds(60));
-    when(device.register(anyString(), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
+    when(device.register(
+            anyString(), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
         .thenReturn(reply(401, Map.of("code", "RECOVERY_INVALID")));
-    Answer race = service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", null, ORIGIN, null);
+    Answer race =
+        service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", null, ORIGIN, null);
     verify(enrolments).consume(ENROLMENT, "BIND");
 
     enrolmentAt("BIND", NOW);
-    Answer expired = service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", null, ORIGIN, null);
+    Answer expired =
+        service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln", null, ORIGIN, null);
 
     assertEquals(new Answer(410, Map.of("reason", "ENROLMENT_EXPIRED"), false, 0), race);
     assertEquals(race, expired);

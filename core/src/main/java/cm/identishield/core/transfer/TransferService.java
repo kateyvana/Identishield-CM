@@ -284,11 +284,10 @@ public class TransferService {
     req.put("decisionId", decisionId);
     req.put("accountId", from.id().toString());
     req.put("msisdn", from.msisdn());
-    // IMSI courant résolu depuis le HLR (T2-10) ; PLACEHOLDER seulement si le numéro n'a pas encore
-    // d'IMSI enregistré. Le MOTIF d'une éventuelle réattribution N'EST JAMAIS ajouté ici : le cœur
-    // ne
-    // transmet pas le motif au PDP (ES-16b), il ne fait que le journaliser côté HLR.
-    // IMSI courant du HLR : garanti présent à ce stade (voir le refus A5-00 dans operate()).
+    // IMSI courant résolu depuis le HLR (T2-10), garanti présent à ce stade : operate() a refusé
+    // l'opération sinon (A5-00, #57 ; plus aucun IMSI de remplacement). Le MOTIF d'une éventuelle
+    // réattribution N'EST JAMAIS ajouté ici : le cœur ne transmet pas le motif au PDP (ES-16b), il
+    // ne fait que le journaliser côté HLR.
     req.put(
         "currentImsi",
         hlr.currentImsi(from.msisdn())

@@ -130,6 +130,18 @@ services:
       - ../config:/config:ro # jeu de regles versionne (CAP_PROB), source unique
     networks:
       - isc-net
+      # L7-b (carte #67) : surface mobile du coeur sur un reseau DEDIE, bridge non interne, pour
+      # pouvoir publier le 8443 ; aucun autre service n'y est attache. Le PDP, isc-sim et postgres
+      # restent sur isc-net interne. Sans la regle DOCKER-USER (prerequis de la proprietaire,
+      # L7-3), ce reseau donnerait au coeur une sortie Internet : la pile demarre quand meme, mais
+      # l'isolement du coeur n'est acquis qu'une fois la regle en place.
+      - isc-mobile
+    # Port publie sur l'adresse Tailscale de la VM, variable obligatoire du .env (ISC_MOBILE_BIND).
+    # Non defini -> docker compose echoue avec un message qui nomme la variable. 127.0.0.1 par
+    # defaut en developpement local (gen-secrets.sh). Au mois 4, le connecteur HTTPS n'ecoute pas
+    # encore sur 8443 : la publication reserve le port, le listener Spring arrive avec la carte B.
+    ports:
+      - "${ISC_MOBILE_BIND:?ISC_MOBILE_BIND doit etre defini dans infra/.env (adresse Tailscale de la VM, ex. 100.93.166.19 ; defaut local 127.0.0.1)}:8443:8443"
 
   # Console operateur : lit GET /flux du coeur (isc-net) et l'affiche en temps reel
   # (EF-30). Sur isc-web (bridge) pour etre joignable au navigateur (port publie) ;
@@ -151,8 +163,13 @@ services:
     networks:
       - isc-net
       - isc-web
+    # #66 (L7-1) : la console permet de desactiver la couche (POST /api/mode) et affichera les
+    # SMS simules. Elle n'est donc joignable QUE depuis la VM elle-meme (boucle locale) : depuis
+    # le poste, par tunnel SSH (docs/03-revues/2026-10-24-console-boucle-locale.md). Les portes
+    # verify_* l'appellent en localhost depuis la VM : inchangees. La regle d'acces Tailscale
+    # (acte de la proprietaire) reste le remede principal ; ceci est la seconde barriere.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   # Reseau SMS simule (isc-sim) : recoit l'OTP livre par le coeur (POST /deliver, appel
   # coeur->reseau, comme vers une passerelle SMS) et laisse lire la boite d'un IMSI (GET
@@ -183,6 +200,14 @@ networks:
   # le PDP et postgres restent sur isc-net interne, jamais exposes a l'hote.
   isc-web:
     name: isc-web
+    driver: bridge
+  # L7-b (carte #67) : reseau DEDIE a la surface mobile du coeur, bridge non interne. Seul le
+  # coeur y est attache, et seul le 8443 y est publie (sur ISC_MOBILE_BIND). Separe d'isc-web
+  # pour que la console ne gagne pas une seconde attache non interne, et que le coeur n'ait
+  # jamais la console dans son chemin reseau. Sortie Internet coupee par la regle DOCKER-USER :
+  # L7-3, prerequis de la proprietaire, sans quoi l'isolement du coeur n'est pas acquis.
+  isc-mobile:
+    name: isc-mobile
     driver: bridge
 
 volumes:

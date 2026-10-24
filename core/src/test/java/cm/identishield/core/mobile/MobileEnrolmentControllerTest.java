@@ -136,13 +136,22 @@ class MobileEnrolmentControllerTest {
   void complete_acceptsAnOptionalRecoveryCode_ofTheRightShape_andPassesTheOrigin() {
     String id = "00000000-0000-4000-8000-0000000000e1";
     String base =
-        "{\"enrolmentId\":\"" + id + "\",\"publicKey\":\"cGs=\",\"attestationChain\":[\"Y2VydA==\"],"
+        "{\"enrolmentId\":\""
+            + id
+            + "\",\"publicKey\":\"cGs=\",\"attestationChain\":[\"Y2VydA==\"],"
             + "\"challengeSignature\":\"c2ln\"";
     when(service.complete(
-            java.util.UUID.fromString(id), "cGs=", java.util.List.of("Y2VydA=="), "c2ln", "K7MQ3X", "10.0.0.7", null))
+            java.util.UUID.fromString(id),
+            "cGs=",
+            java.util.List.of("Y2VydA=="),
+            "c2ln",
+            "K7MQ3X",
+            "10.0.0.7",
+            null))
         .thenReturn(Answer.ok(Map.of("enrolmentId", id)));
     assertEquals(
-        200, controller.complete(base + ",\"recoveryCode\":\"K7MQ3X\"}", http).getStatusCode().value());
+        200,
+        controller.complete(base + ",\"recoveryCode\":\"K7MQ3X\"}", http).getStatusCode().value());
     assertEquals(
         400,
         controller.complete(base + ",\"recoveryCode\":\"k7\"}", http).getStatusCode().value(),

@@ -142,7 +142,15 @@ class MobileEnrolmentDbTest {
     DeviceClient device = mock(DeviceClient.class);
     SmsGateway sms = mock(SmsGateway.class);
     when(device.state(acc.toString())).thenReturn(new Reply(200, Map.of("state", "NONE")));
-    when(device.register(eq(acc.toString()), anyString(), any(), anyString(), anyString(), any(), anyString(), any()))
+    when(device.register(
+            eq(acc.toString()),
+            anyString(),
+            any(),
+            anyString(),
+            anyString(),
+            any(),
+            anyString(),
+            any()))
         .thenReturn(new Reply(200, Map.of("deviceId", DEVICE, "recoveryCode", "ABCDEF")));
     when(device.activate(acc.toString(), DEVICE, "ABCDEF"))
         .thenReturn(new Reply(200, Map.of("deviceId", DEVICE)));
@@ -177,7 +185,8 @@ class MobileEnrolmentDbTest {
     verify(sms).deliver(eq(imsi(msisdn)), code.capture());
 
     assertEquals("BIND", service.otp(id, code.getValue()).body().get("next"));
-    Answer complete = service.complete(id, "cGs=", List.of("Y2VydA=="), "c2ln", null, "100.64.0.9", null);
+    Answer complete =
+        service.complete(id, "cGs=", List.of("Y2VydA=="), "c2ln", null, "100.64.0.9", null);
     assertEquals("ABCDEF", complete.body().get("recoveryCode"));
     assertEquals(0, sessionsOf(acc), "arrêt après complete : aucune session, rien d'utilisable");
 
