@@ -422,6 +422,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /alerts/{alertId}/not-me:
     post:
       operationId: denyAlert
@@ -449,6 +451,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /recovery-code/rotate:
     post:
       operationId: rotateRecoveryCode

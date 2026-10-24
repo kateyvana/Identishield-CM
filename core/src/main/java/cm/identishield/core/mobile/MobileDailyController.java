@@ -136,6 +136,41 @@ public class MobileDailyController {
     return guarded(http, false, daily::alerts);
   }
 
+  /** « C'est moi » (E-24) : réponse signée sur l'appareil lié. */
+  @PostMapping("/alerts/{alertId}/ack")
+  public ResponseEntity<Map<String, Object>> acknowledge(
+      @PathVariable String alertId, @RequestBody String body, HttpServletRequest http) {
+    return signedAlertAnswer(alertId, body, http, daily::acknowledge);
+  }
+
+  /** « Ce n'est pas moi » (E-24, ES-27) : réponse signée sur l'appareil lié. */
+  @PostMapping("/alerts/{alertId}/not-me")
+  public ResponseEntity<Map<String, Object>> deny(
+      @PathVariable String alertId, @RequestBody String body, HttpServletRequest http) {
+    return signedAlertAnswer(alertId, body, http, daily::deny);
+  }
+
+  interface AlertAnswer {
+    Answer apply(LiveSession s, java.util.UUID alertId, String nonce, String signature);
+  }
+
+  private ResponseEntity<Map<String, Object>> signedAlertAnswer(
+      String alertId, String body, HttpServletRequest http, AlertAnswer answer) {
+    return guarded(
+        http,
+        true,
+        s -> {
+          CancelRequest r = shapes.read(body, CancelRequest.class);
+          if (r == null
+              || !UUID.matcher(alertId).matches()
+              || !NONCE.matcher(nullToEmpty(r.nonce())).matches()
+              || !MobileEnrolmentController.isBase64(r.signature())) {
+            return Answer.refused(400, "REQUEST_INVALID");
+          }
+          return answer.apply(s, java.util.UUID.fromString(alertId), r.nonce(), r.signature());
+        });
+  }
+
   private ResponseEntity<Map<String, Object>> guarded(
       HttpServletRequest http, boolean userActivity, Function<LiveSession, Answer> route) {
     return shapes.answer(
