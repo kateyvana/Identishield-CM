@@ -2,14 +2,20 @@
 # Le fichier partagé docker-compose.yml n'est PAS modifié : cette surcouche s'active en passant
 # les deux fichiers à la commande, depuis infra/ :
 #   docker compose -f docker-compose.yml -f compose.b3a.yml up -d --build
-# Elle ne fait que deux choses, sur le seul service core :
+# Elle ne fait que trois choses, sur le seul service core :
 #   - profil Spring « demo » : l'amorçage des comptes de test (DemoAccountSeeder) ne s'exécute
 #     que sous ce profil ;
 #   - montage en lecture seule de la source unique des comptes de test, partagée avec le faux
-#     serveur (tools/mobile-mock/fixtures.json), au chemin lu par core.demo.fixtures-path.
+#     serveur (tools/mobile-mock/fixtures.json), au chemin lu par core.demo.fixtures-path ;
+#   - montage en lecture seule du fichier des comptes nominatifs de la démonstration (carte #76),
+#     qui porte des PIN et vit HORS du dépôt (dans la VM : /home/isc/.isc/seed-comptes-demo.csv,
+#     dossier 700, fichier 600, déposé par la propriétaire). Son chemin vient de la variable
+#     ISC_DEMO_SEED_CSV du fichier infra/.env (jamais versionné) ; sans elle, Compose REFUSE de
+#     démarrer en nommant la cause, au lieu de monter un dossier vide en silence.
 services:
   core:
     environment:
       SPRING_PROFILES_ACTIVE: demo
     volumes:
       - ../tools/mobile-mock/fixtures.json:/fixtures/fixtures.json:ro
+      - ${ISC_DEMO_SEED_CSV:?ISC_DEMO_SEED_CSV manquante dans infra/.env — chemin absolu du fichier seed-comptes-demo.csv, hors depot}:/fixtures/seed-comptes-demo.csv:ro
