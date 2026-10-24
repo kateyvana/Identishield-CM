@@ -6,6 +6,9 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
@@ -23,6 +26,7 @@ import cm.identishield.mobile.daily.BeneficiaryScreen
 import cm.identishield.mobile.daily.DailyError
 import cm.identishield.mobile.daily.DailyHomeScreen
 import cm.identishield.mobile.daily.DailyStep
+import cm.identishield.mobile.daily.isSignedIn
 import cm.identishield.mobile.daily.DailyViewModel
 import cm.identishield.mobile.daily.DeferredScreen
 import cm.identishield.mobile.daily.HistoryScreen
@@ -257,8 +261,16 @@ private fun DailyRoot(
             alerts.sessionLossHandled()
         }
     }
-    // Flux F : interrogation à l'ouverture puis toutes les POLL_FOREGROUND, tant que l'accueil est affiché.
-    if (step is DailyStep.Home) LaunchedEffect(Unit) { alerts.pollWhileForeground() }
+    // Flux F + L-B4-2 (B6) : requête automatique à l'ouverture puis toutes les POLL_FOREGROUND, sur
+    // TOUT écran du quotidien, tant que l'application est au premier plan (RESUMED) ; arrêt dès
+    // l'arrière-plan, reprise au retour. Le serveur ne la compte pas comme activité (userActivity
+    // faux) : l'inactivité APP_SESSION_TTL tombe quand même, et l'arrière-plan tue le jeton en 60 s.
+    if (step.isSignedIn()) {
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(lifecycle) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { alerts.pollWhileForeground() }
+        }
+    }
     if (step is DailyStep.Home && alertsScreen != AlertsScreen.None) {
         val detail = alertsScreen as? AlertsScreen.Detail
         BackHandler(enabled = detail?.busy != true) { alerts.back() }

@@ -114,6 +114,69 @@ class SignatureVerifierTest {
     assertEquals(ChallengeVerdict.INVALID, verifier.verifyChallenge(ACCOUNT, KEY_ID, "", "c2ln"));
   }
 
+  // ---- chaîne canonique avec nonce nommé à part (carte B6 : annulation signée) -----------------
+
+  private static final String CANCEL_CHAIN = ACCOUNT + "|CANCEL|tr-000001|" + NONCE;
+
+  @Test
+  void signedChainWithExplicitNonce_isValid_andOnlyTheNonceIsConsumed_neverTheChain()
+      throws Exception {
+    assertEquals(
+        ChallengeVerdict.VALID,
+        verifier.verifyChallenge(
+            ACCOUNT, KEY_ID, CANCEL_CHAIN, sign(device.getPrivate(), CANCEL_CHAIN), NONCE));
+    verify(nonces).consume(NONCE, ACCOUNT);
+    verify(nonces, never()).consume(CANCEL_CHAIN, ACCOUNT);
+  }
+
+  @Test
+  void explicitNonce_mustBeTheLastFieldOfTheChain_otherwiseInvalidBeforeAnyKeyIsRead()
+      throws Exception {
+    String other = "f" + NONCE.substring(1);
+    // Chaîne signée correctement, mais le nonce que l'appelant veut consommer n'y figure pas :
+    // sinon un nonce étranger serait brûlé sur la foi d'une signature portant sur autre chose.
+    assertEquals(
+        ChallengeVerdict.INVALID,
+        verifier.verifyChallenge(
+            ACCOUNT, KEY_ID, CANCEL_CHAIN, sign(device.getPrivate(), CANCEL_CHAIN), other));
+    // Nonce présent dans la chaîne mais ailleurs qu'en dernier champ : refusé aussi.
+    String misplaced = ACCOUNT + "|" + NONCE + "|CANCEL|tr-000001";
+    assertEquals(
+        ChallengeVerdict.INVALID,
+        verifier.verifyChallenge(
+            ACCOUNT, KEY_ID, misplaced, sign(device.getPrivate(), misplaced), NONCE));
+    verify(nonces, never()).consume(anyString(), anyString());
+    verify(registry, never()).findActive(anyString());
+  }
+
+  @Test
+  void explicitNonce_signatureOfAnotherChain_orAnotherKey_isInvalid_andNothingIsConsumed()
+      throws Exception {
+    String otherTransfer = ACCOUNT + "|CANCEL|tr-000002|" + NONCE;
+    assertEquals(
+        ChallengeVerdict.INVALID,
+        verifier.verifyChallenge(
+            ACCOUNT, KEY_ID, CANCEL_CHAIN, sign(device.getPrivate(), otherTransfer), NONCE));
+    assertEquals(
+        ChallengeVerdict.INVALID,
+        verifier.verifyChallenge(
+            ACCOUNT,
+            KEY_ID,
+            CANCEL_CHAIN,
+            sign(keyPair("secp256r1").getPrivate(), CANCEL_CHAIN),
+            NONCE));
+    verify(nonces, never()).consume(anyString(), anyString());
+  }
+
+  @Test
+  void explicitNonce_alreadyConsumed_isInvalid_aProofServesOnce() throws Exception {
+    when(nonces.consume(NONCE, ACCOUNT)).thenReturn(false);
+    assertEquals(
+        ChallengeVerdict.INVALID,
+        verifier.verifyChallenge(
+            ACCOUNT, KEY_ID, CANCEL_CHAIN, sign(device.getPrivate(), CANCEL_CHAIN), NONCE));
+  }
+
   @Test
   void validSignatureOfTheExactChain_byTheActiveKey_consumesTheNonce() throws Exception {
     assertEquals(

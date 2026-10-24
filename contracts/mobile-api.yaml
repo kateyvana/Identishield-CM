@@ -230,6 +230,9 @@ paths:
     post:
       operationId: issueNonce
       summary: Nonce à usage unique pour une opération signée (ES-10)
+      description: |
+        Le nonce est émis par le PDP pour le compte de la session (carte B6) : c'est lui qui le
+        consomme à la vérification de la signature. PDP injoignable : 503 transitoire.
       responses:
         '200':
           description: Nonce émis.
@@ -239,6 +242,8 @@ paths:
                 $ref: '#/components/schemas/NonceResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /account:
     get:
       operationId: getAccount
@@ -352,6 +357,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /alerts:
     get:
       operationId: listAlerts

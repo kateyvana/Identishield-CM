@@ -70,10 +70,14 @@ public class DeviceController {
   // @implements ES-20
   @PostMapping("/device/verify")
   public VerifyResponse verify(@Valid @RequestBody VerifyRequest r) {
-    return new VerifyResponse(
-        signatures
-            .verifyChallenge(r.accountId(), r.deviceId(), r.challenge(), r.signature(), r.nonce())
-            .name());
+    // Deux formes du contrat : B4, le défi EST le nonce ; B6, `nonce` nommé à part et le défi est
+    // la chaîne canonique signée (annulation d'un virement différé, réponses aux alertes).
+    SignatureVerifier.ChallengeVerdict verdict =
+        r.nonce() == null
+            ? signatures.verifyChallenge(r.accountId(), r.deviceId(), r.challenge(), r.signature())
+            : signatures.verifyChallenge(
+                r.accountId(), r.deviceId(), r.challenge(), r.signature(), r.nonce());
+    return new VerifyResponse(verdict.name());
   }
 
   /**

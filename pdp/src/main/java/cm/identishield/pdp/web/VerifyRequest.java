@@ -13,4 +13,10 @@ public record VerifyRequest(
     @NotBlank String deviceId,
     @NotBlank String challenge,
     @NotBlank String signature,
-    String nonce) {}
+    String nonce) {
+
+  /** Forme B4 : le défi est lui-même le nonce. */
+  public VerifyRequest(String accountId, String deviceId, String challenge, String signature) {
+    this(accountId, deviceId, challenge, signature, null);
+  }
+}
