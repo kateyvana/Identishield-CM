@@ -161,9 +161,9 @@ public class TransferService {
   }
 
   /**
-   * Même opération, portant la {@link Proof} de l'appareil lié (route mobile, carte B6) : les
-   * trois champs partent au PDP avec {@code proofType=SIGNATURE} ; le cœur ne vérifie rien. Sans
-   * preuve ({@code proof == null} : USSD, console), {@code proofType=NONE} comme avant.
+   * Même opération, portant la {@link Proof} de l'appareil lié (route mobile, carte B6) : les trois
+   * champs partent au PDP avec {@code proofType=SIGNATURE} ; le cœur ne vérifie rien. Sans preuve
+   * ({@code proof == null} : USSD, console), {@code proofType=NONE} comme avant.
    */
   public TransferResult operate(
       String msisdn,
@@ -209,18 +209,22 @@ public class TransferService {
                 tx.decisionId(), initiator, type, counterparty, amountXaf, channel, now, proof));
 
     if (outcome.available()) {
+      // La décision du PDP (ALLOW, STEP_UP, FREEZE, REJECTED) est posée telle quelle sur l'issue :
+      // la route mobile la lit, jamais le texte de detail.
       if (outcome.isAllow()) {
-        return commit(tx, initiator, type, counterparty, amountXaf, TransferResult.State.EXECUTED);
+        return commit(tx, initiator, type, counterparty, amountXaf, TransferResult.State.EXECUTED)
+            .withDecision(outcome.decision());
       }
       if (outcome.isStepUp()) {
-        return resolveStepUp(tx, channel, now);
+        return resolveStepUp(tx, channel, now).withDecision(outcome.decision());
       }
       // FREEZE (le compte est gelé par le PDP, A1) ou REJECTED : la transaction est bloquée. Le
       // veto appliqué (ACCOUNT_FROZEN, SIGNATURE_INVALID, …, ou NONE) remonte tel quel : la route
       // mobile en fait sa réponse, le cœur ne le réinterprète pas.
       transactions.markRejected(tx.id());
       return TransferResult.rejected(
-          tx.decisionId(), "decision=" + outcome.decision(), outcome.vetoApplied());
+              tx.decisionId(), "decision=" + outcome.decision(), outcome.vetoApplied())
+          .withDecision(outcome.decision());
     }
 
     // PDP indisponible : le fail-closed (ES-11) ne protège que les SORTIES. Une entrée (CASH_IN)

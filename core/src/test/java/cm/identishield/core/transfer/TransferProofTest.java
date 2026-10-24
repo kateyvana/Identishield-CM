@@ -94,10 +94,12 @@ class TransferProofTest {
     when(pdp.evaluate(anyString())).thenReturn(EvaluateOutcome.of("ALLOW", "did-9"));
 
     TransferResult r =
-        service.operate(FROM, OperationType.P2P, 25_000, BENEF, "APP", new Proof(KEY, "c2ln", NONCE));
+        service.operate(
+            FROM, OperationType.P2P, 25_000, BENEF, "APP", new Proof(KEY, "c2ln", NONCE));
 
     assertEquals(TransferResult.State.EXECUTED, r.state());
     assertEquals(TransferResult.NO_VETO, r.vetoApplied());
+    assertEquals("ALLOW", r.decision());
     JsonNode req = sentRequest();
     assertEquals("SIGNATURE", req.get("proofType").asText());
     assertEquals(KEY, req.get("deviceKeyId").asText());
@@ -144,10 +146,12 @@ class TransferProofTest {
         .thenReturn(EvaluateOutcome.of("REJECTED", "did-9", "ACCOUNT_FROZEN"));
 
     TransferResult r =
-        service.operate(FROM, OperationType.P2P, 25_000, BENEF, "APP", new Proof(KEY, "c2ln", NONCE));
+        service.operate(
+            FROM, OperationType.P2P, 25_000, BENEF, "APP", new Proof(KEY, "c2ln", NONCE));
 
     assertEquals(TransferResult.State.REJECTED, r.state());
     assertEquals("ACCOUNT_FROZEN", r.vetoApplied());
+    assertEquals("REJECTED", r.decision());
     assertEquals("decision=REJECTED", r.detail());
   }
 
@@ -159,6 +163,8 @@ class TransferProofTest {
 
     assertEquals(TransferResult.State.REJECTED, r.state());
     assertEquals(TransferResult.NO_VETO, r.vetoApplied());
+    assertEquals("FREEZE", r.decision(), "gel décidé sur cette opération : FREEZE, pas REJECTED");
+    assertNull(TransferResult.executed("x").decision(), "aucune décision rendue : null");
     assertNull(TransferResult.executed("x").detail());
     assertEquals(TransferResult.NO_VETO, TransferResult.executed("x").vetoApplied());
   }

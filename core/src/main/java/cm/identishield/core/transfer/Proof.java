@@ -1,8 +1,8 @@
 package cm.identishield.core.transfer;
 
 /**
- * Preuve de possession de l'appareil lié, portée par une opération venue de l'application (carte
- * B6 ; ADR-018) : identifiant de la clé ACTIVE, signature SHA256withECDSA (DER, base64) de la chaîne
+ * Preuve de possession de l'appareil lié, portée par une opération venue de l'application (carte B6
+ * ; ADR-018) : identifiant de la clé ACTIVE, signature SHA256withECDSA (DER, base64) de la chaîne
  * canonique {@code accountId|type|amountXaf|beneficiaryId|nonce}, et le nonce émis par le PDP. Le
  * cœur ne vérifie RIEN : il transmet les trois champs au PDP avec {@code proofType=SIGNATURE}, et
  * le veto {@code SignatureVerifier} décide (ES-02, ES-10, ES-20).
