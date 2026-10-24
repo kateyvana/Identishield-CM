@@ -71,3 +71,7 @@ core:
   # partagée avec le faux serveur. Le montage du fichier dans le conteneur est une carte infra.
   demo:
     fixtures-path: /fixtures/fixtures.json
+    # Comptes nominatifs de la démonstration (carte #76) : fichier HORS du dépôt (il porte des PIN),
+    # monté par infra/compose.b3a.yml depuis ISC_DEMO_SEED_CSV (infra/.env). Absent : le cœur ne
+    # démarre pas sous le profil demo.
+    seed-csv-path: /fixtures/seed-comptes-demo.csv

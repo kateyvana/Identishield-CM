@@ -45,3 +45,6 @@ pdp/bin/
 
 # Sondage utilisateurs : reponses individuelles brutes, JAMAIS versionnees (seuls code, agregats, figures)
 data/survey/raw/
+
+# Comptes de demonstration (carte #76) : le fichier porte des PIN, il vit HORS du depot (VM, ISC_DEMO_SEED_CSV)
+seed-comptes-demo*.csv
