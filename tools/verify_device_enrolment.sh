@@ -26,13 +26,14 @@ echo ">>> base jetable $NAME dans la VM ($VM)"
 # Dossier NEUF a chaque passage : aucune migration d'un passage precedent ne peut s'y glisser.
 DIR=$(ssh "$VM" "mktemp -d /tmp/isc-b3a.XXXXXX")
 ssh "$VM" "mkdir -p $DIR/migrations"
-scp -q infra/init/init.sql infra/init/01-apply.sh "$VM:$DIR/"
+scp -q infra/init/init.sql infra/init/01-apply.sh infra/init/apply-migrations.sh "$VM:$DIR/"
 scp -q infra/init/migrations/[0-9][0-9][0-9]-*.sql "$VM:$DIR/migrations/"
 ssh "$VM" "ls $DIR/migrations"
 ssh "$VM" "docker run -d --name $NAME \
   -e POSTGRES_USER=isc_admin -e POSTGRES_DB=identishield \
   -e POSTGRES_PASSWORD=$admin_pw -e ISC_CORE_APP_PASSWORD=$core_pw -e ISC_PDP_APP_PASSWORD=$pdp_pw \
   -v $DIR/init.sql:/opt/isc/init.sql:ro -v $DIR/01-apply.sh:/docker-entrypoint-initdb.d/01-apply.sh:ro \
+  -v $DIR/apply-migrations.sh:/opt/isc/apply-migrations.sh:ro \
   -v $DIR/migrations:/opt/isc/migrations:ro \
   -p 127.0.0.1:$PORT:5432 postgres:16" >/dev/null
 

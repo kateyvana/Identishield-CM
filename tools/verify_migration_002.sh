@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Preuve de la migration 002 (B3a), sur des bases PostgreSQL JETABLES dans la VM : meme image
-# (postgres:16), meme init.sql, meme 01-apply.sh et meme migrate.sh que la pile, sans toucher a la
-# pile en service. Complete tools/verify_migrations.sh (base neuve = base migree, rejouable), qui
+# (postgres:16), meme init.sql, meme 01-apply.sh et meme apply-migrations.sh que la pile (celui
+# qu'execute isc-migrate a chaque make up), sans toucher a la pile en service. Complete tools/verify_migrations.sh (base neuve = base migree, rejouable), qui
 # porte sur TOUTES les migrations ; ici, ce qui est propre a la 002 :
 #
 #   CAS ROUGE : base existante dont la contrainte d'etat de pdp.device porte un AUTRE nom que
@@ -20,9 +20,9 @@ VM="${1:-isc@100.93.166.19}"
 fail=0
 DIR=$(ssh "$VM" "mktemp -d /tmp/isc-migr002.XXXXXX")
 
-echo ">>> envoi d'init.sql, 01-apply.sh, migrate.sh et des migrations dans la VM ($VM:$DIR)"
+echo ">>> envoi d'init.sql, 01-apply.sh, apply-migrations.sh et des migrations dans la VM ($VM:$DIR)"
 ssh "$VM" "mkdir -p $DIR/avec $DIR/vide"
-scp -q infra/init/init.sql infra/init/01-apply.sh infra/init/migrate.sh "$VM:$DIR/"
+scp -q infra/init/init.sql infra/init/01-apply.sh infra/init/apply-migrations.sh "$VM:$DIR/"
 scp -q infra/init/migrations/[0-9][0-9][0-9]-*.sql "$VM:$DIR/avec/"
 ssh "$VM" "ls $DIR/avec"
 
@@ -33,7 +33,8 @@ base() { # $1 nom du conteneur ; base EXISTANTE : init.sql seul a la creation
     -e POSTGRES_USER=isc_admin -e POSTGRES_DB=identishield \
     -e POSTGRES_PASSWORD=$admin -e ISC_CORE_APP_PASSWORD=$core -e ISC_PDP_APP_PASSWORD=$pdp \
     -v $DIR/init.sql:/opt/isc/init.sql:ro -v $DIR/01-apply.sh:/docker-entrypoint-initdb.d/01-apply.sh:ro \
-    -v $DIR/vide:/opt/isc/migrations:ro postgres:16" >/dev/null
+    -v $DIR/apply-migrations.sh:/opt/isc/apply-migrations.sh:ro \
+    -v $DIR/vide:/opt/isc/migrations:ro -v $DIR/avec:/opt/isc/avec:ro postgres:16" >/dev/null
   for _ in $(seq 1 60); do
     if ssh "$VM" "docker logs $1 2>&1 | grep -q 'init process complete' \
         && docker exec $1 pg_isready -q -h 127.0.0.1 -U isc_admin -d identishield"; then
@@ -44,6 +45,11 @@ base() { # $1 nom du conteneur ; base EXISTANTE : init.sql seul a la creation
   ssh "$VM" "docker logs $1 2>&1 | tail -20"
   echo "ECHEC : la base $1 n'a pas demarre" >&2
   exit 1
+}
+
+apply() { # $1 conteneur : migrations reelles, par le script d'isc-migrate
+  ssh "$VM" "docker exec -e POSTGRES_USER=isc_admin -e POSTGRES_DB=identishield $1 \
+    bash /opt/isc/apply-migrations.sh /opt/isc/avec"
 }
 
 sql() { # $1 conteneur ; $2 requete ; une valeur par ligne, sans en-tete
@@ -57,7 +63,7 @@ check() { # $1 libelle ; $2 obtenu ; $3 attendu
 echo ">>> CAS ROUGE : contrainte d'etat renommee"
 base isc-migr002-rouge
 sql isc-migr002-rouge "ALTER TABLE pdp.device RENAME CONSTRAINT device_state_check TO device_state_ancienne" >/dev/null
-if out=$(ssh "$VM" "cd $DIR && bash migrate.sh isc-migr002-rouge $DIR/avec" 2>&1); then
+if out=$(apply isc-migr002-rouge 2>&1); then
   echo "$out"
   echo "[ECHEC] la migration a reussi malgre une contrainte d'etat hors du nom attendu"; fail=1
 else
@@ -84,8 +90,8 @@ sql isc-migr002-vert "INSERT INTO pdp.device (id, account_id, public_key, state,
   ('dev-a', 'acc-1', 'cle-a', 'ACTIVE', '2026-10-01T00:00:00Z', NULL),
   ('dev-r', 'acc-1', 'cle-r', 'REVOKED', '2026-09-01T00:00:00Z', '2026-10-01T00:00:00Z')" >/dev/null
 avant=$(sql isc-migr002-vert "SELECT id || '|' || state FROM pdp.device ORDER BY id")
-ssh "$VM" "cd $DIR && bash migrate.sh isc-migr002-vert $DIR/avec"
-ssh "$VM" "cd $DIR && bash migrate.sh isc-migr002-vert $DIR/avec"
+apply isc-migr002-vert
+apply isc-migr002-vert
 check "lignes existantes intactes apres deux applications" \
   "$(sql isc-migr002-vert "SELECT id || '|' || state FROM pdp.device ORDER BY id")" "$avant"
 check "une seule contrainte d'etat, device_state_check, a trois etats" \
