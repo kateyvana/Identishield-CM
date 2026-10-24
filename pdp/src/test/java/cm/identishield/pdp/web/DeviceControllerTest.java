@@ -11,6 +11,7 @@ import cm.identishield.pdp.device.DeviceEnrolment.Registered;
 import cm.identishield.pdp.device.DeviceRegistry;
 import cm.identishield.pdp.device.DeviceRegistry.BindingState;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
@@ -26,7 +27,42 @@ class DeviceControllerTest {
 
   private final DeviceEnrolment enrolment = mock(DeviceEnrolment.class);
   private final DeviceRegistry registry = mock(DeviceRegistry.class);
-  private final DeviceController controller = new DeviceController(enrolment, registry);
+  private final cm.identishield.pdp.signature.NonceStore nonces =
+      mock(cm.identishield.pdp.signature.NonceStore.class);
+  private final cm.identishield.pdp.signature.SignatureVerifier signatures =
+      mock(cm.identishield.pdp.signature.SignatureVerifier.class);
+  private final DeviceController controller =
+      new DeviceController(enrolment, registry, nonces, signatures);
+
+  /** Carte B4 : le défi de session est un nonce émis pour le compte de la clé ACTIVE. */
+  @Test
+  void nonce_isIssuedForTheAccountOfTheActiveKey_404Otherwise() {
+    when(registry.findActiveById("dev-1"))
+        .thenReturn(Optional.of(new DeviceRegistry.DeviceKey("dev-1", "acc-1", "cGs=")));
+    when(nonces.issue("acc-1"))
+        .thenReturn(
+            new cm.identishield.pdp.signature.NonceStore.IssuedNonce(
+                "9f86d081884c7d659a2feaa0c55ad015", "acc-1", null, null));
+    ResponseEntity<Object> ok = controller.nonce("dev-1");
+    assertEquals(200, ok.getStatusCode().value());
+    assertEquals(new DeviceNonceResponse("9f86d081884c7d659a2feaa0c55ad015"), ok.getBody());
+
+    when(registry.findActiveById("dev-9")).thenReturn(Optional.empty());
+    ResponseEntity<Object> unknown = controller.nonce("dev-9");
+    assertEquals(404, unknown.getStatusCode().value());
+    assertEquals("DEVICE_UNKNOWN", ((ApiError) unknown.getBody()).code());
+    org.mockito.Mockito.verify(nonces, org.mockito.Mockito.times(1)).issue("acc-1");
+  }
+
+  @Test
+  void verify_returnsThePdpVerdict_andDecidesNothing() {
+    for (var verdict : cm.identishield.pdp.signature.SignatureVerifier.ChallengeVerdict.values()) {
+      when(signatures.verifyChallenge("acc-1", "dev-1", "nonce", "c2ln")).thenReturn(verdict);
+      assertEquals(
+          new VerifyResponse(verdict.name()),
+          controller.verify(new VerifyRequest("acc-1", "dev-1", "nonce", "c2ln")));
+    }
+  }
 
   private final RegisterRequest register =
       new RegisterRequest("acc-1", "cGs=", List.of("Y2VydA=="), "ZGVmaQ==", "c2ln");

@@ -31,6 +31,10 @@ public class DeviceRegistry {
       "SELECT state FROM pdp.device WHERE account_id = ? AND state IN ('ACTIVE', 'PENDING')";
   private static final String HAS_ACTIVE_SQL =
       "SELECT count(*) FROM pdp.device WHERE account_id = ? AND state = 'ACTIVE'";
+  private static final String ACTIVE_BY_ID_SQL =
+      "SELECT id, account_id, public_key FROM pdp.device WHERE id = ? AND state = 'ACTIVE'";
+  private static final String STATE_OF_SQL =
+      "SELECT state FROM pdp.device WHERE id = ? AND account_id = ?";
 
   /**
    * Sérialise les enregistrements d'un même compte jusqu'à la fin de la transaction : sans ce
@@ -67,6 +71,27 @@ public class DeviceRegistry {
                     rs.getString("id"), rs.getString("account_id"), rs.getString("public_key")),
             accountId);
     return rows.stream().findFirst();
+  }
+
+  /**
+   * Clé ACTIVE portant cet identifiant, quel que soit le compte (carte B4 : le défi de session est
+   * demandé par l'application avec le seul deviceId, avant tout PIN ; le PDP retrouve le compte
+   * pour y lier le nonce). Une clé EN ATTENTE ou RÉVOQUÉE n'est pas renvoyée : elle ne signe rien.
+   */
+  public Optional<DeviceKey> findActiveById(String deviceId) {
+    List<DeviceKey> rows =
+        jdbc.query(
+            ACTIVE_BY_ID_SQL,
+            (rs, i) ->
+                new DeviceKey(
+                    rs.getString("id"), rs.getString("account_id"), rs.getString("public_key")),
+            deviceId);
+    return rows.stream().findFirst();
+  }
+
+  /** État de CETTE clé pour CE compte (PENDING, ACTIVE, REVOKED), ou vide si inconnue. */
+  public Optional<String> stateOf(String accountId, String deviceId) {
+    return jdbc.queryForList(STATE_OF_SQL, String.class, deviceId, accountId).stream().findFirst();
   }
 
   /**

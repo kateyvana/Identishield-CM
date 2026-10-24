@@ -33,6 +33,41 @@ class MobileEnrolmentControllerTest {
           new PdpClientProperties.Breaker(3, 4_500));
   private final MobileEnrolmentController controller =
       new MobileEnrolmentController(service, new ObjectMapper(), pdp);
+  private final jakarta.servlet.http.HttpServletRequest http =
+      mock(jakarta.servlet.http.HttpServletRequest.class);
+
+  MobileEnrolmentControllerTest() {
+    when(http.getRemoteAddr()).thenReturn("10.0.0.7");
+  }
+
+  @Test
+  void aLockedOrigin_gets429_withTheRemainingSecondsAsRetryAfter_p11() {
+    when(service.start("677000200", "4096", "10.0.0.7", null, null, null))
+        .thenReturn(Answer.throttled(42));
+    ResponseEntity<Map<String, Object>> r =
+        controller.start("{\"msisdn\":\"677000200\",\"pin\":\"4096\"}", http);
+    assertEquals(429, r.getStatusCode().value());
+    assertEquals("42", r.getHeaders().getFirst("Retry-After"));
+  }
+
+  @Test
+  void aSignedChallenge_isPassedThrough_andItsShapeIsChecked() {
+    String device = "6f0a2c1e-0000-4000-8000-000000000001";
+    String nonce = "9f86d081884c7d659a2feaa0c55ad015";
+    when(service.start("677000200", "4096", "10.0.0.7", device, nonce, "c2ln"))
+        .thenReturn(Answer.ok(Map.of("next", "SESSION")));
+    String body =
+        "{\"msisdn\":\"677000200\",\"pin\":\"4096\",\"deviceId\":\""
+            + device
+            + "\",\"challenge\":\""
+            + nonce
+            + "\",\"signature\":\"c2ln\"}";
+    assertEquals(200, controller.start(body, http).getStatusCode().value());
+    assertEquals(
+        400,
+        controller.start(body.replace(nonce, "court"), http).getStatusCode().value(),
+        "défi hors forme");
+  }
 
   @Test
   void anUnknownField_orABadForm_isRequestInvalid_beforeAnyWork() {
@@ -45,7 +80,7 @@ class MobileEnrolmentControllerTest {
           "null",
           "pas du json"
         }) {
-      ResponseEntity<Map<String, Object>> r = controller.start(body);
+      ResponseEntity<Map<String, Object>> r = controller.start(body, http);
       assertEquals(400, r.getStatusCode().value(), body);
       assertEquals(Map.of("reason", "REQUEST_INVALID"), r.getBody(), body);
     }
@@ -54,11 +89,11 @@ class MobileEnrolmentControllerTest {
 
   @Test
   void aTransient503_carriesRetryAfter_fromTheBreakerCooldown_roundedUp() {
-    when(service.start("677000200", "4096"))
-        .thenReturn(new Answer(503, Map.of("reason", "SERVICE_UNAVAILABLE"), true));
+    when(service.start("677000200", "4096", "10.0.0.7", null, null, null))
+        .thenReturn(new Answer(503, Map.of("reason", "SERVICE_UNAVAILABLE"), true, 0));
 
     ResponseEntity<Map<String, Object>> r =
-        controller.start("{\"msisdn\":\"677000200\",\"pin\":\"4096\"}");
+        controller.start("{\"msisdn\":\"677000200\",\"pin\":\"4096\"}", http);
 
     assertEquals(503, r.getStatusCode().value());
     assertEquals("5", r.getHeaders().getFirst("Retry-After"));
@@ -66,11 +101,11 @@ class MobileEnrolmentControllerTest {
 
   @Test
   void aTerminalRefusal_carriesNoRetryAfter() {
-    when(service.start("677000200", "4096"))
-        .thenReturn(new Answer(401, Map.of("reason", "CREDENTIALS_INVALID"), false));
+    when(service.start("677000200", "4096", "10.0.0.7", null, null, null))
+        .thenReturn(new Answer(401, Map.of("reason", "CREDENTIALS_INVALID"), false, 0));
 
     ResponseEntity<Map<String, Object>> r =
-        controller.start("{\"msisdn\":\"677000200\",\"pin\":\"4096\"}");
+        controller.start("{\"msisdn\":\"677000200\",\"pin\":\"4096\"}", http);
 
     assertEquals(401, r.getStatusCode().value());
     assertNull(r.getHeaders().getFirst("Retry-After"));

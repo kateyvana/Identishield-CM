@@ -3,6 +3,7 @@ package cm.identishield.pdp.signature;
 import cm.identishield.pdp.device.DeviceRegistry;
 import cm.identishield.pdp.device.DeviceRegistry.DeviceKey;
 import cm.identishield.pdp.device.EcP256;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.Signature;
 import java.util.Base64;
@@ -72,6 +73,51 @@ public class SignatureVerifier {
       return Verdict.VALID;
     }
     return nonces.wasConsumed(t.nonce(), t.accountId()) ? Verdict.REPLAYED : Verdict.INVALID;
+  }
+
+  /**
+   * Défi de session signé (carte B4 ; ISC-MOB-SPEC §6, flux B) : la clé ACTIVE {@code deviceId} du
+   * compte a-t-elle signé les octets UTF-8 du défi tels que remis ? Le défi EST un nonce du PDP
+   * émis pour ce compte (décision du 2026-10-24, point 4) : même ordre que pour une transaction, la
+   * signature d'abord, le nonce ensuite ; un nonce déjà consommé ou expiré ne vaut rien. Une clé
+   * RÉVOQUÉE portant cet identifiant est distinguée (le contrat mobile répond KEY_REVOKED) ; toute
+   * autre faute reçoit INVALID, sans dire laquelle.
+   */
+  // @implements ES-20
+  public ChallengeVerdict verifyChallenge(
+      String accountId, String deviceId, String challenge, String signature) {
+    if (isBlank(accountId) || isBlank(deviceId) || isBlank(challenge) || isBlank(signature)) {
+      return ChallengeVerdict.INVALID;
+    }
+    Optional<DeviceKey> key = registry.findActive(accountId);
+    if (key.isEmpty() || !key.get().id().equals(deviceId)) {
+      return registry.stateOf(accountId, deviceId).filter("REVOKED"::equals).isPresent()
+          ? ChallengeVerdict.REVOKED
+          : ChallengeVerdict.INVALID;
+    }
+    if (!challengeSignatureMatches(key.get(), challenge, signature)) {
+      return ChallengeVerdict.INVALID;
+    }
+    return nonces.consume(challenge, accountId) ? ChallengeVerdict.VALID : ChallengeVerdict.INVALID;
+  }
+
+  /** Verdict d'un défi de session. */
+  public enum ChallengeVerdict {
+    VALID,
+    INVALID,
+    REVOKED
+  }
+
+  private static boolean challengeSignatureMatches(
+      DeviceKey key, String challenge, String signature) {
+    try {
+      Signature verifier = Signature.getInstance(ALGORITHM);
+      verifier.initVerify(EcP256.parse(key.publicKey()));
+      verifier.update(challenge.getBytes(StandardCharsets.UTF_8));
+      return verifier.verify(Base64.getDecoder().decode(signature));
+    } catch (GeneralSecurityException | IllegalArgumentException e) {
+      return false;
+    }
   }
 
   private static boolean signatureMatches(DeviceKey key, SignedTransaction t) {

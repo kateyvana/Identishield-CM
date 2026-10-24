@@ -144,6 +144,70 @@ paths:
               example:
                 code: RECOVERY_INVALID
                 message: recovery code rejected
+  /device/{deviceId}/nonce:
+    get:
+      operationId: issueDeviceNonce
+      summary: Défi de session — un nonce du PDP émis pour le compte de la clé ACTIVE
+      description: |
+        Carte B4 (décision de la propriétaire du 2026-10-24, point 4) : le défi de session EST un
+        nonce du PDP (ES-10 : 128 bits, usage unique, NONCE_TTL), lié au compte que porte la clé
+        ACTIVE de cet identifiant. L'application ne connaît que son deviceId au moment du défi ;
+        c'est le PDP qui retrouve le compte. Une clé EN ATTENTE ou RÉVOQUÉE n'a pas de défi.
+
+        Aucune clé ACTIVE de cet identifiant : 404. Le cœur rend alors à l'application un défi de
+        même forme, qui ne vaudra rien (réponse uniforme, ES-22). Route interne.
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Nonce émis pour le compte de la clé.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceNonceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Aucune clé ACTIVE ne porte cet identifiant (DEVICE_UNKNOWN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: DEVICE_UNKNOWN
+                message: no active device key with this id
+  /device/verify:
+    post:
+      operationId: verifyDeviceChallenge
+      summary: Vérifie la signature du défi de session par la clé ACTIVE du compte
+      description: |
+        ISC-MOB-SPEC §6, flux B : « le PDP reconnaît la clé ». Le PDP vérifie que la clé ACTIVE
+        `deviceId` du compte a signé les octets UTF-8 du défi tels que remis (SHA256withECDSA,
+        ADR-018), puis consomme le nonce : la signature d'abord, le nonce ensuite. Verdict :
+        VALID (défi consommé, le cœur ouvre la session), REVOKED (une clé RÉVOQUÉE porte cet
+        identifiant : le contrat mobile répond KEY_REVOKED), INVALID pour toute autre faute, sans
+        dire laquelle. Le PDP énonce, le cœur arbitre. Le cœur ne l'appelle qu'APRÈS le PIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+      responses:
+        '200':
+          description: Verdict rendu.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
 components:
   securitySchemes:
@@ -233,6 +297,37 @@ components:
       properties:
         deviceId:
           type: string
+    DeviceNonceResponse:
+      type: object
+      additionalProperties: false
+      required: [nonce]
+      properties:
+        nonce:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+    VerifyRequest:
+      type: object
+      additionalProperties: false
+      required: [accountId, deviceId, challenge, signature]
+      properties:
+        accountId:
+          type: string
+        deviceId:
+          type: string
+        challenge:
+          type: string
+          description: Le défi tel que remis à l'application (le nonce), signé octet pour octet.
+        signature:
+          type: string
+          description: SHA256withECDSA, DER en base64 (ADR-018).
+    VerifyResponse:
+      type: object
+      additionalProperties: false
+      required: [verdict]
+      properties:
+        verdict:
+          type: string
+          enum: [VALID, INVALID, REVOKED]
     Error:
       type: object
       required: [code, message]

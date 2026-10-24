@@ -63,19 +63,25 @@ class MobileEnrolmentTest {
   private final OtpService otp = mock(OtpService.class);
   private final SmsGateway sms = mock(SmsGateway.class);
   private final SessionTokens sessions = mock(SessionTokens.class);
+  private final MobileSession session = mock(MobileSession.class);
   private final TransactionTemplate tx = mock(TransactionTemplate.class);
   private final RuleSet ruleSet =
       new RuleSet("rs-test", Map.of("OTP_ATTEMPTS", 3, "ENROL_TTL", "PT10M"));
+  private static final String ORIGIN = "100.64.0.9";
+  private final PinAttempts attempts =
+      new PinAttempts(Clock.fixed(NOW, ZoneOffset.UTC), 2, java.time.Duration.ofMinutes(15));
 
   private final MobileEnrolment service =
       new MobileEnrolment(
           pins,
           hasher,
+          attempts,
           device,
           enrolments,
           otp,
           sms,
           sessions,
+          session,
           ruleSet,
           Clock.fixed(NOW, ZoneOffset.UTC),
           tx);
@@ -106,11 +112,11 @@ class MobileEnrolmentTest {
   @Test
   void unknownAccount_andWrongPin_getTheSameAnswer_andThePdpIsNeverAsked() {
     when(pins.find("677000201")).thenReturn(Optional.empty());
-    Answer unknown = service.start("677000201", PIN);
+    Answer unknown = service.start("677000201", PIN, ORIGIN, null, null, null);
     accountWithPin();
-    Answer wrongPin = service.start(MSISDN, "4097");
+    Answer wrongPin = service.start(MSISDN, "4097", ORIGIN, null, null, null);
 
-    assertEquals(new Answer(401, Map.of("reason", "CREDENTIALS_INVALID"), false), unknown);
+    assertEquals(new Answer(401, Map.of("reason", "CREDENTIALS_INVALID"), false, 0), unknown);
     assertEquals(unknown, wrongPin);
     verifyNoInteractions(device, otp, enrolments);
   }
@@ -120,7 +126,7 @@ class MobileEnrolmentTest {
     accountWithPin();
     when(device.state(ACCOUNT.toString())).thenReturn(Reply.unreachable());
 
-    Answer a = service.start(MSISDN, PIN);
+    Answer a = service.start(MSISDN, PIN, ORIGIN, null, null, null);
 
     assertEquals(503, a.status());
     assertEquals("SERVICE_UNAVAILABLE", a.body().get("reason"));
@@ -133,7 +139,8 @@ class MobileEnrolmentTest {
     accountWithPin();
     when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "ACTIVE")));
 
-    assertEquals(Map.of("next", "RECOVERY"), service.start(MSISDN, PIN).body());
+    assertEquals(
+        Map.of("next", "RECOVERY"), service.start(MSISDN, PIN, ORIGIN, null, null, null).body());
     verifyNoInteractions(otp, sms, enrolments);
   }
 
@@ -144,7 +151,7 @@ class MobileEnrolmentTest {
     when(otp.issue(MSISDN)).thenReturn(new OtpEmission(MSISDN, "624010677000200", "123456"));
     for (String fact : List.of("NONE", "PENDING")) {
       when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", fact)));
-      Answer a = service.start(MSISDN, PIN);
+      Answer a = service.start(MSISDN, PIN, ORIGIN, null, null, null);
       assertEquals(Map.of("next", "OTP", "enrolmentId", ENROLMENT.toString()), a.body(), fact);
     }
     verify(enrolments, org.mockito.Mockito.times(2))
@@ -161,9 +168,59 @@ class MobileEnrolmentTest {
         .when(sms)
         .deliver(anyString(), anyString());
 
-    Answer a = service.start(MSISDN, PIN);
+    Answer a = service.start(MSISDN, PIN, ORIGIN, null, null, null);
     assertEquals(503, a.status());
     assertTrue(a.retryAfter());
+  }
+
+  // ---- start, carte B4 : origine bloquée (P-11) et branche SESSION ---------------------------
+
+  @Test
+  void aLockedOrigin_gets429BeforeAnyWork_whileAnotherOriginIsFree() {
+    accountWithPin();
+    service.start(MSISDN, "0000", ORIGIN, null, null, null);
+    service.start(MSISDN, "0001", ORIGIN, null, null, null);
+    Answer locked = service.start(MSISDN, PIN, ORIGIN, null, null, null);
+    assertEquals(429, locked.status());
+    assertEquals(Map.of("reason", "THROTTLED"), locked.body());
+    assertEquals(15 * 60, locked.throttledSeconds());
+    verifyNoInteractions(device, otp, enrolments);
+
+    when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "ACTIVE")));
+    assertEquals(
+        Map.of("next", "RECOVERY"),
+        service.start(MSISDN, PIN, "100.64.0.10", null, null, null).body());
+  }
+
+  @Test
+  void activeKey_withAValidSignedChallenge_opensTheSession_otherwiseRecovery() {
+    accountWithPin();
+    when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "ACTIVE")));
+    String nonce = "9f86d081884c7d659a2feaa0c55ad015";
+    when(session.prove(ACCOUNT, DEVICE, nonce, "c2ln"))
+        .thenReturn(
+            new MobileSession.Outcome(
+                MobileSession.Proof.VALID, new SessionTokens.IssuedSession("tok", 300)));
+    assertEquals(
+        Map.of("next", "SESSION", "sessionToken", "tok", "expiresInSeconds", 300L),
+        service.start(MSISDN, PIN, ORIGIN, DEVICE, nonce, "c2ln").body());
+
+    when(session.prove(ACCOUNT, DEVICE, nonce, "c2ln"))
+        .thenReturn(new MobileSession.Outcome(MobileSession.Proof.INVALID, null));
+    assertEquals(
+        Map.of("next", "RECOVERY"),
+        service.start(MSISDN, PIN, ORIGIN, DEVICE, nonce, "c2ln").body());
+
+    when(session.prove(ACCOUNT, DEVICE, nonce, "c2ln"))
+        .thenReturn(new MobileSession.Outcome(MobileSession.Proof.REVOKED, null));
+    Answer revoked = service.start(MSISDN, PIN, ORIGIN, DEVICE, nonce, "c2ln");
+    assertEquals(403, revoked.status());
+    assertEquals("KEY_REVOKED", revoked.body().get("reason"));
+
+    when(session.prove(ACCOUNT, DEVICE, nonce, "c2ln"))
+        .thenReturn(new MobileSession.Outcome(MobileSession.Proof.UNAVAILABLE, null));
+    assertEquals(503, service.start(MSISDN, PIN, ORIGIN, DEVICE, nonce, "c2ln").status());
+    verifyNoInteractions(otp, sms, enrolments);
   }
 
   // ---- otp ------------------------------------------------------------------------------------
@@ -194,7 +251,8 @@ class MobileEnrolmentTest {
                 new Enrolment(
                     ENROLMENT, ACCOUNT, MSISDN, "OTP", 3, null, null, NOW.plusSeconds(60))));
     assertEquals(
-        new Answer(410, Map.of("reason", "OTP_EXPIRED"), false), service.otp(ENROLMENT, "123456"));
+        new Answer(410, Map.of("reason", "OTP_EXPIRED"), false, 0),
+        service.otp(ENROLMENT, "123456"));
   }
 
   // ---- complete -------------------------------------------------------------------------------
@@ -221,7 +279,7 @@ class MobileEnrolmentTest {
         .thenReturn(reply(422, Map.of("code", "DEVICE_UNSUPPORTED")));
 
     assertEquals(
-        new Answer(422, Map.of("reason", "DEVICE_UNSUPPORTED"), false),
+        new Answer(422, Map.of("reason", "DEVICE_UNSUPPORTED"), false, 0),
         service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln"));
   }
 
@@ -249,7 +307,7 @@ class MobileEnrolmentTest {
     enrolmentAt("BIND", NOW);
     Answer expired = service.complete(ENROLMENT, "cGs=", List.of("Y2VydA=="), "c2ln");
 
-    assertEquals(new Answer(410, Map.of("reason", "ENROLMENT_EXPIRED"), false), race);
+    assertEquals(new Answer(410, Map.of("reason", "ENROLMENT_EXPIRED"), false, 0), race);
     assertEquals(race, expired);
   }
 
@@ -275,7 +333,7 @@ class MobileEnrolmentTest {
         .thenReturn(reply(401, Map.of("code", "RECOVERY_INVALID")));
 
     assertEquals(
-        new Answer(401, Map.of("reason", "RECOVERY_INVALID"), false),
+        new Answer(401, Map.of("reason", "RECOVERY_INVALID"), false, 0),
         service.confirm(ENROLMENT, "ABCDEG"));
     verify(enrolments, never()).consume(any(), anyString());
     verifyNoInteractions(sessions);
@@ -326,7 +384,7 @@ class MobileEnrolmentTest {
     enrolmentAt("CONFIRM", NOW.minusSeconds(1));
     Answer expired = service.confirm(ENROLMENT, "ABCDEF");
 
-    assertEquals(new Answer(410, Map.of("reason", "ENROLMENT_EXPIRED"), false), replay);
+    assertEquals(new Answer(410, Map.of("reason", "ENROLMENT_EXPIRED"), false, 0), replay);
     assertEquals(replay, expired);
     verifyNoInteractions(device, sessions);
   }

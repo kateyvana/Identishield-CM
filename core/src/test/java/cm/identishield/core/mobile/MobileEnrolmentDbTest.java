@@ -146,20 +146,31 @@ class MobileEnrolmentDbTest {
         .thenReturn(new Reply(200, Map.of("deviceId", DEVICE, "recoveryCode", "ABCDEF")));
     when(device.activate(acc.toString(), DEVICE, "ABCDEF"))
         .thenReturn(new Reply(200, Map.of("deviceId", DEVICE)));
+    SessionTokens sessions =
+        new SessionTokens(
+            jdbc,
+            clock,
+            ruleSet.appSessionTtl(),
+            ruleSet.appSessionBackgroundTtl(),
+            ruleSet.appSessionMaxTtl());
+    PinAttempts attempts =
+        new PinAttempts(clock, ruleSet.appPinMaxAttempts(), ruleSet.appPinOriginLock());
     MobileEnrolment service =
         new MobileEnrolment(
             new PinStore(jdbc),
             hasher,
+            attempts,
             device,
             new Enrolments(jdbc),
             new OtpService(new OtpRepository(jdbc), hlr(), ruleSet, clock),
             sms,
-            new SessionTokens(jdbc, clock, ruleSet.appSessionTtl()),
+            sessions,
+            new MobileSession(new PinStore(jdbc), hasher, attempts, device, sessions),
             ruleSet,
             clock,
             tx);
 
-    Answer start = service.start(msisdn, PIN);
+    Answer start = service.start(msisdn, PIN, "100.64.0.9", null, null, null);
     assertEquals("OTP", start.body().get("next"));
     UUID id = UUID.fromString((String) start.body().get("enrolmentId"));
     ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);

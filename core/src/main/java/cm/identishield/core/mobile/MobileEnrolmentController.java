@@ -4,6 +4,7 @@ import cm.identishield.core.mobile.MobileEnrolment.Answer;
 import cm.identishield.core.pdp.PdpClientProperties;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +32,9 @@ public class MobileEnrolmentController {
   private static final Pattern DEVICE_ID =
       Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
+  /** Défi de session tel que remis (nonce hexadécimal du PDP) ; borné, jamais interprété. */
+  private static final Pattern CHALLENGE = Pattern.compile("^[A-Za-z0-9_-]{16,128}$");
+
   record StartRequest(
       String msisdn, String pin, String deviceId, String challenge, String signature) {}
 
@@ -56,17 +60,25 @@ public class MobileEnrolmentController {
     this.retryAfterSeconds = Long.toString(Math.max(1, (cooldownMs + 999) / 1000));
   }
 
+  /**
+   * L'origine réseau (P-11) est l'adresse distante vue par le cœur ; sur la surface mobile (L7),
+   * c'est l'adresse Tailscale du téléphone, à VÉRIFIER au montage de L7-b (limite déclarée B4).
+   */
   @PostMapping("/enrolment/start")
-  public ResponseEntity<Map<String, Object>> start(@RequestBody String body) {
+  public ResponseEntity<Map<String, Object>> start(
+      @RequestBody String body, HttpServletRequest http) {
     StartRequest r = read(body, StartRequest.class);
     if (r == null
-        || !matches(MSISDN, r.msisdn())
-        || !matches(DIGITS, r.pin())
-        || (r.deviceId() != null && !matches(DEVICE_ID, r.deviceId()))
-        || (r.signature() != null && !matches(BASE64, r.signature()))) {
+        || !isMsisdn(r.msisdn())
+        || !isPin(r.pin())
+        || (r.deviceId() != null && !isDeviceId(r.deviceId()))
+        || (r.challenge() != null && !isChallenge(r.challenge()))
+        || (r.signature() != null && !isBase64(r.signature()))) {
       return invalid();
     }
-    return answer(enrolment.start(r.msisdn(), r.pin()));
+    return answer(
+        enrolment.start(
+            r.msisdn(), r.pin(), http.getRemoteAddr(), r.deviceId(), r.challenge(), r.signature()));
   }
 
   @PostMapping("/enrolment/otp")
@@ -105,24 +117,47 @@ public class MobileEnrolmentController {
     return answer(enrolment.confirm(id, r.recoveryCode()));
   }
 
-  private ResponseEntity<Map<String, Object>> answer(Answer a) {
+  ResponseEntity<Map<String, Object>> answer(Answer a) {
     ResponseEntity.BodyBuilder b = ResponseEntity.status(a.status());
     if (a.retryAfter()) {
       b.header("Retry-After", retryAfterSeconds);
+    } else if (a.throttledSeconds() > 0) {
+      b.header("Retry-After", Long.toString(a.throttledSeconds()));
     }
     return b.body(a.body());
   }
 
-  private static ResponseEntity<Map<String, Object>> invalid() {
+  static ResponseEntity<Map<String, Object>> invalid() {
     return ResponseEntity.badRequest().body(Map.of("reason", "REQUEST_INVALID"));
   }
 
-  private <T> T read(String body, Class<T> type) {
+  <T> T read(String body, Class<T> type) {
     try {
       return strict.readValue(body, type);
     } catch (Exception e) {
       return null;
     }
+  }
+
+  // Contrôles de forme partagés avec les routes de session (MobileSessionController).
+  static boolean isMsisdn(String v) {
+    return matches(MSISDN, v);
+  }
+
+  static boolean isPin(String v) {
+    return matches(DIGITS, v);
+  }
+
+  static boolean isDeviceId(String v) {
+    return matches(DEVICE_ID, v);
+  }
+
+  static boolean isChallenge(String v) {
+    return matches(CHALLENGE, v);
+  }
+
+  static boolean isBase64(String v) {
+    return matches(BASE64, v);
   }
 
   private static boolean matches(Pattern p, String value) {
