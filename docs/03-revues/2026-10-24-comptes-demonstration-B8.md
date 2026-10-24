@@ -40,9 +40,34 @@ ssh isc@isc-vm 'chmod 600 ~/.isc/seed-comptes-demo.csv'
 echo 'ISC_DEMO_SEED_CSV=/home/isc/.isc/seed-comptes-demo.csv' >> ~/identishield-cm/infra/.env
 ```
 
-Puis, dans `infra/` : `docker compose -f docker-compose.yml -f compose.b3a.yml up -d`. Si le fichier
-est invalide, le cœur ne démarre pas et `docker logs isc-core` nomme le fichier, la ligne, le champ
-et la cause (jamais le PIN).
+## Commandes EXACTES de déploiement (couloir A, dans la VM, à copier telles quelles)
+
+Pour que les 20 comptes existent, le cœur doit tourner sous le **profil Spring `demo`**, avec la
+**surcouche `compose.b3a.yml`** et la **variable `ISC_DEMO_SEED_CSV`** dans `infra/.env`. Sans la
+surcouche, le profil n'est pas actif et rien n'est amorcé ; sans la variable, Compose refuse de
+démarrer en nommant la cause.
+
+**Une seule façon de démarrer (décision du superviseur technique, 2026-10-24, avec le couloir A,
+PR #91) : `make up`.** Dès que #91 est dans `main`, `make up` inclut lui-même
+`-f infra/compose.b3a.yml` quand `ISC_DEMO_SEED_CSV` est définie dans `infra/.env`, et l'annonce
+(« profil demo : compose.b3a.yml inclus » / « profil demo : non »). L'étape 3 ci-dessous est la
+commande explicite équivalente, valable tant que #91 n'est pas fusionnée ; après, c'est `make up`.
+
+```bash
+cd ~/identishield-cm/infra
+# 1. La variable, une seule fois (infra/.env n'est jamais versionné) :
+grep -q '^ISC_DEMO_SEED_CSV=' .env || echo 'ISC_DEMO_SEED_CSV=/home/isc/.isc/seed-comptes-demo.csv' >> .env
+# 2. Le fichier doit exister, dossier 700, fichier 600 (déposé par la propriétaire) :
+ls -ld ~/.isc && ls -l ~/.isc/seed-comptes-demo.csv
+# 3. Démarrage de la pile AVEC la surcouche (profil demo + montage du fichier) :
+docker compose -f docker-compose.yml -f compose.b3a.yml up -d --build
+# 4. Vérification : une ligne « amorçage démo : 5 comptes techniques, 20 comptes de démonstration »
+docker logs isc-core 2>&1 | grep 'amorçage démo'
+```
+
+Si le fichier est invalide, `isc-core` s'arrête et `docker logs isc-core` nomme le fichier, la
+ligne, le champ et la cause (jamais le PIN). Un `up -d` **sans** `-f compose.b3a.yml` relance la
+pile sans profil `demo` : les comptes déjà créés restent en base, mais aucun amorçage n'a lieu.
 
 ## Preuve de rejouabilité (à faire dans la VM, par la session, une fois le fichier déposé)
 
@@ -51,8 +76,40 @@ lignes : numéro, nom, solde, empreinte du PIN (`SELECT msisdn, holder_name, bal
 FROM core.account WHERE msisdn >= '677001101' OR msisdn IN (…) ORDER BY msisdn`, sous `isc_admin`).
 Le rapport donne le résultat de la comparaison, **pas** les empreintes. Témoin posé avec heure de fin.
 
-**État au 2026-10-24 :** le fichier n'est pas encore dans la VM (`~/.isc` absent) : la preuve
-attend son dépôt. Le code est prouvé par les tests (CSV factice `core/src/test/resources/demo-seed/`,
+Commandes de la preuve (pile ISOLÉE `isc-b3a`, `infra/compose.b3a-isolement.yml` : conteneurs
+`isc-b3a-*`, réseaux `isc-b3a-*`, aucun port publié, volumes neufs — la pile en service n'est pas
+touchée et peut tourner en même temps), sous témoin avec heure de fin :
+
+```bash
+cd ~/identishield-cm/infra
+P="docker compose -p isc-b3a -f docker-compose.yml -f compose.b3a.yml -f compose.b3a-isolement.yml"
+$P up -d --build                      # 1er démarrage : amorçage
+$P exec postgres psql -U isc_admin -d identishield -Atc \
+  "SELECT msisdn, holder_name, balance_xaf, md5(coalesce(pin_hash,'')) FROM core.account ORDER BY msisdn" > /tmp/seed-1.txt
+$P restart core                        # 2e démarrage : rejoué
+$P exec postgres psql -U isc_admin -d identishield -Atc \
+  "SELECT msisdn, holder_name, balance_xaf, md5(coalesce(pin_hash,'')) FROM core.account ORDER BY msisdn" > /tmp/seed-2.txt
+cmp /tmp/seed-1.txt /tmp/seed-2.txt && wc -l /tmp/seed-1.txt    # identiques, 25 lignes
+```
+
+Le rapport donne « identiques, 25 lignes » ; les fichiers `/tmp/seed-*.txt` ne portent que des
+empreintes d'empreintes (md5 du hash PBKDF2), jamais un PIN ; ils sont retirés après.
+
+**Preuve faite le 2026-10-24, 17 h 22 → 17 h 27 UTC**, VM isc-vm, pile isolée `isc-b3a` (conteneurs
+`isc-b3a-*`, aucun port publié, pile en service intacte), cœur de la branche #90 (jar construit sur
+le poste, la VM ne joignant pas Maven Central), fichier réel de la propriétaire
+(`~/.isc/seed-comptes-demo.csv`, 909 octets, 600, dossier 700, déposé à 16 h 32) :
+
+- 1er démarrage : journal « amorçage démo : 5 comptes techniques, 20 comptes de démonstration, noms
+  des titulaires alignés » ; photographie : 27 lignes (les 25 amorcées + les 2 comptes d'amorçage
+  préexistants du cœur, 677000001 et 677000002, sans nom) ;
+- `restart core`, 2e démarrage : même ligne de journal (2 passages comptés) ; photographie : 27
+  lignes ;
+- `cmp` des deux photographies (numéro, nom, solde, md5 de l'empreinte du PIN) : **IDENTIQUES**.
+  Aucun PIN, aucune empreinte dans ce rapport ; les fichiers de photographie ont été retirés.
+
+Reste côté VM de service : la variable `ISC_DEMO_SEED_CSV` n'est pas encore dans `infra/.env` de
+`~/identishield-cm` (déploiement par le couloir A, selon les commandes ci-dessus). Le code est prouvé par les tests (CSV factice `core/src/test/resources/demo-seed/`,
 PIN manifestement factices, et un test par refus).
 
 ## Limites déclarées

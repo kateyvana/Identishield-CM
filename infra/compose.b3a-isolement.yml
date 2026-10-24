@@ -5,22 +5,53 @@
 # 2026-10-23, carte B3a). La voie normale est docker-compose.yml seul (make up), ou avec la
 # surcouche compose.b3a.yml.
 #
-# Il renomme ce que le fichier partagé fixe par nom, pour que l'essai ait les siens :
-#   - volumes : base neuve (init.sql s'exécute) et autorité TLS neuve ;
-#   - images  : les images construites ne remplacent pas celles de l'autre pile.
+# Il renomme TOUT ce que le fichier partagé fixe par nom, pour que l'essai ait les siens et puisse
+# tourner PENDANT que la pile en service tourne (complété le 2026-10-24, carte #76 : la version
+# précédente gardait les container_name, les réseaux et les ports du fichier partagé, donc entrait
+# en collision avec la pile en service) :
+#   - conteneurs : isc-b3a-* (le fichier partagé fixe isc-postgres, isc-core, … par nom) ;
+#   - réseaux    : isc-b3a-net (interne), isc-b3a-web, isc-b3a-mobile — le DNS de service
+#                  (postgres, pdp, core, sim) reste valable à l'intérieur du projet ;
+#   - ports      : aucun port publié (console 3000, cœur 8443) : l'essai n'est joignable que de
+#                  l'intérieur de ses réseaux (docker compose -p isc-b3a exec …) ;
+#   - volumes    : base neuve (init.sql + migrations s'exécutent) et autorité TLS neuve ;
+#   - images     : les images construites ne remplacent pas celles de l'autre pile.
 # Usage (depuis infra/, avec un projet distinct) :
 #   docker compose -p isc-b3a -f docker-compose.yml -f compose.b3a.yml -f compose.b3a-isolement.yml up -d --build
 # Retrait : la même commande avec « down -v » ne supprime que les volumes isc-b3a-* ; les images
 # isc-*-b3a se retirent à part.
 services:
+  postgres:
+    container_name: isc-b3a-postgres
   ca-init:
     image: isc-tools-b3a
+    container_name: isc-b3a-ca-init
+  migrate:
+    container_name: isc-b3a-migrate
+    # Même image que postgres (déjà présente dans la VM, qui ne joint pas le registre) : seul psql
+    # est utilisé par apply-migrations.sh ; le fichier partagé prend postgres:16-alpine.
+    image: postgres:16
   pdp:
     image: isc-pdp-b3a
+    container_name: isc-b3a-pdp
   core:
     image: isc-core-b3a
+    container_name: isc-b3a-core
+    ports: !reset []
   console:
     image: isc-console-b3a
+    container_name: isc-b3a-console
+    ports: !reset []
+  sim:
+    container_name: isc-b3a-sim
+
+networks:
+  isc-net:
+    name: isc-b3a-net
+  isc-web:
+    name: isc-b3a-web
+  isc-mobile:
+    name: isc-b3a-mobile
 
 volumes:
   pgdata:
