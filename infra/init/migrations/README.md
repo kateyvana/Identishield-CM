@@ -47,6 +47,13 @@ Tout changement de schéma postérieur à `init.sql` est donc une **migration** 
   `apply-migrations.sh`. `isc-core` et `isc-pdp` en dépendent en `service_completed_successfully` :
   **une migration qui échoue arrête le démarrage du cœur et du PDP**. L'application est automatique,
   sans ordre à retenir ; une commande à lancer dans une procédure a été condamnée (R-S).
+- **Aucune mémoire de ce qui a été appliqué.** `apply-migrations.sh` ne tient ni table de versions ni
+  « dernier numéro » : à chaque exécution, la boucle `for f in "$DIR"/[0-9][0-9][0-9]-*.sql`
+  (`infra/init/apply-migrations.sh`, ligne 16) **rejoue tous les fichiers** dans l'ordre de leur nom,
+  et c'est la règle 3 (rejouable) qui rend ce rejeu sans effet. Conséquence : une migration de numéro
+  **inférieur** arrivant **après** (la 004 de B3b fusionnée après la 005 de B4) est appliquée au
+  `make up` suivant, jamais sautée ; c'est ce qui autorise les trous et l'ordre d'arrivée libre de
+  la règle 1.
 - **Preuve** : `bash tools/verify_migrations.sh`. Sur deux bases jetables dans la VM, elle vérifie que
   la base neuve et la base migrée ont le même schéma, qu'une seconde application ne change rien, et
   qu'une migration **non enveloppée** dans `BEGIN; … COMMIT;` est refusée.
