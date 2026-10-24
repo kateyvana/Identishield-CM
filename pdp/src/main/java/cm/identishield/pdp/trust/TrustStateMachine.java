@@ -296,6 +296,15 @@ public class TrustStateMachine {
    * Alerte de tentative de ré-enrôlement : ré-enrôlements gelés seulement, l'état ne change pas.
    */
   public Trust notMe(String accountId, Alert alert) {
+    return notMe(accountId, alert, Map.of());
+  }
+
+  /**
+   * Même transition, avec les champs de traçabilité de l'appelant ({@code alertId} de l'alerte
+   * répondue, route {@code POST /trust/{accountId}/not-me}, ADR-041 amendement du 2026-10-25) : ils
+   * sont écrits dans l'entrée d'audit de chaque événement émis, jamais stockés ailleurs.
+   */
+  public Trust notMe(String accountId, Alert alert, Map<String, Object> extra) {
     return mutate(
         accountId,
         (r, now) -> {
@@ -310,7 +319,7 @@ public class TrustStateMachine {
             r.state = State.FROZEN;
             r.freezeCause = FreezeCause.NOT_ME;
             r.freezeUntil = null;
-            transition(r, from, EVENT_FROZEN, FreezeCause.NOT_ME.name(), now, Map.of());
+            transition(r, from, EVENT_FROZEN, FreezeCause.NOT_ME.name(), now, extra);
           }
           r.reenrolFrozenUntil = now.plus(rules.reenrolFreeze());
           Map<String, Object> p = new LinkedHashMap<>();
@@ -318,6 +327,7 @@ public class TrustStateMachine {
           p.put("accountId", r.accountId);
           p.put("alert", alert.name());
           p.put("reenrolFrozenUntil", iso(r.reenrolFrozenUntil));
+          p.putAll(extra);
           auditLog.append(p, now);
         });
   }

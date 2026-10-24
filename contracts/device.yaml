@@ -280,6 +280,62 @@ paths:
                 code: ACCOUNT_UNKNOWN
                 message: no trust state for this account
 
+  /trust/{accountId}/not-me:
+    post:
+      operationId: answerNotMe
+      summary: Réponse signée « ce n'est pas moi » du titulaire — gel NOT_ME et gel des ré-enrôlements
+      description: |
+        ADR-041, amendement du 2026-10-25 (ES-27 ; arbitrage A1-4). Route INTERNE du PDP (mTLS
+        cœur↔PDP, jamais servie sur le 8443). Le cœur ne l'appelle qu'APRÈS avoir fait vérifier par
+        POST /device/verify (forme nonce) la signature `accountId|ALERT_NOT_ME|alertId|nonce` par la
+        clé ACTIVE de l'appareil de la session : le PDP énonce, le cœur arbitre, le gel est un acte
+        du PDP.
+
+        Effet (TrustStateMachine.notMe) : `SIM_CHANGE` → FROZEN, cause NOT_ME, sans échéance
+        (`freezeUntil` nul), et `reenrolFrozenUntil = now + REENROL_FREEZE` ; `REENROL_ATTEMPT` →
+        `reenrolFrozenUntil` seulement, état inchangé (A1-4 : le titulaire garde sa clé ACTIVE).
+        Chaque événement est écrit dans le journal d'audit avec sa cause et l'`alertId`. Compte jamais
+        vu : créé comme pour toute transition (pas de 404). Déjà gelé NOT_ME : 409, l'effet est déjà
+        en place. Un second `REENROL_ATTEMPT` reprolonge le gel des ré-enrôlements.
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotMeRequest'
+      responses:
+        '200':
+          description: Gel appliqué ; état de confiance résultant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotMeResponse'
+              example:
+                state: FROZEN
+                since: '2026-10-25T08:00:00Z'
+                probationUntil: null
+                freezeUntil: null
+                reenrolFrozenUntil: '2026-10-26T08:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Compte déjà gelé par une réponse « ce n'est pas moi » (ALREADY_FROZEN) ; l'effet est en place.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: ALREADY_FROZEN
+                message: account already frozen by a not-me answer
+
 components:
   securitySchemes:
     mtls:
@@ -439,6 +495,40 @@ components:
           type: [string, 'null']
           format: date-time
           description: Fin du gel issu d'une décision FREEZE (TTL_FREEZE) ; null hors gel, ou gel « ce n'est pas moi » (sans échéance).
+    NotMeRequest:
+      type: object
+      additionalProperties: false
+      required: [alert, alertId]
+      properties:
+        alert:
+          type: string
+          enum: [SIM_CHANGE, REENROL_ATTEMPT]
+        alertId:
+          type: string
+          format: uuid
+          description: Identifiant de l'alerte répondue (core.alert) ; écrit dans l'audit, jamais stocké ailleurs par le PDP.
+    NotMeResponse:
+      type: object
+      additionalProperties: false
+      required: [state, since, probationUntil, freezeUntil, reenrolFrozenUntil]
+      properties:
+        state:
+          type: string
+          enum: [TRUSTED, PROBATION, FROZEN]
+        since:
+          type: string
+          format: date-time
+        probationUntil:
+          type: [string, 'null']
+          format: date-time
+        freezeUntil:
+          type: [string, 'null']
+          format: date-time
+          description: Toujours null après un gel NOT_ME (sans échéance).
+        reenrolFrozenUntil:
+          type: [string, 'null']
+          format: date-time
+          description: Fin du gel des ré-enrôlements (REENROL_FREEZE).
     Error:
       type: object
       required: [code, message]
