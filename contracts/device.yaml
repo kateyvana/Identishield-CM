@@ -425,14 +425,12 @@ components:
           format: date-time
           description: Entrée dans l'état courant (UTC).
         probationUntil:
-          type: string
+          type: [string, 'null']
           format: date-time
-          nullable: true
           description: Fin de la période CAR_IMSI en cours ; null hors probation.
         freezeUntil:
-          type: string
+          type: [string, 'null']
           format: date-time
-          nullable: true
           description: Fin du gel issu d'une décision FREEZE (TTL_FREEZE) ; null hors gel, ou gel « ce n'est pas moi » (sans échéance).
     Error:
       type: object

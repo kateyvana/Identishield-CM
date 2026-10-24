@@ -1,7 +1,6 @@
 package cm.identishield.pdp.web;
 
 import cm.identishield.pdp.trust.TrustStateMachine;
-import cm.identishield.pdp.trust.TrustStateMachine.Trust;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,8 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Lecture de l'état de confiance d'un compte (ADR-041, amendement du 2026-10-24, décision du
- * superviseur technique) : route INTERNE du PDP (mTLS cœur↔PDP, jamais sur le 8443), LECTURE SEULE —
- * aucune écriture en base, aucune entrée d'audit. Le cœur la consomme pour {@code GET
+ * superviseur technique) : route INTERNE du PDP (mTLS cœur↔PDP, jamais sur le 8443), LECTURE SEULE
+ * — aucune écriture en base, aucune entrée d'audit. Le cœur la consomme pour {@code GET
  * /mobile/v1/account} (état affiché à l'usager). Un compte que le PDP n'a jamais vu : 404.
  *
  * <p>Les échéances passées (fin de probation, TTL de gel) sont appliquées EN MÉMOIRE seulement, par

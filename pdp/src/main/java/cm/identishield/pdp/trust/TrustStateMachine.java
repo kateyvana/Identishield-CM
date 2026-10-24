@@ -127,11 +127,12 @@ public class TrustStateMachine {
   }
 
   /**
-   * LECTURE SEULE de l'état d'un compte (GET /trust/{accountId}, ADR-041 amendement du 2026-10-24) :
-   * la ligne telle qu'enregistrée, les échéances passées appliquées EN MÉMOIRE par les mêmes règles
-   * que {@link #current} ({@code settle}), mais rien n'est écrit — ni l'état, ni une transition, ni
-   * une entrée d'audit. L'état rendu est celui que la prochaine décision constaterait. Vide si le
-   * PDP n'a jamais vu le compte (aucune ligne : A1-5 dit TRUSTED, la route répond 404).
+   * LECTURE SEULE de l'état d'un compte (GET /trust/{accountId}, ADR-041 amendement du 2026-10-24)
+   * : la ligne telle qu'enregistrée, les échéances passées appliquées EN MÉMOIRE par les mêmes
+   * règles que {@link #current} ({@code settle}), mais rien n'est écrit — ni l'état, ni une
+   * transition, ni une entrée d'audit. L'état rendu est celui que la prochaine décision
+   * constaterait. Vide si le PDP n'a jamais vu le compte (aucune ligne : A1-5 dit TRUSTED, la route
+   * répond 404).
    */
   public Optional<Trust> peek(String accountId) {
     Instant now = clock.instant();
@@ -351,8 +352,8 @@ public class TrustStateMachine {
   }
 
   /**
-   * Applique, dans l'ordre et à leur instant, les échéances passées (ADR-019). {@code record} vrai :
-   * chaque échéance franchie est une transition écrite (table + audit) ; faux : la ligne est
+   * Applique, dans l'ordre et à leur instant, les échéances passées (ADR-019). {@code record} vrai
+   * : chaque échéance franchie est une transition écrite (table + audit) ; faux : la ligne est
    * seulement mise à jour en mémoire ({@link #peek}, lecture seule), mêmes règles.
    */
   private void settle(Row r, Instant now, boolean record) {
@@ -363,8 +364,7 @@ public class TrustStateMachine {
         r.state = State.TRUSTED;
         r.since = at;
         if (record) {
-          transition(
-              r, State.PROBATION, EVENT_PROBATION_EXPIRED, "CAR_IMSI_EXPIRED", at, Map.of());
+          transition(r, State.PROBATION, EVENT_PROBATION_EXPIRED, "CAR_IMSI_EXPIRED", at, Map.of());
         }
       } else if (r.freezeCause == FreezeCause.FREEZE_DECISION && !now.isBefore(r.freezeUntil)) {
         unfreeze(r, r.freezeUntil, "TTL_FREEZE_EXPIRED", Map.of(), record);
