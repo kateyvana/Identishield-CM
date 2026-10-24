@@ -28,6 +28,17 @@ if [ -f "$CERTS/ca.crt" ] && [ "${FORCE:-0}" != "1" ]; then
   exit 0
 fi
 
+# Carte #68 (L7-2) : une fois l'APK publie, l'autorite est EPINGLEE par les telephones. La
+# regenerer (FORCE=1) les ferait tous refuser le serveur. Sentinelle posee par `make apk-publie`,
+# retiree par `make apk-depublie` (acte de la proprietaire). Refus mecanique, pas une note.
+if [ -f "$CERTS/APK-PUBLIE" ]; then
+  echo "[ca-init] REFUS : l'APK publie epingle cette autorite (sentinelle $CERTS/APK-PUBLIE) :" >&2
+  sed 's/^/[ca-init]   /' "$CERTS/APK-PUBLIE" >&2
+  echo "[ca-init] regenerer la CA casserait tous les telephones des evaluateurs. Rien n'est modifie." >&2
+  echo "[ca-init] Pour publier un NOUVEL APK : make apk-depublie (proprietaire), puis FORCE=1." >&2
+  exit 3
+fi
+
 echo "[ca-init] $(date -u +%FT%TZ) generation de l'autorite locale et des certificats de service"
 umask 077
 
