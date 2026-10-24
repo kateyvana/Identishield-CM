@@ -13,12 +13,12 @@ PY_PROJECTS     := simulator attacker hlr-agent evaluation tools/mobile-mock too
 MOBILE_MOCK_PORT ?= 8089
 MOBILE_MOCK_DEMO ?=
 
-.PHONY: help up down reset check test abuse evaluate diagrams check-docs check-stack \
+.PHONY: help up down reset migrate check test abuse evaluate diagrams check-docs check-stack \
         build format unit arch contract secrets fictitious-msisdn named-params traceability \
         mobile-mock eval-tests
 
 help:
-	@echo "Cibles : up down reset check test abuse evaluate diagrams check-docs check-stack mobile-mock"
+	@echo "Cibles : up down reset migrate check test abuse evaluate diagrams check-docs check-stack mobile-mock"
 
 ## ---- pile ------------------------------------------------------------------
 up:
@@ -30,6 +30,11 @@ down:
 
 reset:
 	@$(COMPOSE) down -v
+
+# Migrations du schema sur une base EXISTANTE (pile demarree) : a lancer apres chaque mise a
+# jour du depot dans la VM, avant le make up du nouveau code (infra/init/migrations/README.md).
+migrate:
+	@bash infra/init/migrate.sh isc-postgres infra/init/migrations
 
 check-stack:
 	@bash tools/check_stack.sh
