@@ -163,8 +163,13 @@ services:
     networks:
       - isc-net
       - isc-web
+    # #66 (L7-1) : la console permet de desactiver la couche (POST /api/mode) et affichera les
+    # SMS simules. Elle n'est donc joignable QUE depuis la VM elle-meme (boucle locale) : depuis
+    # le poste, par tunnel SSH (docs/03-revues/2026-10-24-console-boucle-locale.md). Les portes
+    # verify_* l'appellent en localhost depuis la VM : inchangees. La regle d'acces Tailscale
+    # (acte de la proprietaire) reste le remede principal ; ceci est la seconde barriere.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   # Reseau SMS simule (isc-sim) : recoit l'OTP livre par le coeur (POST /deliver, appel
   # coeur->reseau, comme vers une passerelle SMS) et laisse lire la boite d'un IMSI (GET
