@@ -90,7 +90,12 @@ public class MobileEnrolmentController {
   public MobileEnrolmentController(
       MobileEnrolment enrolment, ObjectMapper json, PdpClientProperties pdp) {
     this.enrolment = enrolment;
-    this.strict = json.copy().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    // Lecture stricte : aucun champ hors contrat, aucune coercition de type (B6 : un montant écrit
+    // entre guillemets n'est pas l'entier du contrat).
+    this.strict =
+        json.copy()
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .disable(com.fasterxml.jackson.databind.MapperFeature.ALLOW_COERCION_OF_SCALARS);
     long cooldownMs = pdp.breaker().cooldownMs();
     this.retryAfterSeconds = Long.toString(Math.max(1, (cooldownMs + 999) / 1000));
   }

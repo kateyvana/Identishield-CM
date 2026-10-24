@@ -247,6 +247,9 @@ paths:
     post:
       operationId: issueNonce
       summary: Nonce à usage unique pour une opération signée (ES-10)
+      description: |
+        Le nonce est émis par le PDP pour le compte de la session (carte B6) : c'est lui qui le
+        consomme à la vérification de la signature. PDP injoignable : 503 transitoire.
       responses:
         '200':
           description: Nonce émis.
@@ -256,10 +259,16 @@ paths:
                 $ref: '#/components/schemas/NonceResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /account:
     get:
       operationId: getAccount
       summary: Solde, état du compte, opérations différées
+      description: |
+        L'état de confiance vient du PDP (route interne `GET /trust/{accountId}`, décision du
+        superviseur technique du 2026-10-24) ; un compte que le PDP n'a jamais vu est TRUSTED, l'état
+        qu'il donne lui-même à un compte sans histoire. PDP injoignable : 503 transitoire.
       responses:
         '200':
           description: Compte du titulaire de la session.
@@ -269,6 +278,8 @@ paths:
                 $ref: '#/components/schemas/Account'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /transactions:
     get:
       operationId: listTransactions
@@ -369,6 +380,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /alerts:
     get:
       operationId: listAlerts

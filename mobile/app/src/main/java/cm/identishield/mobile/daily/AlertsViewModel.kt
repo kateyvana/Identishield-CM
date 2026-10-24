@@ -63,7 +63,11 @@ class AlertsViewModel(
     val sessionLost: StateFlow<Boolean> = _sessionLost.asStateFlow()
     private var inFlight = false
 
-    /** À l'ouverture, puis toutes les POLL_FOREGROUND, tant que l'accueil est au premier plan. */
+    /**
+     * À l'ouverture, puis toutes les POLL_FOREGROUND, tant qu'un écran du quotidien est au premier
+     * plan (L-B4-2, carte B6) ; l'appelant arrête la boucle dès l'arrière-plan. Requête automatique :
+     * le serveur ne la compte pas comme activité de l'usager.
+     */
     suspend fun pollWhileForeground() {
         while (true) {
             refresh()

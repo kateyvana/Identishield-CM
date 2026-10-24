@@ -128,6 +128,13 @@ sealed interface DailyStep {
 }
 
 /**
+ * Écrans du quotidien derrière une session ouverte (L-B4-2, carte B6) : la requête automatique
+ * d'alertes y tourne toutes les POLL_FOREGROUND tant que l'application est au premier plan. Avant la
+ * session (démarrage, non lié, verrou E-10) il n'y a pas de jeton à faire vivre.
+ */
+fun DailyStep.isSignedIn(): Boolean = !(this is DailyStep.Starting || this is DailyStep.NotBound || this is DailyStep.Unlock)
+
+/**
  * Flux B (ouverture de session) et C (envoi signé). Le serveur décide (P-2) ; l'application signe
  * après déverrouillage LOCAL et rapporte. Le jeton de session ne vit qu'en mémoire (MOB-S-10).
  */

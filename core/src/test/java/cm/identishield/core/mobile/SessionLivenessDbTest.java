@@ -117,4 +117,27 @@ class SessionLivenessDbTest {
     clock.advance(step);
     assertFalse(tokens.touch(token, true).isPresent(), "durée maximale : mort malgré l'activité");
   }
+
+  /**
+   * Preuve B6 n° 1 (L-B4-2) : au premier plan sans aucune action de l'usager, l'application
+   * interroge /alerts toutes les POLL_FOREGROUND ({@code userActivity} faux) ; à 4 minutes la
+   * session est VIVANTE (l'inactivité APP_SESSION_TTL n'est pas atteinte), alors qu'elle serait
+   * morte sans ces requêtes (arrière-plan APP_SESSION_BACKGROUND_TTL dépassé : preuve n° 2
+   * ci-dessus).
+   */
+  @Test
+  void foregroundWithoutUserAction_pollsOnly_fourMinutes_isStillAlive() {
+    UUID acc = account("677009204");
+    String token = tokens.issue(acc, DEVICE).token();
+    Duration poll =
+        ruleSet.appSessionBackgroundTtl().dividedBy(2); // POLL_FOREGROUND < arrière-plan
+    Instant fourMinutes = T0.plus(ruleSet.appSessionTtl().minus(Duration.ofMinutes(1)));
+    assertTrue(fourMinutes.isAfter(T0), "APP_SESSION_TTL > 1 min");
+    while (!clock.instant().plus(poll).isAfter(fourMinutes)) {
+      clock.advance(poll);
+      assertTrue(tokens.touch(token, false).isPresent(), "sondage : vivant à " + clock.instant());
+    }
+    assertEquals(fourMinutes, clock.instant(), "la preuve s'arrête exactement à 4 minutes");
+    assertEquals(new LiveSession(acc, DEVICE), tokens.touch(token, false).orElseThrow());
+  }
 }

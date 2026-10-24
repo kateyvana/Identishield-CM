@@ -4,14 +4,23 @@ package cm.identishield.core.pdp;
  * Issue d'un appel /evaluate côté cœur. {@code available=false} => le PDP n'a pas rendu de décision
  * (indisponible / disjoncteur ouvert) : le cœur applique alors sa politique fail-closed (ES-11).
  */
-public record EvaluateOutcome(boolean available, String decision, String decisionId) {
+public record EvaluateOutcome(
+    boolean available, String decision, String decisionId, String vetoApplied) {
+
+  /** Veto appliqué par le PDP (NONE, SIGNATURE_INVALID, ACCOUNT_FROZEN, …), tel que renvoyé. */
+  public static final String NO_VETO = "NONE";
 
   public static EvaluateOutcome unavailable() {
-    return new EvaluateOutcome(false, null, null);
+    return new EvaluateOutcome(false, null, null, NO_VETO);
   }
 
   public static EvaluateOutcome of(String decision, String decisionId) {
-    return new EvaluateOutcome(true, decision, decisionId);
+    return of(decision, decisionId, NO_VETO);
+  }
+
+  public static EvaluateOutcome of(String decision, String decisionId, String vetoApplied) {
+    return new EvaluateOutcome(
+        true, decision, decisionId, vetoApplied == null ? NO_VETO : vetoApplied);
   }
 
   public boolean isAllow() {

@@ -131,7 +131,10 @@ public final class PdpClient {
       if (resp.statusCode() == 200) {
         breaker.recordSuccess();
         Map<String, Object> body = parseBody(resp.body());
-        return EvaluateOutcome.of((String) body.get("decision"), (String) body.get("decisionId"));
+        return EvaluateOutcome.of(
+            (String) body.get("decision"),
+            (String) body.get("decisionId"),
+            (String) body.get("vetoApplied"));
       }
       breaker.recordFailure();
       return EvaluateOutcome.unavailable();

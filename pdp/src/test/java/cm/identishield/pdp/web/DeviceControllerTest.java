@@ -67,6 +67,28 @@ class DeviceControllerTest {
     }
   }
 
+  /**
+   * Carte B6 : avec `nonce` nommé, c'est la forme à cinq champs du vérificateur qui est appelée.
+   */
+  @Test
+  void verify_withExplicitNonce_passesTheChainAndTheNonceApart() {
+    String chain = "acc-1|CANCEL|tr-1|9f86d081884c7d659a2feaa0c55ad015";
+    when(signatures.verifyChallenge(
+            "acc-1", "dev-1", chain, "c2ln", "9f86d081884c7d659a2feaa0c55ad015"))
+        .thenReturn(cm.identishield.pdp.signature.SignatureVerifier.ChallengeVerdict.VALID);
+    assertEquals(
+        new VerifyResponse("VALID"),
+        controller.verify(
+            new VerifyRequest(
+                "acc-1", "dev-1", chain, "c2ln", "9f86d081884c7d659a2feaa0c55ad015")));
+    org.mockito.Mockito.verify(signatures, org.mockito.Mockito.never())
+        .verifyChallenge(
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyString());
+  }
+
   private final RegisterRequest register =
       new RegisterRequest(
           "acc-1", "cGs=", List.of("Y2VydA=="), "ZGVmaQ==", "c2ln", null, "100.64.0.9", null);

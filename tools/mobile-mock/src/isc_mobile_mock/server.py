@@ -465,7 +465,9 @@ class MockState:
             _err(404, "REQUEST_INVALID")
         return 200, {
             "msisdn": msisdn,
-            "beneficiaryId": target["accountId"],
+            # B6 : l'identifiant opaque EST le MSISDN, la chaîne que le cœur met dans
+            # EvaluateRequest.beneficiaryId et que le PDP recalcule dans la chaîne signée.
+            "beneficiaryId": msisdn,
             "holderName": target["holderName"],
             "newBeneficiary": msisdn not in acc["known"],
         }
@@ -476,7 +478,7 @@ class MockState:
             _err(403, "ACCOUNT_FROZEN")
         if acc["pin"] is None or not hmac.compare_digest(acc["pin"], body["pin"]):
             _err(*CRED)
-        payee = self.by_id.get(body["beneficiaryId"])
+        payee = self.accounts.get(body["beneficiaryId"])  # beneficiaryId = MSISDN (B6)
         if payee is None:
             _err(404, "REQUEST_INVALID")
         amount = body["amountXaf"]

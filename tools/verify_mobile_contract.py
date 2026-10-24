@@ -343,6 +343,58 @@ def main():
         401,
         "CREDENTIALS_INVALID",
     )
+    daily_without_session(junk)
+
+
+def daily_without_session(junk):
+    """Carte B6 : les routes du quotidien derrière le jeton porteur. Sans jeton, chacune repond
+    401 CREDENTIALS_INVALID AVANT tout controle de forme (ES-22) : une annulation mal formee
+    sans jeton recoit le meme 401, pas un 400."""
+    print("Routes du quotidien sans session (B6)")
+    nonce = "9f86d081884c7d659a2feaa0c55ad015"
+    transfer = "11111111-2222-4333-8444-555555555555"
+    for name, method, template, path, body in [
+        ("nonce sans jeton", "POST", "/nonce", "/nonce", None),
+        ("compte sans jeton", "GET", "/account", "/account", None),
+        ("historique sans jeton", "GET", "/transactions", "/transactions", None),
+        (
+            "titulaire sans jeton",
+            "GET",
+            "/beneficiaries/{msisdn}/holder",
+            "/beneficiaries/677001101/holder",
+            None,
+        ),
+        (
+            "annulation sans jeton",
+            "POST",
+            "/transfers/{transferId}/cancel",
+            f"/transfers/{transfer}/cancel",
+            {"nonce": nonce, "signature": junk},
+        ),
+        (
+            "annulation mal formee sans jeton -> 401, pas 400",
+            "POST",
+            "/transfers/{transferId}/cancel",
+            "/transfers/pas-un-uuid/cancel",
+            {"nonce": "court"},
+        ),
+        (
+            "virement sans jeton",
+            "POST",
+            "/transfers",
+            "/transfers",
+            {
+                "type": "P2P",
+                "amountXaf": 5000,
+                "beneficiaryId": "677001101",
+                "nonce": nonce,
+                "signature": junk,
+                "pin": "0000",
+            },
+        ),
+        ("alertes sans jeton", "GET", "/alerts", "/alerts", None),
+    ]:
+        check(name, method, template, path, body, 401, "CREDENTIALS_INVALID")
 
 
 if __name__ == "__main__":
