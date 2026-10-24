@@ -28,7 +28,12 @@ public class MobileDailyController {
   record CancelRequest(String nonce, String signature) {}
 
   record TransferRequest(
-      String type, Long amountXaf, String beneficiaryId, String nonce, String signature, String pin) {}
+      String type,
+      Long amountXaf,
+      String beneficiaryId,
+      String nonce,
+      String signature,
+      String pin) {}
 
   private static final String P2P = "P2P";
 

@@ -3,9 +3,9 @@ package cm.identishield.core.mobile;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -92,14 +92,22 @@ class MobileDailyTest {
   void transfer_wrongPin_isRefused_countedForTheOrigin_andThePdpIsNeverCalled() {
     knownAccount();
     pinKnown();
-    assertEquals(401, daily.transfer(SESSION, 5_000, BENEFICIARY, NONCE, "c2ln", "0000", ORIGIN).status());
-    assertEquals(401, daily.transfer(SESSION, 5_000, BENEFICIARY, NONCE, "c2ln", "0000", ORIGIN).status());
+    assertEquals(
+        401, daily.transfer(SESSION, 5_000, BENEFICIARY, NONCE, "c2ln", "0000", ORIGIN).status());
+    assertEquals(
+        401, daily.transfer(SESSION, 5_000, BENEFICIARY, NONCE, "c2ln", "0000", ORIGIN).status());
     Answer third = daily.transfer(SESSION, 5_000, BENEFICIARY, NONCE, "c2ln", PIN, ORIGIN);
     assertEquals(429, third.status(), "origine bloquée AVANT tout calcul, même PIN juste");
     assertEquals(Map.of("reason", "THROTTLED"), third.body());
     assertTrue(third.throttledSeconds() > 0);
     verify(transfers, never())
-        .operate(anyString(), any(), org.mockito.ArgumentMatchers.anyLong(), anyString(), anyString(), any());
+        .operate(
+            anyString(),
+            any(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            anyString(),
+            anyString(),
+            any());
   }
 
   @Test
@@ -113,7 +121,13 @@ class MobileDailyTest {
     assertEquals(409, a.status());
     assertEquals(Map.of("reason", "INSUFFICIENT_FUNDS"), a.body());
     verify(transfers, never())
-        .operate(anyString(), any(), org.mockito.ArgumentMatchers.anyLong(), anyString(), anyString(), any());
+        .operate(
+            anyString(),
+            any(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            anyString(),
+            anyString(),
+            any());
   }
 
   @Test
@@ -126,12 +140,24 @@ class MobileDailyTest {
     assertEquals(200, a.status());
     assertEquals(
         Map.of(
-            "transferId", TRANSFER, "decision", "ALLOW", "status", "EXECUTED", "balanceXaf", 12_000L),
+            "transferId",
+            TRANSFER,
+            "decision",
+            "ALLOW",
+            "status",
+            "EXECUTED",
+            "balanceXaf",
+            12_000L),
         a.body());
     org.mockito.ArgumentCaptor<Proof> proof = org.mockito.ArgumentCaptor.forClass(Proof.class);
     verify(transfers)
         .operate(
-            eq(MSISDN), eq(OperationType.P2P), eq(5_000L), eq(BENEFICIARY), eq("APP"), proof.capture());
+            eq(MSISDN),
+            eq(OperationType.P2P),
+            eq(5_000L),
+            eq(BENEFICIARY),
+            eq("APP"),
+            proof.capture());
     assertEquals(new Proof(DEVICE, "c2ln", NONCE), proof.getValue());
   }
 
@@ -149,8 +175,18 @@ class MobileDailyTest {
     assertEquals("REJECTED", a.body().get("status"));
     assertEquals("DECISION_REJECTED", a.body().get("reason"));
     org.mockito.ArgumentCaptor<Proof> proof = org.mockito.ArgumentCaptor.forClass(Proof.class);
-    verify(transfers).operate(anyString(), any(), org.mockito.ArgumentMatchers.anyLong(), anyString(), anyString(), proof.capture());
-    assertEquals(new Proof(DEVICE, null, NONCE), proof.getValue(), "jamais proofType NONE : la preuve part, signature nulle");
+    verify(transfers)
+        .operate(
+            anyString(),
+            any(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            anyString(),
+            anyString(),
+            proof.capture());
+    assertEquals(
+        new Proof(DEVICE, null, NONCE),
+        proof.getValue(),
+        "jamais proofType NONE : la preuve part, signature nulle");
   }
 
   @Test
@@ -235,7 +271,11 @@ class MobileDailyTest {
             new Reply(
                 200,
                 Map.of(
-                    "state", "PROBATION", "since", "2026-10-24T07:00:00Z", "probationUntil",
+                    "state",
+                    "PROBATION",
+                    "since",
+                    "2026-10-24T07:00:00Z",
+                    "probationUntil",
                     "2026-10-27T07:00:00Z")));
     Instant executeAt = Instant.parse("2026-10-24T12:00:00Z");
     when(ledger.deferred(ACCOUNT))
@@ -246,18 +286,27 @@ class MobileDailyTest {
     assertEquals(200, a.status());
     assertEquals(
         Map.of(
-            "accountId", ACCOUNT.toString(),
-            "msisdn", MSISDN,
-            "holderName", "Hervé ESSOMBA",
-            "balanceXaf", 12_000L,
-            "state", "PROBATION",
+            "accountId",
+            ACCOUNT.toString(),
+            "msisdn",
+            MSISDN,
+            "holderName",
+            "Hervé ESSOMBA",
+            "balanceXaf",
+            12_000L,
+            "state",
+            "PROBATION",
             "deferredOperations",
-                List.of(
-                    Map.of(
-                        "transferId", TRANSFER,
-                        "amountXaf", 5_000L,
-                        "beneficiaryMsisdn", "677001101",
-                        "executeAt", "2026-10-24T12:00:00Z"))),
+            List.of(
+                Map.of(
+                    "transferId",
+                    TRANSFER,
+                    "amountXaf",
+                    5_000L,
+                    "beneficiaryMsisdn",
+                    "677001101",
+                    "executeAt",
+                    "2026-10-24T12:00:00Z"))),
         a.body());
   }
 

@@ -49,13 +49,23 @@ intervalle `POLL_FOREGROUND`, arrêt dès l'arrière-plan, trois preuves sur vra
   faute d'IMSI dans une lecture. `LOCKED` (contrat) n'est jamais rendu par le PDP. Un virement
   vers un compte GELÉ est refusé par `/evaluate` (`REJECTED`, veto `ACCOUNT_FROZEN`), que le cœur
   rendra 403 `ACCOUNT_FROZEN`.
-- **L-B6-2 · `POST /transfers` non servie à ce stade.** `TransferService.buildRequest` (couloir A)
-  envoie toujours `proofType: NONE`. Le couloir A livre la surcharge minimale sur sa branche
-  `t4-transfer-proof` (record `Proof(deviceKeyId, signature, nonce)`, `operate(…, channel, Proof)`,
-  `TransferResult.vetoApplied` tel que renvoyé par le PDP, jamais réinterprété). La route mobile
-  codera contre cette forme ; **jamais `proofType: NONE` depuis la route mobile** (le PDP accepte
-  une opération APP non signée, ES-02 n'est imposée que par la route signée). Signature absente →
-  `Proof(deviceKeyId, null, nonce)` → le PDP rend `SIGNATURE_INVALID`, l'audit s'écrit.
+- **L-B6-2 · `POST /transfers` : servie sur la surcharge du couloir A (PR #100, e9cbc3c, fusionnée
+  dans la branche B6).** `Proof(deviceKeyId, signature, nonce)`, `operate(…, channel, Proof)`,
+  `TransferResult.vetoApplied` et `TransferResult.decision` (chaînes du PDP posées telles quelles) ;
+  la route mobile ne lit jamais `detail`. **Jamais `proofType: NONE` depuis la route mobile** (le
+  PDP accepte une opération APP non signée, ES-02 n'est imposée que par la route signée) : signature
+  absente → `Proof(deviceId, null, nonce)` → le PDP rend `SIGNATURE_INVALID`, l'audit s'écrit, la
+  réponse est `REJECTED` / `DECISION_REJECTED`. Ordre : PIN (compté par origine, 429 avant tout
+  calcul), bénéficiaire (404), solde (409, sans PDP), puis `/evaluate`. Un `REJECTED` dont la
+  décision est `ALLOW` ne peut venir que du débit refusé au commit (course avec une autre opération)
+  → 409 `INSUFFICIENT_FUNDS`. Veto `ACCOUNT_FROZEN` → 403 `ACCOUNT_FROZEN`.
+- **L-B6-10 · Réponses de `POST /transfers` sans décision du PDP.** `EXECUTED_DEGRADED` (PDP
+  injoignable, montant ≤ `CAP_FAILCLOSED`, ES-11) est rendu `ALLOW` / `EXECUTED` : l'argent a bougé,
+  le contrat n'a pas de décision « dégradée » ; le cœur journalise. Un refus sans décision
+  (fail-closed au-dessus de `CAP_FAILCLOSED`, refus A5-00 « numéro sans SIM ») est rendu `REJECTED` /
+  `DECISION_REJECTED`. `CANCELLED` (STEP_UP résolu par CANCEL) n'est atteignable que par l'USSD
+  (`STEP_UP_POLICY.app = DEFER`) ; rendu `REJECTED` par sûreté. À reporter en SPEC v1.3 §12.4 si la
+  propriétaire veut des codes distincts.
 - **L-B6-3 · MT-06 (recherche du titulaire freinée) non appliquée.** Aucun paramètre nommé ne
   définit la limite (ni dans ISC-TM §7 ni dans `config/ruleset.yaml`). Un littéral est interdit ;
   la route n'est servie qu'à une session vivante, ce qui borne déjà l'énumération au titulaire d'un
@@ -81,6 +91,8 @@ intervalle `POLL_FOREGROUND`, arrêt dès l'arrière-plan, trois preuves sur vra
 
 ## Contrat (`contracts/mobile-api.yaml`)
 
-- `POST /nonce` et `POST /transfers/{transferId}/cancel` déclarent `503` (`SERVICE_UNAVAILABLE`,
-  `Retry-After`) : le PDP est leur dépendance.
+- `POST /nonce`, `GET /account` et `POST /transfers/{transferId}/cancel` déclarent `503`
+  (`SERVICE_UNAVAILABLE`, `Retry-After`) : le PDP est leur dépendance.
+- Lecture stricte des corps renforcée : plus aucune coercition de type (`"5000"` n'est pas l'entier
+  `5000`), pour toutes les routes `/mobile/v1`.
 - `contracts/device.yaml` : `VerifyRequest.nonce` facultatif (forme B6).

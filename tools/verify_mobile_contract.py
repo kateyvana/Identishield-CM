@@ -378,6 +378,20 @@ def daily_without_session(junk):
             "/transfers/pas-un-uuid/cancel",
             {"nonce": "court"},
         ),
+        (
+            "virement sans jeton",
+            "POST",
+            "/transfers",
+            "/transfers",
+            {
+                "type": "P2P",
+                "amountXaf": 5000,
+                "beneficiaryId": "677001101",
+                "nonce": nonce,
+                "signature": junk,
+                "pin": "0000",
+            },
+        ),
         ("alertes sans jeton", "GET", "/alerts", "/alerts", None),
     ]:
         check(name, method, template, path, body, 401, "CREDENTIALS_INVALID")

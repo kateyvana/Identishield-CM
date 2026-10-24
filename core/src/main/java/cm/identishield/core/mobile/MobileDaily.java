@@ -64,11 +64,11 @@ public class MobileDaily {
   /**
    * POST /transfers (flux C) : le PIN d'abord, compté par origine (P-11, jamais le compte) ; le
    * bénéficiaire et le solde ensuite (404, 409 : sans appeler le PDP) ; puis UNE opération signée
-   * passée à /evaluate avec {@code proofType=SIGNATURE} — jamais NONE depuis la route mobile, le PDP
-   * accepterait une opération APP sans preuve. Signature absente : {@code Proof(deviceId, null,
-   * nonce)}, le PDP rend SIGNATURE_INVALID et l'audit s'écrit. La réponse ne lit que
-   * {@code decision} et {@code vetoApplied}, chaînes du PDP posées telles quelles par le cœur ;
-   * jamais {@code detail}.
+   * passée à /evaluate avec {@code proofType=SIGNATURE} — jamais NONE depuis la route mobile, le
+   * PDP accepterait une opération APP sans preuve. Signature absente : {@code Proof(deviceId, null,
+   * nonce)}, le PDP rend SIGNATURE_INVALID et l'audit s'écrit. La réponse ne lit que {@code
+   * decision} et {@code vetoApplied}, chaînes du PDP posées telles quelles par le cœur ; jamais
+   * {@code detail}.
    */
   // @implements EF-04
   // @implements ES-02
@@ -111,7 +111,10 @@ public class MobileDaily {
     return outcome(s, r);
   }
 
-  /** La réponse du contrat, décidée sur l'état de l'issue et les chaînes du PDP, jamais sur un texte. */
+  /**
+   * La réponse du contrat, décidée sur l'état de l'issue et les chaînes du PDP, jamais sur un
+   * texte.
+   */
   private Answer outcome(LiveSession s, TransferResult r) {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("transferId", r.decisionId());

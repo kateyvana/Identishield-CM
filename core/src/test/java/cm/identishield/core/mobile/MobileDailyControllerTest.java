@@ -176,7 +176,8 @@ class MobileDailyControllerTest {
         .thenReturn(Answer.ok(Map.of("transferId", TRANSFER)));
     assertEquals(
         200,
-        controller.transfer(transferBody("P2P", "5000", "677001101", "4096"), http)
+        controller
+            .transfer(transferBody("P2P", "5000", "677001101", "4096"), http)
             .getStatusCode()
             .value());
     when(daily.transfer(LIVE, 5_000L, "677001101", NONCE, null, "4096", "100.64.0.9"))
