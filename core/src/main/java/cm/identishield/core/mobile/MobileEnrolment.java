@@ -74,6 +74,7 @@ public class MobileEnrolment {
   private final RuleSet ruleSet;
   private final Clock clock;
   private final TransactionTemplate tx;
+  private final SecurityAlerts securityAlerts;
   private final SecureRandom random = new SecureRandom();
 
   public MobileEnrolment(
@@ -88,7 +89,8 @@ public class MobileEnrolment {
       MobileSession session,
       RuleSet ruleSet,
       Clock clock,
-      TransactionTemplate tx) {
+      TransactionTemplate tx,
+      SecurityAlerts securityAlerts) {
     this.pins = pins;
     this.hasher = hasher;
     this.attempts = attempts;
@@ -101,6 +103,7 @@ public class MobileEnrolment {
     this.ruleSet = ruleSet;
     this.clock = clock;
     this.tx = tx;
+    this.securityAlerts = securityAlerts;
   }
 
   /**
@@ -279,7 +282,9 @@ public class MobileEnrolment {
         // attestation ou signature refusée : il ne dit pas lequel, ES-22).
         if (recoveryCode != null) {
           // Réenrôlement : l'usager retape son code ; l'enrôlement reste en BIND. Le freinage est
-          // celui du PDP (ADR-030), rendu par 429 ci-dessous.
+          // celui du PDP (ADR-030), rendu par 429 ci-dessous. Le téléphone lié est alerté au seuil
+          // ALERT_REENROL (flux F, ES-27) ; le compte n'est jamais restreint (ES-24).
+          securityAlerts.reenrolFailed(e.accountId());
           return Answer.refused(401, "RECOVERY_INVALID");
         }
         // Premier enrôlement sans code : une autre liaison a devancé celle-ci. Le renvoi vers
@@ -325,6 +330,10 @@ public class MobileEnrolment {
       return l.refusal;
     }
     Enrolment e = l.enrolment;
+    // Une clé ACTIVE existe-t-elle encore ? Si oui, l'activation la révoque (ES-14b) : l'ancien
+    // téléphone sera informé (DEVICE_REBOUND, EF-47). Le fait est lu AVANT, l'activation l'efface.
+    Reply before = device.state(e.accountId().toString());
+    boolean rebound = before.status() == 200 && "ACTIVE".equals(before.text("state"));
     Reply r = device.activate(e.accountId().toString(), e.deviceId(), recoveryCode);
     if (r.status() == 401 && "RECOVERY_INVALID".equals(r.text("code"))) {
       return Answer.refused(401, "RECOVERY_INVALID");
@@ -347,6 +356,7 @@ public class MobileEnrolment {
     if (session == null) {
       return Answer.refused(410, "ENROLMENT_EXPIRED");
     }
+    securityAlerts.reenrolSucceeded(e.accountId(), rebound);
     return Answer.ok(
         Map.of("sessionToken", session.token(), "expiresInSeconds", session.expiresInSeconds()));
   }

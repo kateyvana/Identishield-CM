@@ -393,6 +393,20 @@ def daily_without_session(junk):
             },
         ),
         ("alertes sans jeton", "GET", "/alerts", "/alerts", None),
+        (
+            "c'est moi sans jeton",
+            "POST",
+            "/alerts/{alertId}/ack",
+            f"/alerts/{transfer}/ack",
+            {"nonce": nonce, "signature": junk},
+        ),
+        (
+            "ce n'est pas moi sans jeton",
+            "POST",
+            "/alerts/{alertId}/not-me",
+            f"/alerts/{transfer}/not-me",
+            {"nonce": nonce, "signature": junk},
+        ),
     ]:
         check(name, method, template, path, body, 401, "CREDENTIALS_INVALID")
 

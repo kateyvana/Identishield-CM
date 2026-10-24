@@ -9,10 +9,12 @@ import cm.identishield.core.transfer.OperationType;
 import cm.identishield.core.transfer.Proof;
 import cm.identishield.core.transfer.TransferResult;
 import cm.identishield.core.transfer.TransferService;
+import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -45,6 +47,9 @@ public class MobileDaily {
   private final PinStore pins;
   private final PinHasher hasher;
   private final PinAttempts attempts;
+  private final Alerts alerts;
+  private final SecurityAlerts securityAlerts;
+  private final Clock clock;
 
   public MobileDaily(
       MobileLedger ledger,
@@ -52,13 +57,19 @@ public class MobileDaily {
       TransferService transfers,
       PinStore pins,
       PinHasher hasher,
-      PinAttempts attempts) {
+      PinAttempts attempts,
+      Alerts alerts,
+      SecurityAlerts securityAlerts,
+      Clock clock) {
     this.ledger = ledger;
     this.device = device;
     this.transfers = transfers;
     this.pins = pins;
     this.hasher = hasher;
     this.attempts = attempts;
+    this.alerts = alerts;
+    this.securityAlerts = securityAlerts;
+    this.clock = clock;
   }
 
   /**
@@ -108,14 +119,14 @@ public class MobileDaily {
             beneficiaryMsisdn,
             CHANNEL_APP,
             new Proof(s.deviceId(), signature, nonce));
-    return outcome(s, r);
+    return outcome(s, amountXaf, r);
   }
 
   /**
    * La réponse du contrat, décidée sur l'état de l'issue et les chaînes du PDP, jamais sur un
    * texte.
    */
-  private Answer outcome(LiveSession s, TransferResult r) {
+  private Answer outcome(LiveSession s, long amountXaf, TransferResult r) {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("transferId", r.decisionId());
     switch (r.state()) {
@@ -127,6 +138,7 @@ public class MobileDaily {
         body.put("decision", "STEP_UP");
         body.put("status", "DEFERRED");
         body.put("reason", "DECISION_DEFERRED");
+        securityAlerts.transferDeferred(s.accountId(), amountXaf); // flux F, informative
         ledger.deferred(s.accountId()).stream()
             .filter(d -> d.transferId().equals(r.decisionId()))
             .findFirst()
@@ -141,6 +153,9 @@ public class MobileDaily {
           return Answer.refused(409, "INSUFFICIENT_FUNDS");
         }
         boolean frozen = "FREEZE".equals(r.decision());
+        if (frozen) {
+          securityAlerts.transferFrozen(s.accountId()); // flux F, informative
+        }
         body.put("decision", frozen ? "FREEZE" : "REJECTED");
         body.put("status", frozen ? "FROZEN" : "REJECTED");
         body.put("reason", frozen ? "DECISION_FROZEN" : "DECISION_REJECTED");
@@ -268,7 +283,121 @@ public class MobileDaily {
    * liste est vide jusqu'à la carte B5 : aucune alerte n'est fabriquée.
    */
   public Answer alerts(LiveSession s) {
-    return Answer.ok(Map.of("items", List.of()));
+    List<Map<String, Object>> items =
+        alerts.list(s.accountId()).stream().map(MobileDaily::alert).toList();
+    return Answer.ok(Map.of("items", items));
+  }
+
+  /** Chaîne canonique d'une réponse d'alerte (ADR-018, amendement M-08). */
+  static final String ALERT_ACK = "ALERT_ACK";
+
+  static final String ALERT_NOT_ME = "ALERT_NOT_ME";
+
+  /**
+   * POST /alerts/{alertId}/ack (E-24 « C'est moi », ES-27) : signature de {@code
+   * accountId|ALERT_ACK|alertId|nonce} vérifiée par le PDP avec la clé ACTIVE de l'appareil de la
+   * session (un appareil révoqué reçoit REVOKED : il ne répond jamais, EF-47). L'alerte doit
+   * appartenir au compte et attendre encore une réponse (404 sinon). L'état du compte rendu vient
+   * du PDP, lu AVANT de clore l'alerte : s'il manque, rien n'est clos (503).
+   */
+  // @implements ES-27
+  public Answer acknowledge(LiveSession s, UUID alertId, String nonce, String signature) {
+    Optional<Alerts.AlertView> open = alerts.findOpen(s.accountId(), alertId);
+    if (open.isEmpty()) {
+      return Answer.refused(404, "REQUEST_INVALID");
+    }
+    Answer verdict = verifyAlertAnswer(s, ALERT_ACK, alertId, nonce, signature);
+    if (verdict != null) {
+      return verdict;
+    }
+    String state = trustState(s);
+    if (state == null) {
+      return Answer.unavailable();
+    }
+    alerts.answer(alertId, Alerts.ACKNOWLEDGED, clock.instant());
+    return Answer.ok(
+        Map.of(
+            "alertId", alertId.toString(), "status", Alerts.ACKNOWLEDGED, "accountState", state));
+  }
+
+  /**
+   * POST /alerts/{alertId}/not-me (E-24, ES-27) : même vérification de signature que « c'est moi »
+   * (chaîne {@code accountId|ALERT_NOT_ME|alertId|nonce}), puis l'EFFET — compte FROZEN cause
+   * NOT_ME et ré-enrôlements gelés REENROL_FREEZE — est demandé au PDP (machine A1, {@code
+   * TrustStateMachine.notMe}) par la route interne écrite sur la carte #48 et livrée par le couloir
+   * A (limite L-B5-1 tant qu'elle n'existe pas : 503). 200 ou 409 (déjà gelé NOT_ME : effet déjà en
+   * place) ferment l'alerte NOT_ME ; PDP injoignable : 503, l'alerte reste OPEN.
+   */
+  // @implements ES-27
+  public Answer deny(LiveSession s, UUID alertId, String nonce, String signature) {
+    Optional<Alerts.AlertView> open = alerts.findOpen(s.accountId(), alertId);
+    if (open.isEmpty()) {
+      return Answer.refused(404, "REQUEST_INVALID");
+    }
+    Answer verdict = verifyAlertAnswer(s, ALERT_NOT_ME, alertId, nonce, signature);
+    if (verdict != null) {
+      return verdict;
+    }
+    Reply r =
+        device.notMe(s.accountId().toString(), pdpAlert(open.get().type()), alertId.toString());
+    String state;
+    if (r.status() == 200 && r.text("state") != null) {
+      state = r.text("state");
+    } else if (r.status() == 409) {
+      state = trustState(s);
+      if (state == null) {
+        return Answer.unavailable();
+      }
+    } else {
+      return Answer.unavailable();
+    }
+    alerts.answer(alertId, Alerts.NOT_ME, clock.instant());
+    return Answer.ok(
+        Map.of("alertId", alertId.toString(), "status", Alerts.NOT_ME, "accountState", state));
+  }
+
+  /**
+   * Type d'alerte du cœur → alerte de la machine A1 (seules les deux alertes à réponse existent).
+   */
+  private static String pdpAlert(String type) {
+    return SecurityAlerts.SIM_CHANGED.equals(type) ? "SIM_CHANGE" : "REENROL_ATTEMPT";
+  }
+
+  /** Vérification PDP de la réponse signée ; nul si VALID, sinon la réponse de refus. */
+  private Answer verifyAlertAnswer(
+      LiveSession s, String action, UUID alertId, String nonce, String signature) {
+    String payload = String.join("|", s.accountId().toString(), action, alertId.toString(), nonce);
+    Reply r = device.verify(s.accountId().toString(), s.deviceId(), payload, signature, nonce);
+    if (r.status() != 200 || r.text("verdict") == null) {
+      return Answer.unavailable();
+    }
+    return switch (r.text("verdict")) {
+      case "VALID" -> null;
+      case "REVOKED" -> Answer.refused(403, "KEY_REVOKED");
+      default -> Answer.refused(403, "DECISION_REJECTED");
+    };
+  }
+
+  /**
+   * État de confiance du PDP (GET /trust) ; TRUSTED pour un compte jamais vu ; nul si injoignable.
+   */
+  private String trustState(LiveSession s) {
+    Reply trust = device.trust(s.accountId().toString());
+    if (trust.status() == 200 && trust.text("state") != null) {
+      return trust.text("state");
+    }
+    return trust.status() == 404 ? TRUSTED : null;
+  }
+
+  private static Map<String, Object> alert(Alerts.AlertView a) {
+    Map<String, Object> m = new LinkedHashMap<>();
+    m.put("alertId", a.id().toString());
+    m.put("type", a.type());
+    m.put("at", a.at().toString());
+    m.put("summary", a.summary());
+    m.put("actions", Alerts.OPEN.equals(a.status()) ? List.of("ACK", "NOT_ME") : List.of());
+    m.put("status", a.status());
+    return m;
   }
 
   private static Map<String, Object> deferred(MobileLedger.DeferredView d) {

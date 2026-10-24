@@ -162,6 +162,31 @@ public record RuleSet(String version, Map<String, Object> parameters) {
     throw new IllegalStateException("APP_PIN.origin_lock absent du jeu de règles versionné");
   }
 
+  /**
+   * Échecs de ré-enrôlement par compte à partir desquels le téléphone lié est alerté (ISC-MOB-SPEC
+   * §9.2, ES-27 ; même seuil que l'alerte console ES-24) : ALERT_REENROL.count.
+   */
+  // @implements ES-27
+  public int alertReenrolCount() {
+    if (parameters != null
+        && parameters.get("ALERT_REENROL") instanceof Map<?, ?> m
+        && m.get("count") instanceof Number n) {
+      return n.intValue();
+    }
+    throw new IllegalStateException("ALERT_REENROL.count absent du jeu de règles versionné");
+  }
+
+  /** Fenêtre glissante du comptage ci-dessus : ALERT_REENROL.window. */
+  // @implements ES-27
+  public Duration alertReenrolWindow() {
+    if (parameters != null
+        && parameters.get("ALERT_REENROL") instanceof Map<?, ?> m
+        && m.get("window") instanceof CharSequence s) {
+      return Duration.parse(s);
+    }
+    throw new IllegalStateException("ALERT_REENROL.window absent du jeu de règles versionné");
+  }
+
   private Duration duration(String name) {
     Object v = parameters == null ? null : parameters.get(name);
     if (v instanceof CharSequence s) {

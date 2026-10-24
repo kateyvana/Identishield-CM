@@ -71,6 +71,10 @@ class MobileEnrolmentTest {
   private final PinAttempts attempts =
       new PinAttempts(Clock.fixed(NOW, ZoneOffset.UTC), 2, java.time.Duration.ofMinutes(15));
 
+  // Carte B5 : collaborateur ajouté au constructeur (adaptation de forme, aucune assertion
+  // changée).
+  private final SecurityAlerts securityAlerts = mock(SecurityAlerts.class);
+
   private final MobileEnrolment service =
       new MobileEnrolment(
           pins,
@@ -84,7 +88,11 @@ class MobileEnrolmentTest {
           session,
           ruleSet,
           Clock.fixed(NOW, ZoneOffset.UTC),
-          tx);
+          tx,
+          securityAlerts);
+
+  // Carte B5 : collaborateur ajouté au constructeur (adaptation de forme, aucune assertion
+  // changée).
 
   MobileEnrolmentTest() {
     when(tx.execute(any()))
@@ -400,6 +408,8 @@ class MobileEnrolmentTest {
   @Test
   void rightCode_activates_consumesTheEnrolment_andOpensTheSession() {
     enrolmentAt("CONFIRM", NOW.plusSeconds(60));
+    // B5 : le cœur lit le fait de liaison AVANT l'activation (DEVICE_REBOUND, EF-47) ; adaptation.
+    when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "PENDING")));
     when(device.activate(ACCOUNT.toString(), DEVICE, "ABCDEF"))
         .thenReturn(reply(200, Map.of("deviceId", DEVICE)));
     when(enrolments.consume(ENROLMENT, "CONFIRM")).thenReturn(true);
@@ -413,6 +423,8 @@ class MobileEnrolmentTest {
   @Test
   void wrongCode_isRecoveryInvalid_andTheEnrolmentStaysInConfirm() {
     enrolmentAt("CONFIRM", NOW.plusSeconds(60));
+    // B5 : le cœur lit le fait de liaison AVANT l'activation (DEVICE_REBOUND, EF-47) ; adaptation.
+    when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "PENDING")));
     when(device.activate(ACCOUNT.toString(), DEVICE, "ABCDEG"))
         .thenReturn(reply(401, Map.of("code", "RECOVERY_INVALID")));
 
@@ -426,6 +438,8 @@ class MobileEnrolmentTest {
   @Test
   void lostActivationReply_whileThePdpSucceeded_doesNotLockTheUserOut() {
     enrolmentAt("CONFIRM", NOW.plusSeconds(60));
+    // B5 : le cœur lit le fait de liaison AVANT l'activation (DEVICE_REBOUND, EF-47) ; adaptation.
+    when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "PENDING")));
     when(device.activate(ACCOUNT.toString(), DEVICE, "ABCDEF")).thenReturn(Reply.unreachable());
     when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "ACTIVE")));
     when(enrolments.consume(ENROLMENT, "CONFIRM")).thenReturn(true);
@@ -440,6 +454,8 @@ class MobileEnrolmentTest {
   @Test
   void lostActivationReply_whileTheKeyIsStillPending_isA503_andTheEnrolmentIsKept() {
     enrolmentAt("CONFIRM", NOW.plusSeconds(60));
+    // B5 : le cœur lit le fait de liaison AVANT l'activation (DEVICE_REBOUND, EF-47) ; adaptation.
+    when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "PENDING")));
     when(device.activate(ACCOUNT.toString(), DEVICE, "ABCDEF")).thenReturn(Reply.unreachable());
     when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "PENDING")));
 
@@ -454,6 +470,8 @@ class MobileEnrolmentTest {
   @Test
   void mtlsRefusal_isNeverReportedAsAWrongCode() {
     enrolmentAt("CONFIRM", NOW.plusSeconds(60));
+    // B5 : le cœur lit le fait de liaison AVANT l'activation (DEVICE_REBOUND, EF-47) ; adaptation.
+    when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "PENDING")));
     when(device.activate(ACCOUNT.toString(), DEVICE, "ABCDEF"))
         .thenReturn(reply(401, Map.of("code", "MTLS_REQUIRED")));
     when(device.state(ACCOUNT.toString())).thenReturn(Reply.unreachable());
@@ -476,6 +494,8 @@ class MobileEnrolmentTest {
   @Test
   void twoConcurrentConfirmations_openOneSessionOnly() {
     enrolmentAt("CONFIRM", NOW.plusSeconds(60));
+    // B5 : le cœur lit le fait de liaison AVANT l'activation (DEVICE_REBOUND, EF-47) ; adaptation.
+    when(device.state(ACCOUNT.toString())).thenReturn(reply(200, Map.of("state", "PENDING")));
     when(device.activate(ACCOUNT.toString(), DEVICE, "ABCDEF"))
         .thenReturn(reply(200, Map.of("deviceId", DEVICE)));
     when(enrolments.consume(ENROLMENT, "CONFIRM")).thenReturn(false);

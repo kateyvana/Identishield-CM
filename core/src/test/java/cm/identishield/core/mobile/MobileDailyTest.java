@@ -59,8 +59,215 @@ class MobileDailyTest {
           new cm.identishield.core.time.VirtualClock(Instant.parse("2026-10-24T08:00:00Z")),
           2,
           java.time.Duration.ofMinutes(15));
+  private final Alerts alerts = mock(Alerts.class);
+  private final SecurityAlerts securityAlerts = mock(SecurityAlerts.class);
+  private static final Instant NOW = Instant.parse("2026-10-24T08:00:00Z");
   private final MobileDaily daily =
-      new MobileDaily(ledger, device, transfers, pins, hasher, attempts);
+      new MobileDaily(
+          ledger,
+          device,
+          transfers,
+          pins,
+          hasher,
+          attempts,
+          alerts,
+          securityAlerts,
+          new cm.identishield.core.time.VirtualClock(NOW));
+
+  private static final UUID ALERT = UUID.fromString("aaaaaaaa-1111-4222-8333-444444444444");
+
+  private Alerts.AlertView openAlert() {
+    return new Alerts.AlertView(
+        ALERT, "SIM_CHANGED", SecurityAlerts.TEXT_SIM_CHANGED, true, Alerts.OPEN, NOW);
+  }
+
+  private void pdpVerdictOnAlert(String action, String verdict) {
+    when(device.verify(
+            ACCOUNT.toString(),
+            DEVICE,
+            ACCOUNT + "|" + action + "|" + ALERT + "|" + NONCE,
+            "c2ln",
+            NONCE))
+        .thenReturn(new Reply(200, Map.of("verdict", verdict)));
+  }
+
+  @Test
+  void alerts_listTheAccountAlerts_actionsOnlyWhileOpen_neverFabricated() {
+    when(alerts.list(ACCOUNT))
+        .thenReturn(
+            List.of(
+                openAlert(),
+                new Alerts.AlertView(
+                    UUID.fromString("bbbbbbbb-1111-4222-8333-444444444444"),
+                    "DEVICE_REBOUND",
+                    SecurityAlerts.TEXT_DEVICE_REBOUND,
+                    false,
+                    Alerts.INFO,
+                    NOW.minusSeconds(60))));
+    Answer a = daily.alerts(SESSION);
+    assertEquals(200, a.status());
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> items = (List<Map<String, Object>>) a.body().get("items");
+    assertEquals(
+        Map.of(
+            "alertId",
+            ALERT.toString(),
+            "type",
+            "SIM_CHANGED",
+            "at",
+            "2026-10-24T08:00:00Z",
+            "summary",
+            SecurityAlerts.TEXT_SIM_CHANGED,
+            "actions",
+            List.of("ACK", "NOT_ME"),
+            "status",
+            "OPEN"),
+        items.get(0));
+    assertEquals(List.of(), items.get(1).get("actions"));
+    assertEquals("INFO", items.get(1).get("status"));
+  }
+
+  @Test
+  void acknowledge_validSignature_closesTheAlert_withTheAccountStateOfThePdp() {
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.of(openAlert()));
+    pdpVerdictOnAlert("ALERT_ACK", "VALID");
+    when(device.trust(ACCOUNT.toString())).thenReturn(new Reply(200, Map.of("state", "PROBATION")));
+    Answer a = daily.acknowledge(SESSION, ALERT, NONCE, "c2ln");
+    assertEquals(200, a.status());
+    assertEquals(
+        Map.of("alertId", ALERT.toString(), "status", "ACKNOWLEDGED", "accountState", "PROBATION"),
+        a.body());
+    verify(alerts).answer(ALERT, Alerts.ACKNOWLEDGED, NOW);
+  }
+
+  @Test
+  void acknowledge_unknownOrAlreadyAnsweredAlert_is404_andThePdpIsNeverAsked() {
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.empty());
+    Answer a = daily.acknowledge(SESSION, ALERT, NONCE, "c2ln");
+    assertEquals(404, a.status());
+    verify(device, never()).verify(anyString(), anyString(), anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void acknowledge_invalidOrRevokedSignature_closesNothing() {
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.of(openAlert()));
+    pdpVerdictOnAlert("ALERT_ACK", "INVALID");
+    assertEquals(
+        Map.of("reason", "DECISION_REJECTED"),
+        daily.acknowledge(SESSION, ALERT, NONCE, "c2ln").body());
+    pdpVerdictOnAlert("ALERT_ACK", "REVOKED");
+    Answer revoked = daily.acknowledge(SESSION, ALERT, NONCE, "c2ln");
+    assertEquals(403, revoked.status());
+    assertEquals(
+        Map.of("reason", "KEY_REVOKED"), revoked.body(), "appareil révoqué : informatif seulement");
+    verify(alerts, never()).answer(any(), anyString(), any());
+  }
+
+  @Test
+  void acknowledge_trustStateMissing_closesNothing_503() {
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.of(openAlert()));
+    pdpVerdictOnAlert("ALERT_ACK", "VALID");
+    when(device.trust(ACCOUNT.toString())).thenReturn(new Reply(Reply.UNREACHABLE, Map.of()));
+    assertEquals(503, daily.acknowledge(SESSION, ALERT, NONCE, "c2ln").status());
+    verify(alerts, never()).answer(any(), anyString(), any());
+  }
+
+  @Test
+  void deny_validSignature_asksThePdpToFreeze_thenClosesTheAlertNotMe() {
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.of(openAlert()));
+    pdpVerdictOnAlert("ALERT_NOT_ME", "VALID");
+    when(device.notMe(ACCOUNT.toString(), "SIM_CHANGE", ALERT.toString()))
+        .thenReturn(
+            new Reply(
+                200,
+                Map.of(
+                    "state",
+                    "FROZEN",
+                    "since",
+                    "2026-10-24T08:00:00Z",
+                    "reenrolFrozenUntil",
+                    "2026-10-25T08:00:00Z")));
+    Answer a = daily.deny(SESSION, ALERT, NONCE, "c2ln");
+    assertEquals(200, a.status());
+    assertEquals(
+        Map.of("alertId", ALERT.toString(), "status", "NOT_ME", "accountState", "FROZEN"),
+        a.body());
+    verify(alerts).answer(ALERT, Alerts.NOT_ME, NOW);
+  }
+
+  @Test
+  void deny_reenrolAttemptAlert_namesItsKindToThePdp() {
+    when(alerts.findOpen(ACCOUNT, ALERT))
+        .thenReturn(
+            Optional.of(
+                new Alerts.AlertView(
+                    ALERT,
+                    "REENROL_ATTEMPT",
+                    SecurityAlerts.TEXT_REENROL_ATTEMPT,
+                    true,
+                    Alerts.OPEN,
+                    NOW)));
+    pdpVerdictOnAlert("ALERT_NOT_ME", "VALID");
+    when(device.notMe(ACCOUNT.toString(), "REENROL_ATTEMPT", ALERT.toString()))
+        .thenReturn(new Reply(200, Map.of("state", "TRUSTED")));
+    assertEquals("TRUSTED", daily.deny(SESSION, ALERT, NONCE, "c2ln").body().get("accountState"));
+  }
+
+  @Test
+  void deny_alreadyFrozenByNotMe_isTheEffectAlreadyInPlace_alertClosed_stateReadFromTrust() {
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.of(openAlert()));
+    pdpVerdictOnAlert("ALERT_NOT_ME", "VALID");
+    when(device.notMe(anyString(), anyString(), anyString()))
+        .thenReturn(new Reply(409, Map.of("code", "ALREADY_FROZEN", "message", "x")));
+    when(device.trust(ACCOUNT.toString())).thenReturn(new Reply(200, Map.of("state", "FROZEN")));
+    Answer a = daily.deny(SESSION, ALERT, NONCE, "c2ln");
+    assertEquals(200, a.status());
+    assertEquals("FROZEN", a.body().get("accountState"));
+    verify(alerts).answer(ALERT, Alerts.NOT_ME, NOW);
+  }
+
+  @Test
+  void deny_pdpUnreachableOrRouteMissing_is503_andTheAlertStaysOpen() {
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.of(openAlert()));
+    pdpVerdictOnAlert("ALERT_NOT_ME", "VALID");
+    when(device.notMe(anyString(), anyString(), anyString()))
+        .thenReturn(new Reply(Reply.UNREACHABLE, Map.of()));
+    assertEquals(503, daily.deny(SESSION, ALERT, NONCE, "c2ln").status());
+    when(device.notMe(anyString(), anyString(), anyString()))
+        .thenReturn(
+            new Reply(404, Map.of("code", "NOT_FOUND"))); // route pas encore livrée (L-B5-1)
+    assertEquals(503, daily.deny(SESSION, ALERT, NONCE, "c2ln").status());
+    verify(alerts, never()).answer(any(), anyString(), any());
+  }
+
+  @Test
+  void deny_invalidSignature_orNotOpen_neverReachesThePdpFreeze() {
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.of(openAlert()));
+    pdpVerdictOnAlert("ALERT_NOT_ME", "INVALID");
+    assertEquals(403, daily.deny(SESSION, ALERT, NONCE, "c2ln").status());
+    when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.empty());
+    assertEquals(404, daily.deny(SESSION, ALERT, NONCE, "c2ln").status());
+    verify(device, never()).notMe(anyString(), anyString(), anyString());
+    verify(alerts, never()).answer(any(), anyString(), any());
+  }
+
+  @Test
+  void transfer_deferredAndFrozen_raiseInformativeAlerts_allowRaisesNone() {
+    knownAccount();
+    pinKnown();
+    beneficiaryKnown();
+    pdpDecides(TransferResult.deferred(TRANSFER, NOW).withDecision("STEP_UP"));
+    send("c2ln");
+    verify(securityAlerts).transferDeferred(ACCOUNT, 5_000L);
+    pdpDecides(TransferResult.rejected(TRANSFER, "decision=FREEZE", "NONE").withDecision("FREEZE"));
+    send("c2ln");
+    verify(securityAlerts).transferFrozen(ACCOUNT);
+    pdpDecides(TransferResult.executed(TRANSFER).withDecision("ALLOW"));
+    send("c2ln");
+    verify(securityAlerts, org.mockito.Mockito.times(1))
+        .transferDeferred(any(), org.mockito.ArgumentMatchers.anyLong());
+    verify(securityAlerts, org.mockito.Mockito.times(1)).transferFrozen(any());
+  }
 
   private void pinKnown() {
     when(pins.find(MSISDN))

@@ -157,6 +157,19 @@ public class DeviceClient {
             .GET());
   }
 
+  /**
+   * POST /trust/{accountId}/not-me (carte B5, ES-27, A1-4) : « ce n'est pas moi » signé, l'EFFET
+   * est un acte du PDP ({@code TrustStateMachine.notMe}). Forme écrite sur la carte #48 le
+   * 2026-10-24, à livrer par le couloir A sous amendement d'ADR-041 : 200 = état de confiance +
+   * reenrolFrozenUntil ; 409 = déjà gelé NOT_ME (effet déjà en place). {@code alert} : SIM_CHANGE
+   * ou REENROL_ATTEMPT.
+   */
+  public Reply notMe(String accountId, String alert, String alertId) {
+    return post(
+        "/trust/" + URLEncoder.encode(accountId, StandardCharsets.UTF_8) + "/not-me",
+        Map.of("alert", alert, "alertId", alertId));
+  }
+
   /** GET /nonce?accountId= (contrats/evaluate.yaml, ES-10) : nonce pour une opération signée. */
   public Reply nonceForAccount(String accountId) {
     return send(

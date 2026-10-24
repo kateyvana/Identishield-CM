@@ -190,6 +190,31 @@ class MobileDailyControllerTest {
   }
 
   @Test
+  void alertAnswers_badShapes_are400_wellFormed_reachTheService_withTheUuid() {
+    alive();
+    for (String[] c :
+        new String[][] {
+          {"pas-un-uuid", cancelBody(NONCE, "c2ln")},
+          {TRANSFER, cancelBody("court", "c2ln")},
+          {TRANSFER, "{\"nonce\":\"" + NONCE + "\"}"},
+          {TRANSFER, "null"}
+        }) {
+      assertEquals(400, controller.acknowledge(c[0], c[1], http).getStatusCode().value(), c[1]);
+      assertEquals(400, controller.deny(c[0], c[1], http).getStatusCode().value(), c[1]);
+    }
+    verifyNoInteractions(daily);
+    UUID id = UUID.fromString(TRANSFER);
+    when(daily.acknowledge(LIVE, id, NONCE, "c2ln"))
+        .thenReturn(Answer.ok(Map.of("alertId", TRANSFER, "status", "ACKNOWLEDGED")));
+    when(daily.deny(LIVE, id, NONCE, "c2ln")).thenReturn(Answer.unavailable());
+    assertEquals(
+        200,
+        controller.acknowledge(TRANSFER, cancelBody(NONCE, "c2ln"), http).getStatusCode().value());
+    assertEquals(
+        503, controller.deny(TRANSFER, cancelBody(NONCE, "c2ln"), http).getStatusCode().value());
+  }
+
+  @Test
   void cancel_badShapes_are400_beforeAnyVerification() {
     alive();
     for (String[] c :

@@ -188,7 +188,9 @@ class MobileEnrolmentDbTest {
             new MobileSession(new PinStore(jdbc), hasher, attempts, device, sessions),
             ruleSet,
             clock,
-            tx);
+            tx,
+            // Carte B5 : alertes sur vraie base (core.alert, migration 006).
+            new SecurityAlerts(new Alerts(jdbc), new MobileLedger(jdbc), clock, ruleSet));
 
     Answer start = service.start(msisdn, PIN, "100.64.0.9", null, null, null);
     assertEquals("OTP", start.body().get("next"));
