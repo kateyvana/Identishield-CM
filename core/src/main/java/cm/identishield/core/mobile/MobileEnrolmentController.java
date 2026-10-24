@@ -44,7 +44,13 @@ public class MobileEnrolmentController {
       String enrolmentId,
       String publicKey,
       List<String> attestationChain,
-      String challengeSignature) {}
+      String challengeSignature,
+      String recoveryCode) {}
+
+  record RecoverRequest(String enrolmentId, String recoveryCode) {}
+
+  /** Code de récupération tel que retapé (CODE_LENGTH caractères alphanumériques majuscules). */
+  private static final Pattern RECOVERY_CODE = Pattern.compile("^[A-Z0-9]{4,32}$");
 
   record ConfirmRequest(String enrolmentId, String recoveryCode) {}
 
@@ -91,8 +97,28 @@ public class MobileEnrolmentController {
     return answer(enrolment.otp(id, r.otp()));
   }
 
+  /**
+   * Flux D : le code reçu ici n'est ni vérifié ni gardé (ADR-041) ; sa forme seule est contrôlée,
+   * et l'application le renvoie à /enrolment/complete.
+   */
+  @PostMapping("/enrolment/recover")
+  public ResponseEntity<Map<String, Object>> recover(@RequestBody String body) {
+    RecoverRequest r = read(body, RecoverRequest.class);
+    UUID id = r == null ? null : uuid(r.enrolmentId());
+    if (id == null || !matches(RECOVERY_CODE, r.recoveryCode())) {
+      return invalid();
+    }
+    return answer(enrolment.recover(id));
+  }
+
+  /**
+   * L'identifiant d'installation (ADR-030) n'est pas encore lu : sa forme (en-tête ou champ) est
+   * une décision de la propriétaire, proposée avant d'écrire (carte B3b) ; d'ici là, le comptage
+   * des échecs porte sur l'origine réseau seule.
+   */
   @PostMapping("/enrolment/complete")
-  public ResponseEntity<Map<String, Object>> complete(@RequestBody String body) {
+  public ResponseEntity<Map<String, Object>> complete(
+      @RequestBody String body, HttpServletRequest http) {
     CompleteRequest r = read(body, CompleteRequest.class);
     UUID id = r == null ? null : uuid(r.enrolmentId());
     if (id == null
@@ -100,11 +126,19 @@ public class MobileEnrolmentController {
         || !matches(BASE64, r.challengeSignature())
         || r.attestationChain() == null
         || r.attestationChain().isEmpty()
-        || !r.attestationChain().stream().allMatch(c -> matches(BASE64, c))) {
+        || !r.attestationChain().stream().allMatch(c -> matches(BASE64, c))
+        || (r.recoveryCode() != null && !matches(RECOVERY_CODE, r.recoveryCode()))) {
       return invalid();
     }
     return answer(
-        enrolment.complete(id, r.publicKey(), r.attestationChain(), r.challengeSignature()));
+        enrolment.complete(
+            id,
+            r.publicKey(),
+            r.attestationChain(),
+            r.challengeSignature(),
+            r.recoveryCode(),
+            http.getRemoteAddr(),
+            null));
   }
 
   @PostMapping("/recovery-code/confirm")

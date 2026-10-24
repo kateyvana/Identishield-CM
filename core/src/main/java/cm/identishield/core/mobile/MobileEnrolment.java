@@ -163,7 +163,10 @@ public class MobileEnrolment {
           }
         }
       }
-      return Answer.ok(Map.of("next", "RECOVERY"));
+      // Flux D (carte B3b) : aucun OTP (EF-46) ; l'enrôlement s'ouvre à l'étape RECOVERY.
+      Instant now = clock.instant();
+      UUID id = enrolments.openRecovery(accountId, now, now.plus(ruleSet.enrolTtl()));
+      return Answer.ok(Map.of("next", "RECOVERY", "enrolmentId", id.toString()));
     }
     Instant now = clock.instant();
     UUID id = enrolments.open(accountId, now, now.plus(ruleSet.enrolTtl()));
@@ -206,11 +209,43 @@ public class MobileEnrolment {
   }
 
   /**
+   * POST /enrolment/recover (flux D, carte B3b ; ADR-041 : « aucune route de vérification de code »).
+   * Cette route NE VÉRIFIE RIEN et ne garde rien : le code tapé est renvoyé par l'application à
+   * /enrolment/complete, avec l'attestation, et c'est le PDP qui le vérifie en une seule fois, dans
+   * /device/register (décision de la propriétaire du 2026-10-24, point 1 : le serveur ne détient
+   * jamais un secret en clair, même transitoirement). Ici : le défi d'attestation est émis et
+   * l'enrôlement passe à BIND. Le code reçu est ignoré.
+   */
+  // @implements ES-19
+  public Answer recover(UUID enrolmentId) {
+    Lookup l = lookup(enrolmentId, "RECOVERY");
+    if (l.refusal != null) {
+      return l.refusal;
+    }
+    byte[] challenge = new byte[CHALLENGE_BYTES];
+    random.nextBytes(challenge);
+    String encoded = Base64.getEncoder().encodeToString(challenge);
+    if (!enrolments.toBind(enrolmentId, encoded, "RECOVERY")) {
+      return Answer.refused(410, "ENROLMENT_EXPIRED");
+    }
+    return Answer.ok(Map.of("next", "BIND", "attestationChallenge", encoded));
+  }
+
+  /**
    * POST /enrolment/complete : la clé est enregistrée EN ATTENTE au PDP, qui émet le code de
-   * récupération une seule fois. Elle ne signe rien tant que le code n'est pas confirmé (D4).
+   * récupération une seule fois. Elle ne signe rien tant que le code n'est pas confirmé (D4). Au
+   * réenrôlement, {@code recoveryCode} (l'ancien code, retapé) part au PDP avec l'attestation et y
+   * est vérifié ; le cœur ne le garde pas. {@code origin} et {@code installationId} : clés de
+   * comptage des échecs (ADR-030), appliquées par le PDP.
    */
   public Answer complete(
-      UUID enrolmentId, String publicKey, List<String> chain, String challengeSignature) {
+      UUID enrolmentId,
+      String publicKey,
+      List<String> chain,
+      String challengeSignature,
+      String recoveryCode,
+      String origin,
+      String installationId) {
     Lookup l = lookup(enrolmentId, "BIND");
     if (l.refusal != null) {
       return l.refusal;
@@ -222,7 +257,10 @@ public class MobileEnrolment {
             publicKey,
             chain,
             e.attestationChallenge(),
-            challengeSignature);
+            challengeSignature,
+            recoveryCode,
+            origin,
+            installationId);
     switch (r.status()) {
       case 200 -> {
         String deviceId = r.text("deviceId");
@@ -236,14 +274,25 @@ public class MobileEnrolment {
         body.put("recoveryCode", code);
         return Answer.ok(body);
       }
-      case 409 -> {
-        // Une autre liaison a devancé celle-ci. Le renvoi vers start route vers la preuve la PLUS
-        // FORTE dans les deux sens de la course : si l'attaquant a gagné, l'usager légitime
-        // arrive sur RECOVERY et tape son code, la défense prévue ; si c'est l'attaquant qui
-        // arrive ici, il est renvoyé vers RECOVERY et il lui faut un code qu'il n'a pas. La course
-        // ne peut dégrader personne. Même réponse qu'un enrôlement expiré (limite R1).
+      case 401 -> {
+        // Le compte a une clé ACTIVE et le PDP n'a pas reconnu la preuve (code faux ou absent,
+        // attestation ou signature refusée : il ne dit pas lequel, ES-22).
+        if (recoveryCode != null) {
+          // Réenrôlement : l'usager retape son code ; l'enrôlement reste en BIND. Le freinage est
+          // celui du PDP (ADR-030), rendu par 429 ci-dessous.
+          return Answer.refused(401, "RECOVERY_INVALID");
+        }
+        // Premier enrôlement sans code : une autre liaison a devancé celle-ci. Le renvoi vers
+        // start route vers la preuve la PLUS FORTE dans les deux sens de la course : si
+        // l'attaquant a gagné, l'usager légitime arrive sur RECOVERY et tape son code, la défense
+        // prévue ; si c'est l'attaquant qui arrive ici, il est renvoyé vers RECOVERY et il lui
+        // faut un code qu'il n'a pas. La course ne peut dégrader personne. Même réponse qu'un
+        // enrôlement expiré (limite R1).
         enrolments.consume(enrolmentId, "BIND");
         return Answer.refused(410, "ENROLMENT_EXPIRED");
+      }
+      case 429 -> {
+        return Answer.throttled(r.number("retryAfterSeconds"));
       }
       case 422 -> {
         String reason = r.text("code");
