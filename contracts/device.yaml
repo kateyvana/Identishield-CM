@@ -75,6 +75,25 @@ paths:
               example:
                 code: RECOVERY_INVALID
                 message: recovery code or attestation rejected
+        '429':
+          description: >-
+            THROTTLED (ES-21) : l'appelant (origine ou installation) est bloqué après
+            REENROL_ATTEMPTS échecs, durée LOCK_BASE doublée à chaque palier, plafonnée LOCK_MAX ;
+            le compte est compté mais jamais bloqué. Rendu AVANT tout calcul. Même valeur dans
+            l'en-tête Retry-After et dans retryAfterSeconds.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Secondes à attendre avant un nouvel essai.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThrottledError'
+              example:
+                code: THROTTLED
+                message: too many failed attempts
+                retryAfterSeconds: 60
         '422':
           description: >-
             ATTESTATION_REJECTED (premier enrôlement : chaîne, défi ou signature refusés) ou
@@ -357,3 +376,17 @@ components:
           type: string
         message:
           type: string
+    ThrottledError:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryAfterSeconds]
+      properties:
+        code:
+          type: string
+          enum: [THROTTLED]
+        message:
+          type: string
+        retryAfterSeconds:
+          type: integer
+          minimum: 1
+          description: Reprise de l'en-tête Retry-After, lue par le cœur pour la réponse mobile 429.

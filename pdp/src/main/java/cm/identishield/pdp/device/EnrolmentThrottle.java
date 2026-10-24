@@ -12,18 +12,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Limitation des tentatives de réenrôlement (ISC-SAD EnrolmentThrottle ; ADR-030 ; ES-21, ES-24),
+ * Limitation des tentatives de réenrôlement (ISC-SAD EnrolmentThrottle ; ADR-030 ; ES-21),
  * AUTORITAIRE côté PDP, là où le code de récupération est vérifié (ADR-041, amendement du
  * 2026-10-17). Après REENROL_ATTEMPTS échecs, l'ORIGINE réseau et l'IDENTIFIANT D'INSTALLATION de
  * l'appelant attendent LOCK_BASE, doublé à chaque échec suivant, plafonné par LOCK_MAX. Le COMPTE
- * visé est compté (alerte au-delà d'ALERT_REENROL, ES-24) mais JAMAIS bloqué : un tiers qui tape
- * des codes faux ne rend jamais le compte indisponible à son titulaire.
+ * visé est compté (le compteur servira à l'alerte ES-24, carte B5 : rien n'alerte ici) mais JAMAIS
+ * bloqué : un tiers qui tape des codes faux ne rend jamais le compte indisponible à son titulaire.
  *
  * <p>Les compteurs vivent en base ({@code pdp.enrolment_attempt}, migration 004) : un redémarrage
  * du PDP n'efface pas une attaque en cours. Un succès efface les clés de l'appelant.
  */
 // @implements ES-21
-// @implements ES-24
 @Component
 public class EnrolmentThrottle {
 
