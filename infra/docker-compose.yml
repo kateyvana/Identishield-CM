@@ -44,14 +44,15 @@ services:
       - ./ca:/ca:ro
 
   # Migrations du schema sur une base EXISTANTE (infra/init/migrations/README.md). Conteneur
-  # d'execution unique, image postgres:16-alpine (meme famille que la base, psql compatible),
+  # d'execution unique, image postgres:16 : la MEME image que le serveur PostgreSQL (meme psql,
+  # une image de moins ; la VM ne joint pas le registre, 2026-10-24, et n'a que postgres:16),
   # qui appelle apply-migrations.sh et sort en succes. isc-core et isc-pdp en dependent en
   # service_completed_successfully : une migration qui echoue arrete le demarrage de la pile.
   # Sur une base NEUVE, 01-apply.sh applique deja les memes migrations ; ce conteneur rejoue
   # alors les migrations (toutes idempotentes, verifie par tools/verify_migrations.sh), ce qui
   # est sans effet.
   migrate:
-    image: postgres:16-alpine
+    image: postgres:16
     container_name: isc-migrate
     env_file: .env
     depends_on:
@@ -209,6 +210,10 @@ networks:
   isc-mobile:
     name: isc-mobile
     driver: bridge
+    # Nom FIXE du pont Linux : la regle DOCKER-USER de la proprietaire (L7-3, aucune sortie du
+    # sous-reseau isc-mobile) s'ecrit une fois sur ce nom, au lieu d'un br-<id> aleatoire.
+    driver_opts:
+      com.docker.network.bridge.name: br-isc-mobile
 
 volumes:
   pgdata:

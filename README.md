@@ -16,6 +16,8 @@ Git). Environnement d'exécution : ISC-DEPLOY.
 
 ```sh
 make up          # démarre PostgreSQL (schémas core/pdp, rôles, réseau isc-net isolé)
+                 # UNE seule commande de démarrage : inclut infra/compose.b3a.yml (profil demo,
+                 # comptes de démonstration) dès que ISC_DEMO_SEED_CSV est défini dans infra/.env
 make check-stack # santé, schémas, restriction du rôle d'audit (ED-06), isolation réseau
 make check       # portes légères : build, format, unit, arch, contract, check-docs,
                  # secrets, fictitious-msisdn
