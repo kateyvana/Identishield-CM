@@ -72,6 +72,10 @@ class TransferServiceTest {
     when(accounts.debit(any(), anyLong())).thenReturn(true);
     when(transactions.createPending(any(), anyString(), anyLong(), anyString(), anyString(), any()))
         .thenReturn(pending);
+    // Carte #57 (A5-00) : operate() refuse en amont tout numéro sans IMSI connu du HLR. Les tests
+    // de ce fichier stubent donc par défaut un IMSI pour FROM ; un test particulier peut forcer
+    // Optional.empty() pour vérifier le refus (voir aNumberWithoutHlrSimIsRejected...).
+    when(hlr.currentImsi(FROM)).thenReturn(Optional.of("624010000000001"));
   }
 
   @Test
@@ -118,5 +122,25 @@ class TransferServiceTest {
     assertFalse(req.toLowerCase(java.util.Locale.ROOT).contains("motif"));
     assertFalse(req.contains("reason"));
     assertFalse(req.contains("agent"));
+  }
+
+  /**
+   * Carte #57 (A5-00) : un numéro sans SIM connue du HLR ne peut pas transiger. L'opération est
+   * REFUSÉE avant tout appel au PDP ; aucune requête /evaluate n'est émise ; la PENDING est marquée
+   * REJECTED. Sans ce refus, le cœur enverrait un IMSI factice que le PDP épinglerait comme IMSI de
+   * référence (A4), mettant plus tard un utilisateur légitime en PROBATION dès que son HLR serait
+   * renseigné.
+   */
+  @Test
+  void aNumberWithoutHlrSimIsRejected_withoutCallingThePdp() {
+    when(hlr.currentImsi(FROM)).thenReturn(Optional.empty());
+
+    TransferResult r = service.transferP2P(FROM, BENEF, 10_000, "USSD");
+
+    assertEquals(TransferResult.State.REJECTED, r.state());
+    assertTrue(r.detail().contains("A5-00"));
+    verify(pdp, never()).evaluate(anyString());
+    verify(accounts, never()).debit(any(), anyLong());
+    verify(transactions).markRejected(pending.id());
   }
 }

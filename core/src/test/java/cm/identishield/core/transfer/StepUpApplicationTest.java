@@ -82,6 +82,8 @@ class StepUpApplicationTest {
   private final Account sender = new Account(UUID.randomUUID(), FROM, 1_000_000);
   private final PendingTransaction pending = new PendingTransaction(UUID.randomUUID(), "did-1");
 
+  private final HlrService hlr = Mockito.mock(HlrService.class);
+
   private TransferService service(RuleSet rs) {
     return new TransferService(
         accounts,
@@ -90,7 +92,7 @@ class StepUpApplicationTest {
         rs,
         clock,
         new ObjectMapper(),
-        Mockito.mock(HlrService.class),
+        hlr,
         Mockito.mock(NotificationService.class),
         Mockito.mock(LayerMode.class));
   }
@@ -104,6 +106,8 @@ class StepUpApplicationTest {
     when(accounts.debit(any(), anyLong())).thenReturn(true);
     when(transactions.createPending(any(), anyString(), anyLong(), anyString(), anyString(), any()))
         .thenReturn(pending);
+    // Carte #57 (A5-00) : operate() refuse en amont tout numéro sans IMSI connu du HLR.
+    when(hlr.currentImsi(FROM)).thenReturn(Optional.of("624010000000001"));
   }
 
   // ---- STEP_UP selon le canal ----

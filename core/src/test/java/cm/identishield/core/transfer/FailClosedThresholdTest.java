@@ -54,6 +54,8 @@ class FailClosedThresholdTest {
               "CAP_PROB", Map.of("dailyXaf", 25000),
               "CAP_FAILCLOSED", Map.of("xaf", 50000)));
 
+  private final HlrService hlr = Mockito.mock(HlrService.class);
+
   private final TransferService service =
       new TransferService(
           accounts,
@@ -62,7 +64,7 @@ class FailClosedThresholdTest {
           ruleSet,
           Clock.fixed(Instant.parse("2026-10-16T09:15:00Z"), ZoneOffset.UTC),
           new ObjectMapper(),
-          Mockito.mock(HlrService.class),
+          hlr,
           Mockito.mock(NotificationService.class),
           Mockito.mock(LayerMode.class));
 
@@ -77,6 +79,8 @@ class FailClosedThresholdTest {
     when(transactions.createPending(any(), anyString(), anyLong(), anyString(), anyString(), any()))
         .thenReturn(pending);
     when(pdp.evaluate(anyString())).thenReturn(EvaluateOutcome.unavailable());
+    // Carte #57 (A5-00) : operate() refuse en amont tout numéro sans IMSI connu du HLR.
+    when(hlr.currentImsi(FROM)).thenReturn(Optional.of("624010000000001"));
   }
 
   @Test
