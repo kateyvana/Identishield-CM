@@ -1,0 +1,3 @@
+# Journal système Windows du poste (lecture seule), le 2026-10-23
+18:08:23Z Microsoft-Windows-Kernel-Power id=105 AcOnline=false RemainingCapacity=43030 (sur 43030) : secteur débranché
+18:14:xxZ Win32_Battery : 94 %, BatteryStatus=1 (sur batterie)
