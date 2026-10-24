@@ -84,6 +84,36 @@ public class DeviceClient {
             "challengeSignature", challengeSignature));
   }
 
+  /**
+   * GET /device/{deviceId}/nonce : nonce du PDP émis pour le compte de cette clé ACTIVE (carte B4,
+   * décision du 2026-10-24, point 4 : le défi de session EST le nonce du PDP). 404 si aucune clé
+   * ACTIVE ne porte cet identifiant.
+   */
+  public Reply nonce(String deviceId) {
+    return send(
+        HttpRequest.newBuilder(
+                URI.create(
+                    baseUrl
+                        + "/device/"
+                        + URLEncoder.encode(deviceId, StandardCharsets.UTF_8)
+                        + "/nonce"))
+            .GET());
+  }
+
+  /**
+   * POST /device/verify : la signature du défi par la clé ACTIVE {@code deviceId} du compte, défi
+   * consommé si elle est valide. Le PDP répond un verdict : VALID, INVALID ou REVOKED.
+   */
+  public Reply verify(String accountId, String deviceId, String challenge, String signature) {
+    return post(
+        "/device/verify",
+        Map.of(
+            "accountId", accountId,
+            "deviceId", deviceId,
+            "challenge", challenge,
+            "signature", signature));
+  }
+
   /** POST /device/activate : la clé EN ATTENTE devient ACTIVE si le code est le bon. */
   public Reply activate(String accountId, String deviceId, String recoveryCode) {
     return post(

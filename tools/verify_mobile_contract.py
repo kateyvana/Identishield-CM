@@ -8,6 +8,8 @@ Bibliothèque standard seule. Aucun secret affiché : ni PIN, ni OTP, ni défi, 
 
 Étape 3 de l'ordre de la propriétaire (2026-10-23) : cas de REFUS et succès de start/otp, sans
 téléphone. Les succès de complete et confirm exigent une vraie attestation matérielle (étape 4).
+Carte B4 (#47) : défi de session d'un appareil inconnu (leurre de même forme) et refus de /session ;
+le succès de /session exige une clé ACTIVE née dans une puce (même étape 4).
 """
 
 import base64
@@ -207,6 +209,68 @@ def main():
         {"enrolmentId": str(uuid.UUID(int=2)), "recoveryCode": "ABCDEF"},
         400,
         "REQUEST_INVALID",
+    )
+
+    # Carte B4 : défi et ouverture de session. Sans téléphone, aucune clé ACTIVE : le défi d'un
+    # appareil inconnu est un leurre de même forme, et toute ouverture est refusée uniformément.
+    print(">>> /session/challenge")
+    challenge_t = "/session/challenge"
+    device = str(uuid.UUID(int=0x6F0A2C1E))
+    check(
+        "identifiant hors forme",
+        "GET",
+        challenge_t,
+        challenge_t + "?deviceId=pas-un-uuid",
+        None,
+        400,
+        "REQUEST_INVALID",
+    )
+    issued = check(
+        "appareil inconnu -> defi de meme forme",
+        "GET",
+        challenge_t,
+        challenge_t + "?deviceId=" + device,
+        None,
+        200,
+        required=("challenge",),
+    )
+    challenge = (issued or {}).get("challenge") or "0" * 32
+
+    print(">>> /session")
+    session = "/session"
+    signed = {
+        "msisdn": fresh["msisdn"],
+        "pin": pin,
+        "deviceId": device,
+        "challenge": challenge,
+        "signature": junk,
+    }
+    check(
+        "champ manquant",
+        "POST",
+        session,
+        session,
+        {"msisdn": fresh["msisdn"]},
+        400,
+        "REQUEST_INVALID",
+    )
+    check(
+        "PIN faux",
+        "POST",
+        session,
+        session,
+        {**signed, "pin": wrong_pin},
+        401,
+        "CREDENTIALS_INVALID",
+    )
+    check(
+        "PIN juste, aucune cle ACTIVE -> refus uniforme",
+        "POST",
+        session,
+        session,
+        signed,
+        401,
+        "CREDENTIALS_INVALID",
     )
 
 

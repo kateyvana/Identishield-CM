@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import cm.identishield.pdp.device.DeviceRegistry;
 import cm.identishield.pdp.device.DeviceRegistry.DeviceKey;
+import cm.identishield.pdp.signature.SignatureVerifier.ChallengeVerdict;
 import cm.identishield.pdp.signature.SignatureVerifier.SignedTransaction;
 import cm.identishield.pdp.signature.SignatureVerifier.Verdict;
 import java.nio.charset.StandardCharsets;
@@ -72,6 +73,46 @@ class SignatureVerifierTest {
   }
 
   private static final String CHAIN = ACCOUNT + "|P2P|25000|acc-000456|" + NONCE;
+
+  // ---- défi de session (carte B4) ------------------------------------------------------------
+
+  @Test
+  void sessionChallenge_signedByTheActiveKey_isValid_andConsumesTheNonce() throws Exception {
+    assertEquals(
+        ChallengeVerdict.VALID,
+        verifier.verifyChallenge(ACCOUNT, KEY_ID, NONCE, sign(device.getPrivate(), NONCE)));
+    verify(nonces).consume(NONCE, ACCOUNT);
+  }
+
+  @Test
+  void sessionChallenge_badSignatureOrOtherKey_isInvalid_andTheNonceIsNotConsumed()
+      throws Exception {
+    String other = sign(keyPair("secp256r1").getPrivate(), NONCE);
+    assertEquals(ChallengeVerdict.INVALID, verifier.verifyChallenge(ACCOUNT, KEY_ID, NONCE, other));
+    String ofAnotherChallenge = sign(device.getPrivate(), "f" + NONCE.substring(1));
+    assertEquals(
+        ChallengeVerdict.INVALID,
+        verifier.verifyChallenge(ACCOUNT, KEY_ID, NONCE, ofAnotherChallenge));
+    // Clé ACTIVE du compte, mais pas celle que l'appelant nomme : INVALID (inconnue, pas révoquée).
+    when(registry.stateOf(ACCOUNT, "dk-other")).thenReturn(Optional.empty());
+    assertEquals(
+        ChallengeVerdict.INVALID,
+        verifier.verifyChallenge(ACCOUNT, "dk-other", NONCE, sign(device.getPrivate(), NONCE)));
+    verify(nonces, never()).consume(anyString(), anyString());
+  }
+
+  @Test
+  void sessionChallenge_aRevokedKeyIsNamed_andAConsumedNonceIsWorthNothing() throws Exception {
+    when(registry.stateOf(ACCOUNT, "dk-old")).thenReturn(Optional.of("REVOKED"));
+    assertEquals(
+        ChallengeVerdict.REVOKED,
+        verifier.verifyChallenge(ACCOUNT, "dk-old", NONCE, sign(device.getPrivate(), NONCE)));
+    when(nonces.consume(NONCE, ACCOUNT)).thenReturn(false);
+    assertEquals(
+        ChallengeVerdict.INVALID,
+        verifier.verifyChallenge(ACCOUNT, KEY_ID, NONCE, sign(device.getPrivate(), NONCE)));
+    assertEquals(ChallengeVerdict.INVALID, verifier.verifyChallenge(ACCOUNT, KEY_ID, "", "c2ln"));
+  }
 
   @Test
   void validSignatureOfTheExactChain_byTheActiveKey_consumesTheNonce() throws Exception {

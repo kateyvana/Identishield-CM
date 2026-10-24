@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import cm.identishield.pdp.config.TestRuleSet;
 import cm.identishield.pdp.device.DeviceRegistry.BindingState;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,23 @@ class DeviceEnrolmentDbTest {
     assertThrows(
         DataIntegrityViolationException.class,
         () -> jdbc.update("UPDATE pdp.device SET state = 'BOGUS' WHERE id = ?", id));
+  }
+
+  /** Carte B4 : seule une clé ACTIVE a un défi de session ; l'état d'une clé nommée est énoncé. */
+  @Test
+  void onlyAnActiveKey_isFoundById_andItsStateIsStated() {
+    init();
+    String id = registry.registerPending(acc, "cGs=", T0);
+    assertTrue(registry.findActiveById(id).isEmpty(), "EN ATTENTE : pas de défi");
+    assertEquals(Optional.of("PENDING"), registry.stateOf(acc, id));
+    assertTrue(registry.activate(acc, id));
+    assertEquals(acc, registry.findActiveById(id).orElseThrow().accountId());
+    assertEquals(Optional.of("ACTIVE"), registry.stateOf(acc, id));
+    jdbc.update("UPDATE pdp.device SET state = 'REVOKED' WHERE id = ?", id);
+    assertTrue(registry.findActiveById(id).isEmpty(), "RÉVOQUÉE : plus de défi");
+    assertEquals(Optional.of("REVOKED"), registry.stateOf(acc, id));
+    assertEquals(
+        Optional.empty(), registry.stateOf("acc-autre", id), "jamais pour un autre compte");
   }
 
   @Test
