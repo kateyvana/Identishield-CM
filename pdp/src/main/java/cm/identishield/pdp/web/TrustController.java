@@ -28,11 +28,11 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>{@code POST /trust/{accountId}/not-me} (ADR-041, amendement du 2026-10-25 ; ES-27, arbitrage
  * A1-4) : la réponse signée « ce n'est pas moi » du titulaire, vérifiée AVANT par le cœur ({@code
  * /device/verify}, chaîne {@code accountId|ALERT_NOT_ME|alertId|nonce}). Effet = {@link
- * TrustStateMachine#notMe} : SIM_CHANGE → FROZEN (cause NOT_ME, sans échéance) et ré-enrôlements gelés
- * REENROL_FREEZE ; REENROL_ATTEMPT → ré-enrôlements gelés seulement. Chaque événement est écrit dans
- * l'audit avec sa cause et l'{@code alertId}. Compte jamais vu : créé comme pour toute transition. Déjà
- * gelé NOT_ME : 409, l'effet est déjà en place. Le PDP énonce, le cœur arbitre ; le gel est un acte du
- * PDP.
+ * TrustStateMachine#notMe} : SIM_CHANGE → FROZEN (cause NOT_ME, sans échéance) et ré-enrôlements
+ * gelés REENROL_FREEZE ; REENROL_ATTEMPT → ré-enrôlements gelés seulement. Chaque événement est
+ * écrit dans l'audit avec sa cause et l'{@code alertId}. Compte jamais vu : créé comme pour toute
+ * transition. Déjà gelé NOT_ME : 409, l'effet est déjà en place. Le PDP énonce, le cœur arbitre ;
+ * le gel est un acte du PDP.
  */
 // @implements EF-13
 // @implements ES-27
@@ -88,8 +88,7 @@ public class TrustController {
   public ResponseEntity<Object> notMe(
       @PathVariable String accountId, @Valid @RequestBody NotMeRequest r) {
     try {
-      Trust t =
-          trust.notMe(accountId, Alert.valueOf(r.alert()), Map.of("alertId", r.alertId()));
+      Trust t = trust.notMe(accountId, Alert.valueOf(r.alert()), Map.of("alertId", r.alertId()));
       return ResponseEntity.ok(
           new NotMeResponse(
               t.state().name(),

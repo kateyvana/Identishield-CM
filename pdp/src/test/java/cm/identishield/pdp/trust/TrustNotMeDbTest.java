@@ -32,8 +32,8 @@ import org.yaml.snakeyaml.Yaml;
 
 /**
  * POST /trust/{accountId}/not-me (ADR-041, amendement du 2026-10-25 ; ES-27 ; arbitrage A1-4) : la
- * réponse « ce n'est pas moi » du titulaire, telle que la machine l'applique et l'écrit dans l'audit
- * avec l'{@code alertId}. Sur la vraie base (variable ISC_TEST_PG_URL).
+ * réponse « ce n'est pas moi » du titulaire, telle que la machine l'applique et l'écrit dans
+ * l'audit avec l'{@code alertId}. Sur la vraie base (variable ISC_TEST_PG_URL).
  *
  * <p>@covers ES-27
  */

@@ -77,7 +77,7 @@ public class TrustStateMachine {
 
   /** Transition interdite : refusée, l'état ne change pas. */
   public static final class Refused extends RuntimeException {
-    Refused(String message) {
+    public Refused(String message) {
       super(message);
     }
   }

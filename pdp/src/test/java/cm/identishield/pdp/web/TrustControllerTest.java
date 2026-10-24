@@ -95,8 +95,7 @@ class TrustControllerTest {
   void notMe_simChange_appliesTheFreeze_withTheAlertIdTraced_andStatesTheReenrolDeadline() {
     when(trust.notMe(eq("acc-1"), eq(Alert.SIM_CHANGE), eq(Map.of("alertId", ALERT_ID))))
         .thenReturn(trust(State.FROZEN, null, UNTIL));
-    ResponseEntity<Object> r =
-        controller.notMe("acc-1", new NotMeRequest("SIM_CHANGE", ALERT_ID));
+    ResponseEntity<Object> r = controller.notMe("acc-1", new NotMeRequest("SIM_CHANGE", ALERT_ID));
     assertEquals(200, r.getStatusCode().value());
     assertEquals(
         new NotMeResponse("FROZEN", SINCE.toString(), null, null, UNTIL.toString()), r.getBody());
@@ -119,8 +118,7 @@ class TrustControllerTest {
   void notMe_whenTheMachineRefuses_is409_alreadyFrozen_andDecidesNothingElse() {
     when(trust.notMe(eq("acc-1"), eq(Alert.SIM_CHANGE), any()))
         .thenThrow(new Refused("account already frozen by NOT_ME: acc-1"));
-    ResponseEntity<Object> r =
-        controller.notMe("acc-1", new NotMeRequest("SIM_CHANGE", ALERT_ID));
+    ResponseEntity<Object> r = controller.notMe("acc-1", new NotMeRequest("SIM_CHANGE", ALERT_ID));
     assertEquals(409, r.getStatusCode().value());
     assertEquals("ALREADY_FROZEN", ((ApiError) r.getBody()).code());
     verify(trust).notMe(eq("acc-1"), eq(Alert.SIM_CHANGE), any());
