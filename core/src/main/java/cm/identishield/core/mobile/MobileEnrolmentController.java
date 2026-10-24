@@ -52,6 +52,35 @@ public class MobileEnrolmentController {
   /** Code de récupération tel que retapé (CODE_LENGTH caractères alphanumériques majuscules). */
   private static final Pattern RECOVERY_CODE = Pattern.compile("^[A-Z0-9]{4,32}$");
 
+  /**
+   * En-tête X-ISC-Installation (contrat, ADR-030 ; décision de la propriétaire du 2026-10-24) :
+   * UUID v4 de l'installation de l'application. Étiquette pour le freinage, ni secret ni facteur ;
+   * transmise au PDP, jamais journalisée en clair ni renvoyée. Absente : requête traitée, freinage
+   * sur l'origine seule ; mal formée : 400.
+   */
+  static final String INSTALLATION_HEADER = "X-ISC-Installation";
+
+  private static final Pattern INSTALLATION_ID =
+      Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
+
+  /** Marqueur d'en-tête mal formé, distinct de « absent » (null). */
+  static final String MALFORMED_INSTALLATION = "\u0000";
+
+  /**
+   * L'identifiant d'installation de la requête : null si absent, MALFORMED_INSTALLATION si
+   * invalide.
+   */
+  static String installationId(HttpServletRequest http) {
+    String value = http.getHeader(INSTALLATION_HEADER);
+    if (value == null) {
+      return null;
+    }
+    return INSTALLATION_ID.matcher(value).matches() ? value : MALFORMED_INSTALLATION;
+  }
+
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(MobileEnrolmentController.class);
+
   record ConfirmRequest(String enrolmentId, String recoveryCode) {}
 
   private final MobileEnrolment enrolment;
@@ -75,6 +104,7 @@ public class MobileEnrolmentController {
       @RequestBody String body, HttpServletRequest http) {
     StartRequest r = read(body, StartRequest.class);
     if (r == null
+        || MALFORMED_INSTALLATION.equals(installationId(http))
         || !isMsisdn(r.msisdn())
         || !isPin(r.pin())
         || (r.deviceId() != null && !isDeviceId(r.deviceId()))
@@ -102,26 +132,31 @@ public class MobileEnrolmentController {
    * et l'application le renvoie à /enrolment/complete.
    */
   @PostMapping("/enrolment/recover")
-  public ResponseEntity<Map<String, Object>> recover(@RequestBody String body) {
+  public ResponseEntity<Map<String, Object>> recover(
+      @RequestBody String body, HttpServletRequest http) {
     RecoverRequest r = read(body, RecoverRequest.class);
     UUID id = r == null ? null : uuid(r.enrolmentId());
-    if (id == null || !matches(RECOVERY_CODE, r.recoveryCode())) {
+    if (id == null
+        || MALFORMED_INSTALLATION.equals(installationId(http))
+        || !matches(RECOVERY_CODE, r.recoveryCode())) {
       return invalid();
     }
     return answer(enrolment.recover(id));
   }
 
   /**
-   * L'identifiant d'installation (ADR-030) n'est pas encore lu : sa forme (en-tête ou champ) est
-   * une décision de la propriétaire, proposée avant d'écrire (carte B3b) ; d'ici là, le comptage
-   * des échecs porte sur l'origine réseau seule.
+   * L'identifiant d'installation (en-tête X-ISC-Installation, ADR-030) part au PDP avec l'origine
+   * réseau comme clé de comptage des échecs de réenrôlement ; absent, le freinage porte sur
+   * l'origine seule et le cœur le note (sans aucun secret).
    */
   @PostMapping("/enrolment/complete")
   public ResponseEntity<Map<String, Object>> complete(
       @RequestBody String body, HttpServletRequest http) {
     CompleteRequest r = read(body, CompleteRequest.class);
     UUID id = r == null ? null : uuid(r.enrolmentId());
+    String installation = installationId(http);
     if (id == null
+        || MALFORMED_INSTALLATION.equals(installation)
         || !matches(BASE64, r.publicKey())
         || !matches(BASE64, r.challengeSignature())
         || r.attestationChain() == null
@@ -129,6 +164,10 @@ public class MobileEnrolmentController {
         || !r.attestationChain().stream().allMatch(c -> matches(BASE64, c))
         || (r.recoveryCode() != null && !matches(RECOVERY_CODE, r.recoveryCode()))) {
       return invalid();
+    }
+    if (installation == null && r.recoveryCode() != null) {
+      log.info(
+          "reenrolment without {}: throttling on the network origin only", INSTALLATION_HEADER);
     }
     return answer(
         enrolment.complete(
@@ -138,7 +177,7 @@ public class MobileEnrolmentController {
             r.challengeSignature(),
             r.recoveryCode(),
             http.getRemoteAddr(),
-            null));
+            installation));
   }
 
   @PostMapping("/recovery-code/confirm")

@@ -24,16 +24,18 @@ un 401 RECOVERY_INVALID « sans code » que le cœur rend 410, indiscernable d'u
 
 ## Limites déclarées
 
-**L-B3b-1 — Identifiant d'installation : non lu par le cœur tant que sa forme n'est pas décidée.** Le
-comptage des échecs porte sur l'origine réseau seule ; ADR-030 exige aussi l'installation (sinon une
-réinstallation ou un changement d'adresse remet le compteur à zéro). Proposition faite à la propriétaire
-(en-tête `X-ISC-Installation`, UUID v4) ; le contrat PDP et le compteur sont prêts à la recevoir.
+**L-B3b-1 — FERMÉE le 2026-10-24 (décision de la propriétaire) : identifiant d'installation = en-tête
+HTTP `X-ISC-Installation`**, UUID v4 aléatoire créé une fois à l'installation, conservé hors sauvegarde
+(régénéré à la réinstallation : voulu, ADR-030 cumule avec l'origine). Déclaré dans le contrat mobile
+comme paramètre réutilisable sur `/enrolment/start`, `/enrolment/recover`, `/enrolment/complete` et
+`GET /session/challenge` ; transmis au PDP dans `/device/register` (`installationId`) ; absent → requête
+traitée, freinage sur l'origine seule, noté dans le journal du cœur (sans secret) ; mal formé → 400 ;
+jamais écrit dans `pdp.audit_entry` (les routes `/device/*` n'y écrivent pas), jamais renvoyé. Vérifié
+par le test de contrat sur le vrai cœur (mal formé → 400 sur `start` et `challenge`, valide → traité).
 
-**L-B3b-2 — Amorçage PDP du compte lié des fixtures : NON FAIT, volontairement.** Le PDP ne connaît pas
-l'UUID du compte créé par le cœur, et aucune route ne pose une clé ACTIVE sans attestation ; en créer une
-ou forger une chaîne serait un changement de conception. Recommandation : le vrai téléphone fait un
-premier enrôlement (flux A), puis un second enrôlement du même compte prouve le flux D. Décision de la
-propriétaire attendue.
+**L-B3b-2 — FERMÉE le 2026-10-24 (décision de la propriétaire) : aucun amorçage d'un compte « déjà lié »
+au PDP.** La démonstration enchaîne flux A puis flux D sur le même compte :
+`docs/03-revues/2026-10-24-scenario-demonstration-B3b.md`.
 
 **L-B3b-3 — Un essai de clé coûte une clé matérielle.** Conséquence voulue d'ADR-041 (« le coût d'un
 essai devient matériel, pas réseau ») : l'application crée la clé, déverrouille et signe AVANT de savoir

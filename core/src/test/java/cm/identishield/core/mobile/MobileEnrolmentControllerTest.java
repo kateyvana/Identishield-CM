@@ -2,7 +2,11 @@ package cm.identishield.core.mobile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -121,13 +125,13 @@ class MobileEnrolmentControllerTest {
           "{\"enrolmentId\":\"" + id + "\",\"recoveryCode\":\"K7MQ3X\",\"extra\":1}",
           "{\"enrolmentId\":\"" + id + "\"}"
         }) {
-      assertEquals(400, controller.recover(body).getStatusCode().value(), body);
+      assertEquals(400, controller.recover(body, http).getStatusCode().value(), body);
     }
     verifyNoInteractions(service);
     when(service.recover(java.util.UUID.fromString(id)))
         .thenReturn(Answer.ok(Map.of("next", "BIND", "attestationChallenge", "ZGVmaQ==")));
     ResponseEntity<Map<String, Object>> r =
-        controller.recover("{\"enrolmentId\":\"" + id + "\",\"recoveryCode\":\"K7MQ3X\"}");
+        controller.recover("{\"enrolmentId\":\"" + id + "\",\"recoveryCode\":\"K7MQ3X\"}", http);
     assertEquals(200, r.getStatusCode().value());
     assertEquals("BIND", r.getBody().get("next"));
   }
@@ -156,6 +160,50 @@ class MobileEnrolmentControllerTest {
         400,
         controller.complete(base + ",\"recoveryCode\":\"k7\"}", http).getStatusCode().value(),
         "code hors forme");
+  }
+
+  /** En-tête X-ISC-Installation (ADR-030) : absent → traité ; mal formé → 400 ; valide → au PDP. */
+  @Test
+  void installationHeader_absentIsAccepted_malformedIs400_validIsPassedToThePdp() {
+    String id = "00000000-0000-4000-8000-0000000000e1";
+    String base =
+        "{\"enrolmentId\":\""
+            + id
+            + "\",\"publicKey\":\"cGs=\",\"attestationChain\":[\"Y2VydA==\"],"
+            + "\"challengeSignature\":\"c2ln\",\"recoveryCode\":\"K7MQ3X\"}";
+    String install = "6f0a2c1e-1234-4abc-9def-0123456789ab";
+    when(service.complete(
+            java.util.UUID.fromString(id),
+            "cGs=",
+            java.util.List.of("Y2VydA=="),
+            "c2ln",
+            "K7MQ3X",
+            "10.0.0.7",
+            install))
+        .thenReturn(Answer.ok(Map.of("enrolmentId", id)));
+    when(http.getHeader("X-ISC-Installation")).thenReturn(install);
+    assertEquals(200, controller.complete(base, http).getStatusCode().value());
+
+    for (String bad : new String[] {"pas-un-uuid", "6F0A2C1E-1234-4ABC-9DEF-0123456789AB", ""}) {
+      when(http.getHeader("X-ISC-Installation")).thenReturn(bad);
+      assertEquals(400, controller.complete(base, http).getStatusCode().value(), bad);
+      assertEquals(
+          400,
+          controller
+              .start("{\"msisdn\":\"677000200\",\"pin\":\"4096\"}", http)
+              .getStatusCode()
+              .value(),
+          bad);
+      assertEquals(
+          400,
+          controller
+              .recover("{\"enrolmentId\":\"" + id + "\",\"recoveryCode\":\"K7MQ3X\"}", http)
+              .getStatusCode()
+              .value(),
+          bad);
+    }
+    verify(service, never()).start(anyString(), anyString(), anyString(), any(), any(), any());
+    verify(service, never()).recover(any());
   }
 
   @Test

@@ -31,10 +31,12 @@ FIXTURES = json.loads(Path("/fixtures/fixtures.json").read_text(encoding="utf-8"
 failures = []
 
 
-def call(method, path, body=None, base=CORE):
+def call(method, path, body=None, base=CORE, headers=None):
     data = None if body is None else json.dumps(body).encode()
     req = urllib.request.Request(base + path, data=data, method=method)
     req.add_header("Content-Type", "application/json")
+    for name, value in (headers or {}).items():
+        req.add_header(name, value)
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return r.status, json.loads(r.read() or b"{}"), r.headers
@@ -43,10 +45,21 @@ def call(method, path, body=None, base=CORE):
         return e.code, (json.loads(raw) if raw else None), e.headers
 
 
-def check(name, method, template, path, body, status, reason=None, next_step=None, required=()):
+def check(
+    name,
+    method,
+    template,
+    path,
+    body,
+    status,
+    reason=None,
+    next_step=None,
+    required=(),
+    headers=None,
+):
     """Appelle le vrai cœur, valide la réponse contre le contrat PUIS son contenu attendu (étape
     suivante, champs requis) ; UN seul verdict par cas. Renvoie le corps, ou None si échec."""
-    got, data, headers = call(method, path, body)
+    got, data, headers = call(method, path, body, headers=headers)
     data = data or {}
     try:
         sch = schema.response_schema(CONTRACT, method, template, got)
@@ -92,6 +105,41 @@ def main():
     wrong_pin = "0" * len(pin) if pin != "0" * len(pin) else "1" * len(pin)
     imsi = "624010" + fresh["msisdn"]
     start = "/enrolment/start"
+
+    # Carte B3b : en-tête X-ISC-Installation (ADR-030) — mal formé → 400 ; valide → traité ; absent →
+    # traité (freinage sur l'origine seule). Jamais renvoyé par le cœur.
+    print(">>> X-ISC-Installation")
+    install = "6f0a2c1e-1234-4abc-9def-0123456789ab"
+    check(
+        "en-tete mal forme",
+        "POST",
+        start,
+        start,
+        {"msisdn": fresh["msisdn"], "pin": pin},
+        400,
+        "REQUEST_INVALID",
+        headers={"X-ISC-Installation": "pas-un-uuid"},
+    )
+    check(
+        "en-tete valide, PIN faux : traite normalement",
+        "POST",
+        start,
+        start,
+        {"msisdn": fresh["msisdn"], "pin": wrong_pin},
+        401,
+        "CREDENTIALS_INVALID",
+        headers={"X-ISC-Installation": install},
+    )
+    check(
+        "defi de session, en-tete mal forme",
+        "GET",
+        "/session/challenge",
+        "/session/challenge?deviceId=" + str(uuid.UUID(int=0x6F0A2C1E)),
+        None,
+        400,
+        "REQUEST_INVALID",
+        headers={"X-ISC-Installation": "6F0A2C1E-1234-4ABC-9DEF-0123456789AB"},
+    )
 
     print(">>> /enrolment/start")
     check(

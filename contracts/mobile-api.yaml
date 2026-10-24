@@ -43,6 +43,8 @@ paths:
         faux (ES-22). La signature, si présente, porte sur un défi obtenu par
         GET /session/challenge.
       security: []
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
       requestBody:
         required: true
         content:
@@ -103,6 +105,8 @@ paths:
         C'est là que vivent le refus uniforme (401 RECOVERY_INVALID), le compteur d'essais et le
         429 THROTTLED (ES-21), plus ici.
       security: []
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
       requestBody:
         required: true
         content:
@@ -136,6 +140,8 @@ paths:
         l'ancienne clé n'est révoquée qu'à /recovery-code/confirm, dans la même transaction que
         l'activation de la nouvelle (ES-14b, ES-20 ; décision de la propriétaire du 2026-10-24).
       security: []
+      parameters:
+        - $ref: '#/components/parameters/InstallationId'
       requestBody:
         required: true
         content:
@@ -198,6 +204,7 @@ paths:
           required: true
           schema:
             $ref: '#/components/schemas/DeviceId'
+        - $ref: '#/components/parameters/InstallationId'
       responses:
         '200':
           description: Défi à usage unique.
@@ -492,6 +499,20 @@ components:
       description: Jeton de session court (APP_SESSION_TTL), lié à l'appareil, lectures et demandes de nonce.
 
   parameters:
+    InstallationId:
+      name: X-ISC-Installation
+      in: header
+      required: false
+      description: |
+        Identifiant d'installation de l'application (ADR-030 ; décision de la propriétaire du
+        2026-10-24, carte B3b) : UUID v4 aléatoire, créé une fois à l'installation, conservé hors
+        sauvegarde (régénéré si l'application est réinstallée : voulu, le freinage cumule l'installation
+        et l'origine réseau). Étiquette pour le freinage des réenrôlements, ni secret ni facteur :
+        transmise au PDP, jamais écrite dans le journal d'audit, jamais renvoyée à l'application.
+        Absente : la requête est traitée, le freinage porte sur l'origine seule. Mal formée : 400.
+      schema:
+        type: string
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     AlertId:
       name: alertId
       in: path
