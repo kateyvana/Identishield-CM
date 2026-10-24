@@ -13,9 +13,11 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./init/init.sql:/opt/isc/init.sql:ro
       - ./init/01-apply.sh:/docker-entrypoint-initdb.d/01-apply.sh:ro
-      # Migrations du schema, appliquees apres init.sql a la creation d'une base neuve
-      # (infra/init/migrations/README.md ; une base existante : make migrate).
+      # Migrations du schema (infra/init/migrations/README.md). A la creation d'une base NEUVE,
+      # 01-apply.sh appelle apply-migrations.sh ; sur une base EXISTANTE, c'est le conteneur
+      # isc-migrate ci-dessous qui l'appelle a chaque demarrage de la pile.
       - ./init/migrations:/opt/isc/migrations:ro
+      - ./init/apply-migrations.sh:/opt/isc/apply-migrations.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -41,9 +43,36 @@ services:
       - certs:/certs
       - ./ca:/ca:ro
 
+  # Migrations du schema sur une base EXISTANTE (infra/init/migrations/README.md). Conteneur
+  # d'execution unique, image postgres:16-alpine (meme famille que la base, psql compatible),
+  # qui appelle apply-migrations.sh et sort en succes. isc-core et isc-pdp en dependent en
+  # service_completed_successfully : une migration qui echoue arrete le demarrage de la pile.
+  # Sur une base NEUVE, 01-apply.sh applique deja les memes migrations ; ce conteneur rejoue
+  # alors les migrations (toutes idempotentes, verifie par tools/verify_migrations.sh), ce qui
+  # est sans effet.
+  migrate:
+    image: postgres:16-alpine
+    container_name: isc-migrate
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGHOST: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./init/migrations:/opt/isc/migrations:ro
+      - ./init/apply-migrations.sh:/opt/isc/apply-migrations.sh:ro
+    command: ["sh", "/opt/isc/apply-migrations.sh", "/opt/isc/migrations"]
+    networks:
+      - isc-net
+    restart: "no"
+
   # PDP : terminaison mTLS DIRECTE (Spring Boot Tomcat, client-auth=need), sans
-  # reverse-proxy (OB-5). Demarre seulement une fois la CA generee. Certificats
-  # montes en lecture seule.
+  # reverse-proxy (OB-5). Demarre seulement une fois la CA generee et les migrations
+  # appliquees. Certificats montes en lecture seule.
   pdp:
     build:
       context: ../pdp
@@ -57,6 +86,8 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - certs:/certs:ro
       - ../config:/config:ro # jeu de regles versionne (EF-17), source unique
@@ -88,6 +119,8 @@ services:
         condition: service_healthy
       sim:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       CORE_MODE: ${CORE_MODE:-service}
       # Passerelle SMS : le coeur REMET l'OTP au reseau simule (isc-sim), jamais il ne le relit.
