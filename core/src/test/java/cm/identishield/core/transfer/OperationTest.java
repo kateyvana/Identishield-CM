@@ -81,6 +81,8 @@ class OperationTest {
     when(accounts.debit(any(), anyLong())).thenReturn(true);
     when(transactions.createPending(any(), anyString(), anyLong(), anyString(), anyString(), any()))
         .thenReturn(pending);
+    // Carte #57 (A5-00) : operate() refuse en amont tout numéro sans IMSI connu du HLR.
+    when(hlr.currentImsi(MSISDN)).thenReturn(Optional.of("624010000000001"));
   }
 
   /** Les quatre sorties : /evaluate AVANT le débit, débit à ALLOW, type et contrepartie émis. */

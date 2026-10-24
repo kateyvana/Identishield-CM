@@ -88,4 +88,43 @@ public record RuleSet(String version, Map<String, Object> parameters) {
     }
     throw new IllegalStateException("OTP.ttl absent du jeu de règles versionné");
   }
+
+  /**
+   * Essais d'OTP d'un enrôlement avant qu'un nouvel OTP soit obligatoire (EF-03), depuis
+   * OTP_ATTEMPTS du jeu de règles (carte B3a).
+   */
+  // @implements EF-03
+  public int otpAttempts() {
+    if (parameters != null && parameters.get("OTP_ATTEMPTS") instanceof Number n) {
+      return n.intValue();
+    }
+    throw new IllegalStateException("OTP_ATTEMPTS absent du jeu de règles versionné");
+  }
+
+  /**
+   * Durée de vie d'un enrôlement entamé (ES-25 : la liaison ne suit la validation de l'OTP que dans
+   * cette fenêtre), depuis ENROL_TTL du jeu de règles (carte B3a).
+   */
+  // @implements ES-25
+  public Duration enrolTtl() {
+    Object v = parameters == null ? null : parameters.get("ENROL_TTL");
+    if (v instanceof CharSequence s) {
+      return Duration.parse(s);
+    }
+    throw new IllegalStateException("ENROL_TTL absent du jeu de règles versionné");
+  }
+
+  /**
+   * Échéance fixe du jeton de session de l'application (carte B3a, décision 4 : aucun autre
+   * minuteur), depuis APP_SESSION_TTL du jeu de règles. Aucune exigence du SRS ne nomme cette
+   * échéance : le marqueur renvoie au paramètre nommé versionné (ES-15).
+   */
+  // @implements ES-15
+  public Duration appSessionTtl() {
+    Object v = parameters == null ? null : parameters.get("APP_SESSION_TTL");
+    if (v instanceof CharSequence s) {
+      return Duration.parse(s);
+    }
+    throw new IllegalStateException("APP_SESSION_TTL absent du jeu de règles versionné");
+  }
 }

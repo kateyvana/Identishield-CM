@@ -1,0 +1,2 @@
+2026-10-23T17:53:04Z décalage VM->poste = 28.192 s (aller-retour SSH 0.086 s)
+2026-10-23T18:14:16Z décalage VM->poste = 28.353 s (aller-retour SSH 0.117 s)

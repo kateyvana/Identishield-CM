@@ -20,6 +20,27 @@ from isc_mobile_mock import miniyaml
 
 V1 = "/mobile/v1"
 
+# Liste fermée des codes de raison : 14 d'ISC-MOB-SPEC v1.2 §12.4, plus REQUEST_INVALID (M-03) et
+# SERVICE_UNAVAILABLE (B3a, ajout délibéré ratifié par la propriétaire le 2026-10-22).
+CLOSED_REASON_LIST = [
+    "CREDENTIALS_INVALID",
+    "OTP_INVALID",
+    "OTP_EXPIRED",
+    "RECOVERY_INVALID",
+    "THROTTLED",
+    "ATTESTATION_REJECTED",
+    "DEVICE_UNSUPPORTED",
+    "KEY_REVOKED",
+    "INSUFFICIENT_FUNDS",
+    "DECISION_REJECTED",
+    "DECISION_DEFERRED",
+    "DECISION_FROZEN",
+    "ACCOUNT_FROZEN",
+    "ENROLMENT_EXPIRED",
+    "REQUEST_INVALID",
+    "SERVICE_UNAVAILABLE",
+]
+
 
 def _contract_operations():
     c = miniyaml.load(CONTRACT)
@@ -30,8 +51,10 @@ def test_contract_declares_exactly_18_routes_and_closed_reason_list():
     assert len(_contract_operations()) == 18
     c = miniyaml.load(CONTRACT)
     reasons = c["components"]["schemas"]["ReasonCode"]["enum"]
-    assert "CREDENTIALS_INVALID" in reasons and "ACCOUNT_NOT_FOUND" not in reasons
-    assert len(reasons) == len(set(reasons)) == 15  # 14 de SPEC §12.4 + REQUEST_INVALID (M-03)
+    # La LISTE, pas seulement le nombre : un code échangé contre un autre doit échouer.
+    assert len(reasons) == len(set(reasons)), "code de raison en double"
+    assert sorted(reasons) == sorted(CLOSED_REASON_LIST)
+    assert "ACCOUNT_NOT_FOUND" not in reasons
     assert "accountId|type|amountXaf|beneficiaryId|nonce" in c["info"]["description"]
 
 

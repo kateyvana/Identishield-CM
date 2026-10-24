@@ -1,0 +1,29 @@
+# ISOLEMENT D'ESSAI — CE FICHIER N'EST JAMAIS LA VOIE NORMALE.
+#
+# Il n'existe QUE pour déployer la branche du couloir B à côté de la pile d'un autre couloir, le
+# temps d'un essai, sans rien toucher à cette autre pile (décision de la propriétaire du
+# 2026-10-23, carte B3a). La voie normale est docker-compose.yml seul (make up), ou avec la
+# surcouche compose.b3a.yml.
+#
+# Il renomme ce que le fichier partagé fixe par nom, pour que l'essai ait les siens :
+#   - volumes : base neuve (init.sql s'exécute) et autorité TLS neuve ;
+#   - images  : les images construites ne remplacent pas celles de l'autre pile.
+# Usage (depuis infra/, avec un projet distinct) :
+#   docker compose -p isc-b3a -f docker-compose.yml -f compose.b3a.yml -f compose.b3a-isolement.yml up -d --build
+# Retrait : la même commande avec « down -v » ne supprime que les volumes isc-b3a-* ; les images
+# isc-*-b3a se retirent à part.
+services:
+  ca-init:
+    image: isc-tools-b3a
+  pdp:
+    image: isc-pdp-b3a
+  core:
+    image: isc-core-b3a
+  console:
+    image: isc-console-b3a
+
+volumes:
+  pgdata:
+    name: isc-b3a-pgdata
+  certs:
+    name: isc-b3a-certs

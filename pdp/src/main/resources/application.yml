@@ -48,3 +48,12 @@ isc:
   clock:
     mode: system
     # virtual-start: "2026-01-01T00:00:00Z"   # utilise seulement en mode virtual
+  # Empreinte du code de recuperation (ADR-041 §5, ES-18) : PBKDF2-HMAC-SHA256, parametres NOMMES
+  # ici, jamais en litteraux dans le code. Iterations fixees par un BUDGET (ADR-042) : une
+  # derivation <= 50 ms en mediane sur la machine de demonstration en regime chaud. Ce qui protege
+  # le code est le comptage des essais en ligne (ES-21) et le second facteur (PIN), pas ce nombre.
+  recovery-code:
+    pbkdf2:
+      iterations: 44000
+      salt-bytes: 16
+      key-bits: 256

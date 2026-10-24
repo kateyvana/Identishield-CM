@@ -361,6 +361,13 @@ components:
             gelé, sortie refusée. INSUFFICIENT_FUNDS : sortie au-delà du solde, refusée. IMSI_CHANGE
             n'est PAS émis au mois 4 : un changement d'IMSI fait passer le compte en PROBATION
             (transition), puis la transaction est jugée sous les restrictions de PROBATION.
+        reason:
+          type: string
+          description: >-
+            Raison lisible de la décision, journalisée pour A5 (#39). Présente quand un veto s'applique
+            (raison du veto) et sur un ALLOW sans règle déclenchée (« aucune règle n'a atteint le
+            seuil »). Absente quand une ou plusieurs règles ont été déclenchées : l'explication est
+            portée par chaque élément de triggeredRules.
         decisionId:
           type: string
           format: uuid

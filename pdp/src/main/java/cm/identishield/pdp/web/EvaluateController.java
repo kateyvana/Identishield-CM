@@ -262,6 +262,13 @@ public class EvaluateController {
     p.put("requiredAction", requiredAction);
     p.put("vetoApplied", vetoApplied);
     p.put("triggeredRules", triggeredRules);
+    // Raison lisible de la décision (A5, #39) : veto -> raison du veto ; ALLOW sans règle ->
+    // NONE_ALLOW ; sinon, l'explication est portée par chaque triggeredRule.
+    if (!"NONE".equals(vetoApplied)) {
+      p.put("reason", RuleExplanations.ofVeto(vetoApplied));
+    } else if ("ALLOW".equals(decision) && triggeredRules.isEmpty()) {
+      p.put("reason", RuleExplanations.ofVeto(RuleExplanations.NONE_ALLOW));
+    }
     p.put("ruleSetVersion", ruleSet.version());
     p.put("evaluatedAt", DateTimeFormatter.ISO_INSTANT.format(at));
     // Contexte de la requête, journalisé avec la décision.
