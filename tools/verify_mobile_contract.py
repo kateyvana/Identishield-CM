@@ -190,6 +190,29 @@ def main():
         "REQUEST_INVALID",
     )
 
+    # Carte B3b : /enrolment/recover ne vérifie rien ; sans compte lié, seuls les refus de forme et
+    # d'enrôlement sont observables ici (le flux D complet exige une clé née dans une puce).
+    print(">>> /enrolment/recover")
+    recover = "/enrolment/recover"
+    check(
+        "code hors forme",
+        "POST",
+        recover,
+        recover,
+        {"enrolmentId": eid, "recoveryCode": "k7"},
+        400,
+        "REQUEST_INVALID",
+    )
+    check(
+        "enrolement a la mauvaise etape (OTP, pas RECOVERY)",
+        "POST",
+        recover,
+        recover,
+        {"enrolmentId": eid, "recoveryCode": "K7MQ3X"},
+        400,
+        "REQUEST_INVALID",
+    )
+
     print(">>> /recovery-code/confirm")
     confirm = "/recovery-code/confirm"
     check(

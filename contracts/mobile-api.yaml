@@ -94,10 +94,14 @@ paths:
   /enrolment/recover:
     post:
       operationId: verifyRecoveryCode
-      summary: Vérifie la clé de récupération (ré-enrôlement)
+      summary: Reçoit la clé de récupération (ré-enrôlement) ; vérifiée à l'étape suivante
       description: |
-        Flux D. Après REENROL_ATTEMPTS échecs, délai croissant sur l'origine (LOCK_BASE doublé,
-        plafonné par LOCK_MAX), jamais sur le compte (ES-21) : 429 THROTTLED avec Retry-After.
+        Flux D (carte B3b ; ADR-041 : aucune route de vérification de code, qui serait un oracle ;
+        décision de la propriétaire du 2026-10-24). Cette route NE VÉRIFIE RIEN et ne garde rien :
+        elle émet le défi d'attestation et passe l'enrôlement à BIND. L'application RENVOIE le
+        code à /enrolment/complete, avec l'attestation ; le PDP vérifie les deux en une seule fois.
+        C'est là que vivent le refus uniforme (401 RECOVERY_INVALID), le compteur d'essais et le
+        429 THROTTLED (ES-21), plus ici.
       security: []
       requestBody:
         required: true
@@ -107,28 +111,30 @@ paths:
               $ref: '#/components/schemas/RecoverRequest'
       responses:
         '200':
-          description: Clé de récupération validée ; la liaison peut commencer (ES-25).
+          description: Code reçu, vérifié à l'étape suivante (/enrolment/complete) ; le défi d'attestation est émis (ES-25).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/BindResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '410':
           $ref: '#/components/responses/Gone'
-        '429':
-          $ref: '#/components/responses/Throttled'
   /enrolment/complete:
     post:
       operationId: completeEnrolment
       summary: Liaison de l'appareil ; renvoie la clé de récupération une seule fois
       description: |
-        Flux A et D. Clé publique, chaîne d'attestation et signature du défi d'attestation. Une
-        seule clé active par compte : l'ancienne est révoquée (ES-14b, ADR-031).
+        Flux A et D. Clé publique, chaîne d'attestation et signature du défi d'attestation. Au
+        réenrôlement (flux D), `recoveryCode` porte l'ancien code retapé : le PDP le vérifie AVEC
+        l'attestation, en une seule fois (ADR-041). Réponse UNIFORME : code faux, attestation refusée
+        et défi invalide donnent le même 401 RECOVERY_INVALID, même corps, même durée ; chaque échec
+        compte pour l'origine (délai croissant LOCK_BASE/LOCK_MAX après REENROL_ATTEMPTS → 429
+        THROTTLED avec Retry-After, ES-21), jamais pour le compte. La clé enregistrée est EN ATTENTE ;
+        l'ancienne clé n'est révoquée qu'à /recovery-code/confirm, dans la même transaction que
+        l'activation de la nouvelle (ES-14b, ES-20 ; décision de la propriétaire du 2026-10-24).
       security: []
       requestBody:
         required: true
@@ -138,17 +144,21 @@ paths:
               $ref: '#/components/schemas/CompleteRequest'
       responses:
         '200':
-          description: Appareil lié ; clé de récupération affichée une fois (ES-18).
+          description: Clé enregistrée EN ATTENTE ; clé de récupération affichée une fois (ES-18).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RecoveryCodeIssued'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '410':
           $ref: '#/components/responses/Gone'
         '422':
           $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/Throttled'
         '503':
           $ref: '#/components/responses/Unavailable'
   /recovery-code/confirm:
@@ -721,6 +731,12 @@ components:
             $ref: '#/components/schemas/Base64'
         challengeSignature:
           $ref: '#/components/schemas/Base64'
+        recoveryCode:
+          type: string
+          description: |
+            Flux D seulement : l'ancien code de récupération, retapé, vérifié par le PDP avec
+            l'attestation (ADR-041 ; décision de la propriétaire du 2026-10-24). Absent au premier
+            enrôlement.
     RecoveryCodeIssued:
       type: object
       additionalProperties: false
