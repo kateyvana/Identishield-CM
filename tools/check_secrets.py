@@ -15,7 +15,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-FORBIDDEN_NAMES = re.compile(r"(^|/)\.env$|\.(pem|key|jks|keystore|p12|pfx)$")
+# seed-comptes-demo*.csv : le fichier des comptes de demonstration porte des PIN ; il vit HORS du
+# depot (carte #76, decision de la proprietaire du 2026-10-24). Son nom seul suffit a rougir.
+FORBIDDEN_NAMES = re.compile(
+    r"(^|/)\.env$|\.(pem|key|jks|keystore|p12|pfx)$|(^|/)seed-comptes-demo[^/]*\.csv$"
+)
 CONTENT_PATTERNS = [
     (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "bloc de cle privee"),
     (
