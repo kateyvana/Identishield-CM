@@ -37,11 +37,11 @@ $$;
 --                  pour l'alerte au-dela d'ALERT_REENROL (ES-24).
 CREATE TABLE IF NOT EXISTS pdp.enrolment_attempt (
     kind         text        NOT NULL CHECK (kind IN ('ORIGIN', 'INSTALLATION', 'ACCOUNT')),
-    key          text        NOT NULL,
+    counter_key  text        NOT NULL,
     failures     integer     NOT NULL DEFAULT 0 CHECK (failures >= 0),
     locked_until timestamptz,            -- NULL : pas de blocage en cours
     updated_at   timestamptz NOT NULL,   -- fourni par l'app (ED-04) ; aucun DEFAULT d'horloge
-    PRIMARY KEY (kind, key)
+    PRIMARY KEY (kind, counter_key)
 );
 GRANT SELECT, INSERT, UPDATE, DELETE ON pdp.enrolment_attempt TO isc_pdp_app;
 

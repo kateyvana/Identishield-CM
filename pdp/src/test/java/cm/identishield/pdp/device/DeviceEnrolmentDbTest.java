@@ -102,7 +102,7 @@ class DeviceEnrolmentDbTest {
     assertEquals(
         (int) attempts,
         jdbc.queryForObject(
-            "SELECT failures FROM pdp.enrolment_attempt WHERE kind = 'ACCOUNT' AND key = ?",
+            "SELECT failures FROM pdp.enrolment_attempt WHERE kind = 'ACCOUNT' AND counter_key = ?",
             Integer.class,
             acc));
     clock.advance(rs.duration("LOCK_BASE"));
@@ -117,7 +117,7 @@ class DeviceEnrolmentDbTest {
     assertEquals(
         0,
         jdbc.queryForObject(
-            "SELECT count(*) FROM pdp.enrolment_attempt WHERE key IN (?, ?)",
+            "SELECT count(*) FROM pdp.enrolment_attempt WHERE counter_key IN (?, ?)",
             Integer.class,
             origin + "/" + acc,
             acc));

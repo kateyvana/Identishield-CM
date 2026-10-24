@@ -119,6 +119,18 @@ class MobileEnrolmentDbTest {
             "%" + PIN + "%"));
   }
 
+  /** Carte B3b, migration 004 : l'étape RECOVERY est acceptée et mène à BIND. */
+  @Test
+  void theRecoveryStage_isAcceptedByTheDatabase_andMovesToBind() {
+    UUID acc = account("677009104");
+    Enrolments enrolments = new Enrolments(jdbc);
+    UUID id = enrolments.openRecovery(acc, NOW, NOW.plusSeconds(600));
+    assertEquals("RECOVERY", enrolments.find(id).orElseThrow().stage());
+    assertFalse(enrolments.toBind(id, "Y2hhbGxlbmdl"), "depuis OTP : non, l'étape est RECOVERY");
+    assertTrue(enrolments.toBind(id, "Y2hhbGxlbmdl", "RECOVERY"));
+    assertEquals("BIND", enrolments.find(id).orElseThrow().stage());
+  }
+
   @Test
   void theStageCheck_refusesAnyOtherState_andConsumptionHappensOnce() {
     UUID acc = account("677009102");

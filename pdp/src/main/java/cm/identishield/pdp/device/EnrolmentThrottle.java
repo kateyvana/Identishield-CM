@@ -43,14 +43,15 @@ public class EnrolmentThrottle {
   }
 
   static final String LOCKED_SQL =
-      "SELECT locked_until FROM pdp.enrolment_attempt WHERE kind = ? AND key = ?";
+      "SELECT locked_until FROM pdp.enrolment_attempt WHERE kind = ? AND counter_key = ?";
   static final String FAIL_SQL =
-      "INSERT INTO pdp.enrolment_attempt (kind, key, failures, updated_at) VALUES (?, ?, 1, ?) "
-          + "ON CONFLICT (kind, key) DO UPDATE SET failures = enrolment_attempt.failures + 1, "
+      "INSERT INTO pdp.enrolment_attempt (kind, counter_key, failures, updated_at) VALUES (?, ?, 1, ?) "
+          + "ON CONFLICT (kind, counter_key) DO UPDATE SET failures = enrolment_attempt.failures + 1, "
           + "updated_at = EXCLUDED.updated_at RETURNING failures";
   static final String LOCK_SQL =
-      "UPDATE pdp.enrolment_attempt SET locked_until = ? WHERE kind = ? AND key = ?";
-  static final String CLEAR_SQL = "DELETE FROM pdp.enrolment_attempt WHERE kind = ? AND key = ?";
+      "UPDATE pdp.enrolment_attempt SET locked_until = ? WHERE kind = ? AND counter_key = ?";
+  static final String CLEAR_SQL =
+      "DELETE FROM pdp.enrolment_attempt WHERE kind = ? AND counter_key = ?";
 
   private final JdbcTemplate jdbc;
   private final Clock clock;

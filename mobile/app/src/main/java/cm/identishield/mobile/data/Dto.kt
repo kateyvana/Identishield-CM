@@ -41,6 +41,8 @@ data class CompleteRequest(
     val publicKey: String,
     val attestationChain: List<String>,
     val challengeSignature: String,
+    /** Flux D seulement (B3b, ADR-041) : l'ancien code retapé, vérifié par le PDP avec l'attestation. */
+    val recoveryCode: String? = null,
 )
 
 @Serializable
