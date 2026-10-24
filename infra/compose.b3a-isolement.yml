@@ -28,6 +28,9 @@ services:
     container_name: isc-b3a-ca-init
   migrate:
     container_name: isc-b3a-migrate
+    # Même image que postgres (déjà présente dans la VM, qui ne joint pas le registre) : seul psql
+    # est utilisé par apply-migrations.sh ; le fichier partagé prend postgres:16-alpine.
+    image: postgres:16
   pdp:
     image: isc-pdp-b3a
     container_name: isc-b3a-pdp

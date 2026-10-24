@@ -47,6 +47,12 @@ Pour que les 20 comptes existent, le cœur doit tourner sous le **profil Spring 
 surcouche, le profil n'est pas actif et rien n'est amorcé ; sans la variable, Compose refuse de
 démarrer en nommant la cause.
 
+**Une seule façon de démarrer (décision du superviseur technique, 2026-10-24, avec le couloir A,
+PR #91) : `make up`.** Dès que #91 est dans `main`, `make up` inclut lui-même
+`-f infra/compose.b3a.yml` quand `ISC_DEMO_SEED_CSV` est définie dans `infra/.env`, et l'annonce
+(« profil demo : compose.b3a.yml inclus » / « profil demo : non »). L'étape 3 ci-dessous est la
+commande explicite équivalente, valable tant que #91 n'est pas fusionnée ; après, c'est `make up`.
+
 ```bash
 cd ~/identishield-cm/infra
 # 1. La variable, une seule fois (infra/.env n'est jamais versionné) :
