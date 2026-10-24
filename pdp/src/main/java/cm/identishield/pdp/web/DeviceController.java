@@ -72,7 +72,7 @@ public class DeviceController {
   public VerifyResponse verify(@Valid @RequestBody VerifyRequest r) {
     return new VerifyResponse(
         signatures
-            .verifyChallenge(r.accountId(), r.deviceId(), r.challenge(), r.signature())
+            .verifyChallenge(r.accountId(), r.deviceId(), r.challenge(), r.signature(), r.nonce())
             .name());
   }
 

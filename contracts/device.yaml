@@ -320,6 +320,13 @@ components:
         signature:
           type: string
           description: SHA256withECDSA, DER en base64 (ADR-018).
+        nonce:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          description: >-
+            Carte B6 : présent, la signature porte sur `challenge` pris comme chaîne canonique
+            ADR-018 qui CONTIENT ce nonce en dernier champ (ex. accountId|CANCEL|transferId|nonce),
+            et c'est ce nonce qui est consommé. Absent : le défi est lui-même le nonce (B4).
     VerifyResponse:
       type: object
       additionalProperties: false

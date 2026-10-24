@@ -86,8 +86,23 @@ public class SignatureVerifier {
   // @implements ES-20
   public ChallengeVerdict verifyChallenge(
       String accountId, String deviceId, String challenge, String signature) {
+    return verifyChallenge(accountId, deviceId, challenge, signature, null);
+  }
+
+  /**
+   * Variante (carte B6) : {@code payload} est une chaîne canonique ADR-018 qui CONTIENT le nonce
+   * (ex. {@code accountId|CANCEL|transferId|nonce}) ; la signature porte sur ses octets UTF-8 et
+   * c'est {@code nonce} qui est consommé. {@code nonce} nul : le défi est lui-même le nonce.
+   */
+  public ChallengeVerdict verifyChallenge(
+      String accountId, String deviceId, String payload, String signature, String nonce) {
+    String challenge = payload;
+    String consumed = nonce == null ? payload : nonce;
     if (isBlank(accountId) || isBlank(deviceId) || isBlank(challenge) || isBlank(signature)) {
       return ChallengeVerdict.INVALID;
+    }
+    if (nonce != null && !payload.endsWith("|" + nonce)) {
+      return ChallengeVerdict.INVALID; // le nonce consommé doit être celui que la chaîne porte
     }
     Optional<DeviceKey> key = registry.findActive(accountId);
     if (key.isEmpty() || !key.get().id().equals(deviceId)) {
@@ -98,7 +113,7 @@ public class SignatureVerifier {
     if (!challengeSignatureMatches(key.get(), challenge, signature)) {
       return ChallengeVerdict.INVALID;
     }
-    return nonces.consume(challenge, accountId) ? ChallengeVerdict.VALID : ChallengeVerdict.INVALID;
+    return nonces.consume(consumed, accountId) ? ChallengeVerdict.VALID : ChallengeVerdict.INVALID;
   }
 
   /** Verdict d'un défi de session. */

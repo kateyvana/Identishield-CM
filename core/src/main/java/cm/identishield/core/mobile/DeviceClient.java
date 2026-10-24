@@ -105,13 +105,35 @@ public class DeviceClient {
    * consommé si elle est valide. Le PDP répond un verdict : VALID, INVALID ou REVOKED.
    */
   public Reply verify(String accountId, String deviceId, String challenge, String signature) {
-    return post(
-        "/device/verify",
-        Map.of(
-            "accountId", accountId,
-            "deviceId", deviceId,
-            "challenge", challenge,
-            "signature", signature));
+    return verify(accountId, deviceId, challenge, signature, null);
+  }
+
+  /**
+   * Variante (carte B6) : la signature porte sur {@code payload} (chaîne canonique ADR-018, par
+   * exemple {@code accountId|CANCEL|transferId|nonce}) et c'est {@code nonce} qui est consommé.
+   */
+  public Reply verify(
+      String accountId, String deviceId, String payload, String signature, String nonce) {
+    Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("accountId", accountId);
+    body.put("deviceId", deviceId);
+    body.put("challenge", payload);
+    body.put("signature", signature);
+    if (nonce != null) {
+      body.put("nonce", nonce);
+    }
+    return post("/device/verify", body);
+  }
+
+  /** GET /nonce?accountId= (contrats/evaluate.yaml, ES-10) : nonce pour une opération signée. */
+  public Reply nonceForAccount(String accountId) {
+    return send(
+        HttpRequest.newBuilder(
+                URI.create(
+                    baseUrl
+                        + "/nonce?accountId="
+                        + URLEncoder.encode(accountId, StandardCharsets.UTF_8)))
+            .GET());
   }
 
   /** POST /device/activate : la clé EN ATTENTE devient ACTIVE si le code est le bon. */
