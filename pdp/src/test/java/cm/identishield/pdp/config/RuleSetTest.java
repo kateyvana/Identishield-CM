@@ -29,9 +29,10 @@ class RuleSetTest {
   @Test
   void loadsVersionAndNamedParametersFromVersionedConfig() throws IOException {
     RuleSet rs = load();
-    // rs-0.9.0, bump unique du mois 4 : STEP_UP_POLICY.app = DEFER ; THR_HIGH.medianWindow ;
+    // rs-0.10.0, bump : paramètres de session mobile et de PIN (B4) ; rs-0.9.0, STEP_UP_POLICY.app
+    // = DEFER ; THR_HIGH.medianWindow ;
     // CODE_LENGTH 20 -> 6 ; APP_CONN_KEEPALIVE et SERVER_CONN_KEEPALIVE (après rs-0.8.0).
-    assertEquals("rs-0.9.0", rs.version());
+    assertEquals("rs-0.10.0", rs.version());
     assertTrue(rs.parameters().containsKey("CAR_IMSI"), "les parametres nommes sont charges");
     assertEquals("PT72H", rs.parameters().get("CAR_IMSI"));
   }

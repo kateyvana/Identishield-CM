@@ -44,8 +44,10 @@ import org.springframework.stereotype.Service;
 public class TransferService {
 
   private static final Logger log = LoggerFactory.getLogger(TransferService.class);
-  // IMSI de remplacement tant que le HLR (T2-10) n'associe pas MSISDN -> IMSI.
-  private static final String PLACEHOLDER_IMSI = "624010000000000";
+  // Carte #57 (A5-00) : plus de PLACEHOLDER_IMSI. Depuis A4, le PDP épingle currentImsi comme IMSI
+  // de référence du compte ; envoyer un IMSI factice (fallback silencieux) revenait à faire
+  // tomber un utilisateur légitime en PROBATION 72 h dès que son HLR serait renseigné après coup.
+  // L'opération est désormais refusée en amont si le HLR ne connaît aucune SIM pour le numéro.
 
   private final AccountRepository accounts;
   private final TransactionRepository transactions;
@@ -163,6 +165,19 @@ public class TransferService {
         transactions.createPending(
             initiator.id(), type.name(), amountXaf, counterparty, channel, now);
 
+    // Carte #57 (A5-00) : refus de toute opération si le HLR ne connaît aucune SIM pour le numéro
+    // de l'initiateur, dans les deux modes (sans couche et protégé). L'HLR est l'opérateur, pas la
+    // couche de sécurité : un numéro sans SIM ne peut pas transiger. Sans ce refus, le cœur
+    // enverrait un IMSI factice au PDP, qui l'épinglerait comme IMSI de référence (A4) : un
+    // utilisateur légitime tomberait ensuite en PROBATION 72 h dès que son HLR serait renseigné,
+    // sans aucun SIM-swap.
+    if (hlr.currentImsi(msisdn).isEmpty()) {
+      transactions.markRejected(tx.id());
+      log.warn("A5-00 : {} de {} XAF REFUSE : HLR sans IMSI pour {}", type, amountXaf, msisdn);
+      return TransferResult.rejected(
+          tx.decisionId(), "A5-00 : numéro sans SIM connue de l'opérateur");
+    }
+
     if (layerMode.isLayerless()) {
       // Mode sans couche (EF-07) : la couche de sécurité est DÉSACTIVÉE — aucun appel /evaluate.
       // C'est l'état « avant » de la démonstration, où une sortie sensible passe sans être décidée.
@@ -273,7 +288,15 @@ public class TransferService {
     // d'IMSI enregistré. Le MOTIF d'une éventuelle réattribution N'EST JAMAIS ajouté ici : le cœur
     // ne
     // transmet pas le motif au PDP (ES-16b), il ne fait que le journaliser côté HLR.
-    req.put("currentImsi", hlr.currentImsi(from.msisdn()).orElse(PLACEHOLDER_IMSI));
+    // IMSI courant du HLR : garanti présent à ce stade (voir le refus A5-00 dans operate()).
+    req.put(
+        "currentImsi",
+        hlr.currentImsi(from.msisdn())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "A5-00 : HLR sans IMSI atteint buildRequest : operate() a dû le vérifier"
+                            + " avant")));
     req.put("channel", channel);
     req.put("type", type.name());
     req.put("amountXaf", amountXaf);

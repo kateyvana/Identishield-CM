@@ -102,8 +102,8 @@ arch:
 	done
 
 contract:
-	@echo ">>> contract : redocly evaluate.yaml + mobile-api.yaml"
-	@npx --yes @redocly/cli@2.14.5 lint contracts/evaluate.yaml contracts/mobile-api.yaml
+	@echo ">>> contract : redocly evaluate.yaml + mobile-api.yaml + device.yaml"
+	@npx --yes @redocly/cli@2.14.5 lint contracts/evaluate.yaml contracts/mobile-api.yaml contracts/device.yaml
 
 # Porte mobile (M-05, ADR-037) : lint, tests unitaires (dont le test d'interface Compose sur la JVM)
 # et assemblage de l'APK debug. SDK Android cherché dans ANDROID_HOME, ANDROID_SDK_ROOT,

@@ -10,7 +10,10 @@ Tout changement de schéma postérieur à `init.sql` est donc une **migration** 
 ## Règles
 
 1. **Un fichier par changement**, nommé `NNN-description.sql`, où `NNN` est un numéro à trois chiffres.
-   Les fichiers s'appliquent dans l'ordre de leur nom.
+   Les fichiers s'appliquent dans l'ordre de leur nom. **Le numéro est attribué par le couloir A**
+   (décision du superviseur technique du 2026-10-24, après que les deux couloirs ont failli prendre
+   le même) : un couloir qui veut écrire une migration demande son numéro au couloir A avant
+   d'ouvrir le fichier, pour éviter qu'un numéro soit choisi deux fois en parallèle.
 2. **Chaque migration est enveloppée dans une transaction** : `BEGIN;` en première instruction,
    `COMMIT;` en dernière. Un `DROP CONSTRAINT` suivi d'un `ADD CONSTRAINT` qui échoue laisserait
    autrement la table **sans** contrainte, et `psql` valide chaque instruction séparément. La preuve
@@ -45,11 +48,20 @@ Tout changement de schéma postérieur à `init.sql` est donc une **migration** 
 
 ## Précondition sur la vraie base, à cocher avant la première migration
 
-Avant la **première** migration appliquée à la base de la VM (après la fusion dans `main`) :
-**exporter la chaîne d'audit et confirmer qu'elle est intacte**, comme la règle du 2026-10-17
-l'exige avant tout `make reset`. Motif identique : la chaîne d'audit est une contribution centrale
-du mémoire, et une migration transactionnelle qui échoue sur un ADR encore inconnu ne doit pas
-détruire la preuve. Le passage est à consigner dans `docs/03-revues/`.
+Avant la **première** migration appliquée à la base de la VM (après la fusion dans `main`), les
+étapes suivantes sont cochées, dans cet ordre, et le passage est consigné dans `docs/03-revues/` :
+
+- [ ] la pile est à jour sur `main` dans la VM, mais pas encore relancée ;
+- [ ] la pile est démarrée **sans** `isc-core` ni `isc-pdp` (le `make up` qui déclencherait les
+      migrations), pour que PostgreSQL soit joignable sans que personne écrive dans le journal ;
+- [ ] la chaîne d'audit est **exportée** vers un fichier daté, hors du volume `isc-pgdata` ;
+- [ ] la vérification intégrale de la chaîne (`pdp.audit_verify()`) sort VERTE sur l'export ;
+- [ ] l'empreinte SHA-256 de l'export est consignée dans `docs/03-revues/`.
+
+Motif : la chaîne d'audit est une contribution centrale du mémoire. Une migration
+transactionnelle qui échoue est annulée, mais le passage de 002 et des suivantes doit laisser une
+trace externe de l'état antérieur, pour pouvoir reconstruire au besoin. C'est la règle du
+2026-10-17 (export avant `make reset`), appliquée ici au premier `make up` du dépôt migré.
 
 ## Manque déclaré, mois 5
 

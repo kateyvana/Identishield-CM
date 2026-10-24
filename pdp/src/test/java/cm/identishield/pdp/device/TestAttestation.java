@@ -13,6 +13,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Base64;
+import java.util.List;
 
 /**
  * Fabrique, À L'EXÉCUTION, des chaînes d'attestation de test : aucun certificat n'est versionné
@@ -49,6 +50,74 @@ final class TestAttestation {
         tlv(0x04, new byte[0]),
         seq(),
         seq());
+  }
+
+  /**
+   * KeyDescription RÉALISTE (critère du risque B2, carte B3a) : AuthorizationList remplies comme
+   * sur un appareil KeyMint — champs à numéro d'étiquette ÉLEVÉ (étiquettes multi-octets : 504 à
+   * 719), SET OF à plusieurs éléments triés (DER), RootOfTrust, identifiant d'application. Valeurs
+   * fictives, encodage DER canonique.
+   */
+  static byte[] realisticKeyDescription(byte[] challenge, int level) {
+    byte[] softwareEnforced =
+        seq(
+            explicit(701, integer(1_729_000_000_000L)), // creationDateTime (ms)
+            explicit(
+                709, // attestationApplicationId : OCTET STRING contenant un
+                // AttestationApplicationId
+                tlv(
+                    0x04,
+                    seq(
+                        tlv(0x31, seq(tlv(0x04, ascii("cm.identishield.mobile")), integer(1))),
+                        tlv(0x31, tlv(0x04, new byte[32]))))));
+    byte[] hardwareEnforced =
+        seq(
+            explicit(1, tlv(0x31, integer(2), integer(3))), // purpose : SET OF {SIGN, VERIFY}, trié
+            explicit(2, integer(3)), // algorithm : EC
+            explicit(3, integer(256)), // keySize
+            explicit(5, tlv(0x31, integer(4))), // digest : SET OF {SHA-256}
+            explicit(10, integer(1)), // ecCurve : P-256
+            explicit(504, integer(2)), // userAuthType : biométrie
+            explicit(505, integer(0)), // authTimeout : à chaque usage
+            explicit(702, integer(0)), // origin : générée dans la puce
+            explicit(
+                704, // rootOfTrust
+                seq(
+                    tlv(0x04, new byte[32]),
+                    tlv(0x01, new byte[] {(byte) 0xFF}),
+                    tlv(0x0A, small(0)),
+                    tlv(0x04, new byte[32]))),
+            explicit(705, integer(130_000)), // osVersion
+            explicit(706, integer(202_409)), // osPatchLevel
+            explicit(718, integer(20_240_901)), // vendorPatchLevel
+            explicit(719, integer(20_240_901))); // bootPatchLevel
+    return seq(
+        integer(300),
+        tlv(0x0A, small(level)),
+        integer(300),
+        tlv(0x0A, small(level)),
+        tlv(0x04, challenge),
+        tlv(0x04, new byte[0]),
+        softwareEnforced,
+        hardwareEnforced);
+  }
+
+  /** Chaîne de test feuille → intermédiaire → racine, la feuille portant [description]. */
+  static List<String> chain(KeyPair root, KeyPair intermediate, KeyPair leaf, byte[] description) {
+    return List.of(
+        b64(
+            certificate(
+                "Android Keystore Key",
+                leaf.getPublic(),
+                "Intermediate",
+                intermediate.getPrivate(),
+                description)),
+        b64(
+            certificate(
+                "Intermediate", intermediate.getPublic(), "Sandbox Root", root.getPrivate(), null)),
+        b64(
+            certificate(
+                "Sandbox Root", root.getPublic(), "Sandbox Root", root.getPrivate(), null)));
   }
 
   /** Certificat X.509 v3 signé ECDSA-SHA256 ; [keyDescription] null = sans extension. */
@@ -124,6 +193,34 @@ final class TestAttestation {
       out.write(n & 0xFF);
     }
     out.writeBytes(value);
+    return out.toByteArray();
+  }
+
+  /**
+   * [n] EXPLICIT, classe contextuelle construite : étiquette sur un octet sous 31, sinon forme
+   * multi-octets (0xBF puis le numéro en base 128), comme les champs KeyMint à numéro élevé.
+   */
+  static byte[] explicit(int n, byte[] inner) {
+    ByteArrayOutputStream tag = new ByteArrayOutputStream();
+    if (n < 31) {
+      tag.write(0xA0 | n);
+    } else {
+      tag.write(0xBF);
+      byte[] tmp = new byte[5];
+      int k = tmp.length;
+      tmp[--k] = (byte) (n & 0x7F);
+      n >>= 7;
+      while (n > 0) {
+        tmp[--k] = (byte) (0x80 | (n & 0x7F));
+        n >>= 7;
+      }
+      tag.write(tmp, k, tmp.length - k);
+    }
+    byte[] wrapped =
+        tlv(0x00, inner); // longueur DER calculée par tlv, étiquette remplacée ci-dessous
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    out.writeBytes(tag.toByteArray());
+    out.write(wrapped, 1, wrapped.length - 1);
     return out.toByteArray();
   }
 
