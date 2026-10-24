@@ -16,6 +16,14 @@ preuve est **collée** dans le compte rendu d'exécution (section finale), jamai
   à la boucle locale, invisible du tailnet. Il faut donc **écrire `ISC_MOBILE_BIND=100.93.166.19`
   avant `make up`** (décision de la propriétaire : APK réel par Tailscale).
 - Volume `isc-certs` : CA et feuilles `pdp`, `core` de 2026-10-16 ; **pas de feuille `core-mobile`**.
+- Images Docker présentes dans la VM (`docker images`, 17:34Z) : `postgres:16`, `eclipse-temurin:21-jdk-jammy`,
+  `eclipse-temurin:21-jre-jammy`, `python:3.12-alpine`, `node:22-alpine`, `alpine:3.20`, `isc-*`.
+  **`postgres:16-alpine` — l'image du service `migrate` — est ABSENTE** (signalé par le couloir B,
+  CONSTATÉ), et le registre n'est pas joignable (`docker pull postgres:16-alpine` : expiration à 25 s,
+  rc 124). Le service `migrate` passe donc sur **`postgres:16`**, l'image déjà présente et celle du
+  serveur PostgreSQL lui-même (même `psql`, une image de moins) ; `tools/verify_migrations.sh`
+  utilisait déjà `postgres:16`. Sans ce changement, `isc-migrate` ne démarrerait pas si le registre
+  n'est pas joignable, et le cœur et le PDP non plus (ils l'attendent).
 - Chaîne d'audit : 120 280 entrées à 15:48Z (export de référence : 120 276 entrées,
   sha `4ab894f0…c567`, `2026-10-24-export-chaine-audit.md`).
 - Compte 677000001 **gelé** (VEL) jusqu'au **2026-10-25 15:48:31Z** ; `check-stack` ROUGE d'ici là.
