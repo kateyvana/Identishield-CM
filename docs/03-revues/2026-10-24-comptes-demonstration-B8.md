@@ -95,9 +95,21 @@ cmp /tmp/seed-1.txt /tmp/seed-2.txt && wc -l /tmp/seed-1.txt    # identiques, 25
 Le rapport donne « identiques, 25 lignes » ; les fichiers `/tmp/seed-*.txt` ne portent que des
 empreintes d'empreintes (md5 du hash PBKDF2), jamais un PIN ; ils sont retirés après.
 
-**État au 2026-10-24, 16 h 40 UTC :** le fichier EST déposé dans la VM (`~/.isc/seed-comptes-demo.csv`,
-909 octets, 600, dossier 700) ; la variable `ISC_DEMO_SEED_CSV` n'est pas encore dans `infra/.env`
-de la VM. Preuve de rejouabilité : à faire dès le témoin libre. Le code est prouvé par les tests (CSV factice `core/src/test/resources/demo-seed/`,
+**Preuve faite le 2026-10-24, 17 h 22 → 17 h 27 UTC**, VM isc-vm, pile isolée `isc-b3a` (conteneurs
+`isc-b3a-*`, aucun port publié, pile en service intacte), cœur de la branche #90 (jar construit sur
+le poste, la VM ne joignant pas Maven Central), fichier réel de la propriétaire
+(`~/.isc/seed-comptes-demo.csv`, 909 octets, 600, dossier 700, déposé à 16 h 32) :
+
+- 1er démarrage : journal « amorçage démo : 5 comptes techniques, 20 comptes de démonstration, noms
+  des titulaires alignés » ; photographie : 27 lignes (les 25 amorcées + les 2 comptes d'amorçage
+  préexistants du cœur, 677000001 et 677000002, sans nom) ;
+- `restart core`, 2e démarrage : même ligne de journal (2 passages comptés) ; photographie : 27
+  lignes ;
+- `cmp` des deux photographies (numéro, nom, solde, md5 de l'empreinte du PIN) : **IDENTIQUES**.
+  Aucun PIN, aucune empreinte dans ce rapport ; les fichiers de photographie ont été retirés.
+
+Reste côté VM de service : la variable `ISC_DEMO_SEED_CSV` n'est pas encore dans `infra/.env` de
+`~/identishield-cm` (déploiement par le couloir A, selon les commandes ci-dessus). Le code est prouvé par les tests (CSV factice `core/src/test/resources/demo-seed/`,
 PIN manifestement factices, et un test par refus).
 
 ## Limites déclarées
