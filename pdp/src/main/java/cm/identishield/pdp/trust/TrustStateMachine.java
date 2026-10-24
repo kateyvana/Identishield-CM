@@ -2,6 +2,7 @@ package cm.identishield.pdp.trust;
 
 import cm.identishield.pdp.audit.AuditLog;
 import cm.identishield.pdp.config.RuleSet;
+import cm.identishield.pdp.rules.RuleExplanations;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Clock;
@@ -382,6 +383,9 @@ public class TrustStateMachine {
     p.put("fromState", from.name());
     p.put("toState", r.state.name());
     p.put("cause", cause);
+    // Libellé lisible, carte A5 (#39) : « entrée en probation à la suite d'un changement d'IMSI,
+    // pendant CAR_IMSI (IMSI_CHANGE) », etc. L'événement et la cause restent les clés exactes.
+    p.put("reason", RuleExplanations.ofTrustEvent(event, cause));
     p.put("occurredAt", iso(at));
     p.putAll(extra);
     auditLog.append(p, clock.instant());
