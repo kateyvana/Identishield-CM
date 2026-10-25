@@ -34,10 +34,14 @@ fourni par l'application, `CHECK` sur `type` et `status`).
   PROPOSÉ d'ADR-041 après sa fenêtre VM du 25/10. Jusque-là `POST /alerts/{id}/not-me` répond 503
   après avoir vérifié la signature (le nonce est consommé ; un nouveau nonce suffit) et l'alerte
   reste `OPEN`. Le critère d'acceptation de la carte (« gèle le compte côté serveur, vérifié sur la
-  tablette ») n'est **pas atteint** tant que la route n'existe pas.
+  tablette ») n'est **pas atteint** tant que la route n'existe pas. **Route livrée par le couloir A
+  en PR #105 (1828a37, forme identique à #48, relue ACCEPTÉ par le couloir B)** ; cette limite se
+  ferme au déploiement de #105 sur la VM.
 - **L-B5-2 · Le gel des ré-enrôlements pendant `reenrolFrozenUntil` n'est pas appliqué par
   `/device/register`** (constat du couloir A, 2026-10-24 : `DeviceEnrolment` ne consulte pas la
-  machine à états). Décision A / superviseur à rendre (refus distinct ou uniforme). Hors couloir B.
+  machine à états). **Tranchée le 2026-10-25** : réponse **UNIFORME** pendant le gel (ES-22 gagne),
+  livrée par le couloir A (branche `t4-reenrol-freeze`). Hors couloir B ; **se ferme à la fusion de
+  cette PR**.
 - **L-B5-3 · Compteur `REENROL_ATTEMPT` en mémoire.** Comme `PinAttempts` : un redémarrage du cœur
   remet à zéro le comptage de l'alerte téléphone. Le comptage durable (console, ES-24) est celui du
   PDP (`pdp.enrolment_attempt`, kind `ACCOUNT`).
@@ -50,7 +54,8 @@ fourni par l'application, `CHECK` sur `type` et `status`).
   seul un téléphone lié peut la lire (session) ; un compte sans appareil garde une alerte `OPEN` que
   personne ne verra. Voulu : le cœur ne consulte pas le PDP à chaque réattribution de l'opérateur.
 - **L-B5-6 · Texte de `SIM_CHANGED` sans l'heure** (la SPEC §9.2 écrit « à 14 h 02 ») : le serveur
-  ne calcule aucune heure locale ; l'application affiche `at` dans le fuseau du téléphone. À
-  confirmer par la propriétaire, ou à reporter en SPEC v1.3.
+  ne calcule aucune heure locale ; l'application affiche `at` dans le fuseau du téléphone.
+  **ACCEPTÉ par le superviseur le 2026-10-25** ; demande de correction documentaire :
+  `docs/03-revues/2026-10-25-demande-correction-SPEC-9-2.md`.
 - **L-B5-7 · Un compte sans nom ou jamais vu du PDP** : `accountState` rendu `TRUSTED` sur « c'est
   moi » (A1-5), même règle que `GET /account` (L-B6-1).
