@@ -38,6 +38,9 @@ scénario B3b (`2026-10-24-scenario-demonstration-B3b.md`), comptes B8
 | Les 20 comptes B8 amorcés (CSV hors dépôt dans `/home/isc/.isc/`, `ISC_DEMO_SEED_CSV` dans `.env` VM) ; PIN connus de la propriétaire seule | couloir A (déploiement) + propriétaire (CSV) | 25 noms constatés le 2026-10-24 |
 | Compte de démonstration du scénario : **677000200** (Hervé ESSOMBA) ; bénéficiaire tiers **677001101** ; HLR renseigné (IMSI `624010…`) pour que `/evaluate` ne refuse pas (A5-00) | couloir A | à confirmer |
 | Aucun enrôlement préalable du compte de démonstration dans le PDP (décision : flux A réel, pas d'amorçage) | — | acquis |
+| **Solde de 677000200 : 0 FCFA aujourd'hui** (constat A, base de la VM, 2026-10-25). Le virement ALLOW exige un solde : soit un cash-in d'opérateur avant la démonstration (opération interne du cœur, canal agent, hors application), soit un solde dans le CSV B8 (acte de la propriétaire, hors dépôt) | **propriétaire** (choix) ; exécution A ou B sous témoin | non fait |
+| HLR : 677000200 → `624010677000200`, 677001101 → `624010677001101` (seeder B8) : A5-00 satisfait | couloir A (constaté) | fait |
+| IMSI attaquant `624010000000666` partagé avec les portes automatiques (`verify_attacker`, 677000007) : AC-02 réel **jamais en même temps** qu'un `check-stack` / `verify_attacker` | couloir A | règle |
 
 ## 5. Scénario du 6 novembre (dans cet ordre, chaque étape observée)
 
@@ -50,7 +53,9 @@ scénario B3b (`2026-10-24-scenario-demonstration-B3b.md`), comptes B8
 ## 6. Ce qui dépend de la propriétaire
 
 - Tailscale sur le téléphone et ACL du tailnet (§1).
-- CSV des comptes et PIN de démonstration (§4) ; choix du compte si différent de 677000200.
+- CSV des comptes et PIN de démonstration (§4) ; compte retenu avec le couloir A : **677000200**
+  (victime d'AC-02 = le compte lié au vrai téléphone) ; **solde de 677000200 à doter** (cash-in
+  d'opérateur ou CSV) avant le virement ALLOW.
 - Signature des amendements : ADR-036 (Tailscale), ADR-041 (routes `nonce`/`verify`, `GET /trust`,
   `not-me`), ADR-042 (PBKDF2 44 000).
 - Décision sur la fenêtre de la démonstration (durée, présence du couloir A pour l'outil HLR).
