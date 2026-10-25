@@ -86,7 +86,7 @@ fun RecoveryScreen(
         CodeField(code, { code = it }, codeLength, "recovery-input", stringResource(R.string.recovery_label))
         VerticalGap(Spacing.S)
         BodyText(stringResource(R.string.recovery_no_sms))
-        step.error?.let { ErrorText(errorMessage(it)) }
+        step.error?.let { ErrorText(errorMessage(it, step.retryAfterSeconds)) }
         Spacer(Modifier.weight(1f))
         VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(code) }, enabled = code.length == codeLength)

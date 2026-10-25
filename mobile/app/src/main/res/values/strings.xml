@@ -14,6 +14,7 @@
     <string name="error_unreachable">Connexion impossible. Vérifiez le réseau et réessayez.</string>
     <string name="error_unexpected">Une erreur est survenue. Réessayez.</string>
     <string name="error_service_unavailable">Service momentanément indisponible. Réessayez.</string>
+    <string name="error_service_unavailable_in">Service momentanément indisponible. Réessayez dans %1$d s.</string>
     <string name="error_session_expired">La session a expiré. Recommencez.</string>
 
     <!-- E-02 Bienvenue -->

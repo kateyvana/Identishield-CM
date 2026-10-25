@@ -168,6 +168,19 @@ class EnrolmentScreensTest {
         assertEquals(0, starts)
     }
 
+    /** D-B7-1 : avec un Retry-After, le message dit dans combien de secondes réessayer (charte point 3). */
+    @Test
+    fun e07_serviceUnavailable_withRetryAfter_saysHowLongToWait() {
+        show {
+            SecuringScreen(
+                EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = 5L),
+                onSecure = {},
+                onRestart = {},
+            )
+        }
+        compose.onNodeWithText("Service momentanément indisponible. Réessayez dans 5 s.").assertIsDisplayed()
+    }
+
     /** D3 : l'écran dit la cause (pas de verrou) et l'action (réglages), charte points 3 et 4. */
     @Test
     fun e07_screenLockRequired_explainsCauseAndAction_andLeadsToSettings() {

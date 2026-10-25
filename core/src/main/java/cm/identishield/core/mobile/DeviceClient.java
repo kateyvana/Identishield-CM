@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
+import java.net.http.HttpTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
@@ -41,6 +42,10 @@ public class DeviceClient {
     }
   }
 
+  // D-B7-1 (2026-10-25) : un délai dépassé vers le PDP laisse UNE ligne WARN, route et durée
+  // seulement ; jamais d'identifiant, jamais de corps (il peut porter un code de récupération).
+  private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeviceClient.class);
+
   private final HttpClient http;
   private final String baseUrl;
   private final Duration timeout;
@@ -64,6 +69,7 @@ public class DeviceClient {
   /** GET /device/state : le FAIT de liaison du compte (NONE, PENDING ou ACTIVE). */
   public Reply state(String accountId) {
     return send(
+        "/device/state",
         HttpRequest.newBuilder(
                 URI.create(
                     baseUrl
@@ -110,6 +116,7 @@ public class DeviceClient {
    */
   public Reply nonce(String deviceId) {
     return send(
+        "/device/{deviceId}/nonce",
         HttpRequest.newBuilder(
                 URI.create(
                     baseUrl
@@ -151,6 +158,7 @@ public class DeviceClient {
    */
   public Reply trust(String accountId) {
     return send(
+        "/trust/{accountId}",
         HttpRequest.newBuilder(
                 URI.create(
                     baseUrl + "/trust/" + URLEncoder.encode(accountId, StandardCharsets.UTF_8)))
@@ -166,6 +174,7 @@ public class DeviceClient {
    */
   public Reply notMe(String accountId, String alert, String alertId) {
     return post(
+        "/trust/{accountId}/not-me",
         "/trust/" + URLEncoder.encode(accountId, StandardCharsets.UTF_8) + "/not-me",
         Map.of("alert", alert, "alertId", alertId));
   }
@@ -173,6 +182,7 @@ public class DeviceClient {
   /** GET /nonce?accountId= (contrats/evaluate.yaml, ES-10) : nonce pour une opération signée. */
   public Reply nonceForAccount(String accountId) {
     return send(
+        "/nonce",
         HttpRequest.newBuilder(
                 URI.create(
                     baseUrl
@@ -188,9 +198,16 @@ public class DeviceClient {
         Map.of("accountId", accountId, "deviceId", deviceId, "recoveryCode", recoveryCode));
   }
 
+  /** Chemin fixe : la route journalisée est le chemin lui-même. */
   private Reply post(String path, Map<String, Object> body) {
+    return post(path, path, body);
+  }
+
+  /** [route] : forme SANS identifiant du chemin, pour le journal ; [path] : chemin réel appelé. */
+  private Reply post(String route, String path, Map<String, Object> body) {
     try {
       return send(
+          route,
           HttpRequest.newBuilder(URI.create(baseUrl + path))
               .header("Content-Type", "application/json")
               .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))));
@@ -199,7 +216,7 @@ public class DeviceClient {
     }
   }
 
-  private Reply send(HttpRequest.Builder request) {
+  private Reply send(String route, HttpRequest.Builder request) {
     try {
       HttpResponse<String> resp =
           http.send(request.timeout(timeout).build(), HttpResponse.BodyHandlers.ofString());
@@ -207,7 +224,12 @@ public class DeviceClient {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return Reply.unreachable();
+    } catch (HttpTimeoutException e) {
+      // La cause du 503 rendu à l'application, en une ligne (D-B7-1) : route et durée, rien d'autre.
+      log.warn("{} : délai dépassé après {} ms", route, timeout.toMillis());
+      return Reply.unreachable();
     } catch (Exception e) {
+      log.warn("{} : injoignable ({})", route, e.getClass().getSimpleName());
       return Reply.unreachable();
     }
   }

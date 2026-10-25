@@ -275,6 +275,42 @@ class EnrolmentViewModelTest {
         assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = false), vm.step.value)
     }
 
+    /** D-B7-1, décision du 2026-10-25 : le 503 est transitoire sur TOUTE route d'enrôlement ; même étape, Retry-After porté. */
+    @Test
+    fun serviceUnavailableOnStart_staysOnThePinScreen_withTheServerWait() {
+        repo.startResult = ApiResult.Refused(503, "SERVICE_UNAVAILABLE", retryAfterSeconds = 3L)
+        val vm = vm()
+        untilOtp(vm)
+        assertEquals(EnrolStep.Pin(NEW_NUMBER, EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = 3L), vm.step.value)
+        assertEquals(0, keys.generateCalls)
+    }
+
+    @Test
+    fun serviceUnavailableOnOtp_staysOnTheOtpScreen_andTheCodeCanBeResent() {
+        repo.otpResult = ApiResult.Refused(503, "SERVICE_UNAVAILABLE", retryAfterSeconds = 2L)
+        val vm = vm()
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        assertEquals(EnrolStep.Otp(NEW_NUMBER, EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = 2L), vm.step.value)
+        repo.otpResult = ApiResult.Ok(BindResponse("BIND", Base64.getEncoder().encodeToString(CHALLENGE)))
+        vm.submitOtp(OTP) // même saisie, même requête
+        assertEquals(EnrolStep.Securing(SecuringStage.CREATING_KEY), vm.step.value)
+    }
+
+    @Test
+    fun serviceUnavailableOnConfirm_staysOnTheConfirmScreen_keyIssuedOnce() {
+        repo.confirmResults += ApiResult.Refused(503, "SERVICE_UNAVAILABLE", retryAfterSeconds = 4L)
+        val vm = vm()
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        vm.keyWrittenDown()
+        vm.confirmCode(CODE)
+        assertEquals(EnrolStep.Confirm("QX", EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = 4L), vm.step.value)
+        vm.confirmCode(CODE) // rejeu : la file est vide, le serveur répond OK
+        assertEquals(listOf("start", "otp", "complete", "confirm", "confirm", "account"), repo.calls)
+    }
+
     @Test
     fun retryRegistration_isInert_withoutAPendingServiceUnavailable() {
         val vm = vm()

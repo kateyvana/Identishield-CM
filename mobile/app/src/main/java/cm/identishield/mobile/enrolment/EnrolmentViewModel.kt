@@ -44,7 +44,7 @@ enum class EnrolError {
     UNLOCK_CANCELLED,
     CONFIRM_MISMATCH,
     PROCESS_RESTARTED, // D4 : le téléphone a fermé l'application ; on reprend au PIN, numéro conservé
-    SERVICE_UNAVAILABLE, // D-B7-1 : 503 transitoire à /enrolment/complete ; clé GARDÉE, « Réessayer » rejoue la même requête
+    SERVICE_UNAVAILABLE, // D-B7-1 : 503 transitoire sur toute route d'enrôlement ; même étape, clé GARDÉE, rejeu de la même requête
     UNEXPECTED,
 }
 
@@ -53,15 +53,20 @@ enum class SecuringStage { CREATING_KEY, UNLOCKING, REGISTERING }
 
 /** Un état par écran des flux A et D (E-02 à E-09, E-11, E-20 à E-22, E-26). */
 sealed interface EnrolStep {
+    /** D-B7-1 : délai conseillé par le serveur (Retry-After) quand l'erreur est SERVICE_UNAVAILABLE ; null sinon. */
+    val retryAfterSeconds: Long? get() = null
+
     data object Welcome : EnrolStep // E-02
 
     data class Number(
         val error: EnrolError? = null,
+        override val retryAfterSeconds: Long? = null,
     ) : EnrolStep // E-03
 
     data class Pin(
         val msisdn: String,
         val error: EnrolError? = null,
+        override val retryAfterSeconds: Long? = null,
     ) : EnrolStep // E-06
 
     data class Checking(
@@ -72,11 +77,13 @@ sealed interface EnrolStep {
         val msisdn: String,
         val error: EnrolError? = null,
         val resendGeneration: Int = 0,
+        override val retryAfterSeconds: Long? = null,
     ) : EnrolStep // E-05
 
     data class Securing(
         val stage: SecuringStage,
         val error: EnrolError? = null,
+        override val retryAfterSeconds: Long? = null,
     ) : EnrolStep // E-07
 
     /** E-07, précondition (D3) : aucun verrouillage d'écran, donc aucune clé possible ; écran explicatif. */
@@ -93,6 +100,7 @@ sealed interface EnrolStep {
     data class Confirm(
         val codeTail: String,
         val error: EnrolError? = null,
+        override val retryAfterSeconds: Long? = null,
     ) : EnrolStep // E-09
 
     data class Home(
@@ -101,6 +109,7 @@ sealed interface EnrolStep {
 
     data class Recovery(
         val error: EnrolError? = null,
+        override val retryAfterSeconds: Long? = null,
     ) : EnrolStep // E-20
 
     data class RecoveryWait(
@@ -269,6 +278,11 @@ class EnrolmentViewModel(
                             REASON_CREDENTIALS -> EnrolStep.Pin(number, EnrolError.CREDENTIALS_INVALID)
                             REASON_REQUEST -> EnrolStep.Number(EnrolError.NUMBER_INVALID)
                             REASON_ACCOUNT_FROZEN -> EnrolStep.Pin(number, EnrolError.REENROL_FROZEN)
+                            // D-B7-1 : transitoire, même étape (E-05 si c'était un renvoi, sinon E-06)
+                            REASON_SERVICE_UNAVAILABLE ->
+                                (if (resend) previous as? EnrolStep.Otp else null)
+                                    ?.copy(error = EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = r.retryAfterSeconds)
+                                    ?: EnrolStep.Pin(number, EnrolError.SERVICE_UNAVAILABLE, r.retryAfterSeconds)
                             else -> EnrolStep.Pin(number, EnrolError.UNEXPECTED)
                         }
                 ApiResult.Unreachable ->
@@ -300,6 +314,8 @@ class EnrolmentViewModel(
                             REASON_OTP_INVALID -> current.copy(error = EnrolError.OTP_INVALID)
                             REASON_OTP_EXPIRED -> current.copy(error = EnrolError.OTP_EXPIRED)
                             REASON_ENROLMENT_EXPIRED -> EnrolStep.Number(EnrolError.SESSION_EXPIRED)
+                            REASON_SERVICE_UNAVAILABLE -> // D-B7-1 : transitoire, le code tapé n'est pas consommé
+                                current.copy(error = EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = r.retryAfterSeconds)
                             else -> current.copy(error = EnrolError.UNEXPECTED)
                         }
                 ApiResult.Unreachable -> _step.value = current.copy(error = EnrolError.UNREACHABLE)
@@ -395,7 +411,7 @@ class EnrolmentViewModel(
                     // Transitoire (contrat `Unavailable`) : rien n'est détruit, l'étape est gardée ;
                     // le PDP a peut-être déjà la clé (D-B7-1 : premier appel à froid > délai du cœur).
                     pendingComplete = request
-                    _step.value = EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE)
+                    _step.value = EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE, r.retryAfterSeconds)
                     return
                 }
                 pendingComplete = null
@@ -489,6 +505,8 @@ class EnrolmentViewModel(
                         when (r.reason) {
                             REASON_ACCOUNT_FROZEN -> EnrolStep.Recovery(EnrolError.REENROL_FROZEN)
                             REASON_ENROLMENT_EXPIRED -> msisdn?.let { EnrolStep.Pin(it, EnrolError.SESSION_EXPIRED) } ?: EnrolStep.Number()
+                            REASON_SERVICE_UNAVAILABLE -> // D-B7-1 : transitoire, on reste sur E-20
+                                EnrolStep.Recovery(EnrolError.SERVICE_UNAVAILABLE, r.retryAfterSeconds)
                             else -> EnrolStep.Recovery(EnrolError.UNEXPECTED)
                         }
                 ApiResult.Unreachable -> _step.value = EnrolStep.Recovery(EnrolError.UNREACHABLE)
@@ -554,6 +572,8 @@ class EnrolmentViewModel(
                             EnrolStep.RecoveryKey(issued.code, lastDisplay = true)
                         } else if (r.reason == REASON_RECOVERY_INVALID) {
                             current.copy(error = EnrolError.CONFIRM_MISMATCH)
+                        } else if (r.reason == REASON_SERVICE_UNAVAILABLE) { // D-B7-1 : transitoire, on reste sur E-09
+                            current.copy(error = EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = r.retryAfterSeconds)
                         } else {
                             current.copy(error = EnrolError.UNEXPECTED)
                         }
