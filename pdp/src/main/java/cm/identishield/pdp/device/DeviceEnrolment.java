@@ -41,9 +41,15 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p>Gel des ré-enrôlements (ES-27, A1-4 ; décision du superviseur du 2026-10-25, L-B5-2) : pendant
  * {@code reenrolFrozenUntil} (posé par « ce n'est pas moi »), un ré-enrôlement reçoit EXACTEMENT le
  * refus d'un code faux — même contenu, même code, même durée, toutes les vérifications faites —
- * ES-22 l'emporte sur une réponse distincte. Le PDP écrit une entrée d'audit (cause REENROL_FROZEN)
- * et compte la tentative (ES-24) ; aucune restriction nouvelle sur le compte. Le gel est lu en
- * lecture seule ({@link TrustStateMachine#peek}), avant tout calcul, pour chaque compte déjà lié.
+ * ES-22 l'emporte sur une réponse distincte. Le PDP compte la tentative (ES-24) ; aucune
+ * restriction nouvelle sur le compte.
+ *
+ * <p>Audit SYMÉTRIQUE (décision du superviseur du 2026-10-25, T-AC-16) : tout refus d'un compte
+ * lié, hors appelant bloqué, écrit UNE entrée {@code REENROL_REFUSED} avec UNE cause, la première
+ * dans l'ordre des vérifications : DEVICE_UNSUPPORTED, REENROL_FROZEN, CODE_INVALID,
+ * ATTESTATION_INVALID, SIGNATURE_INVALID. Même travail des deux côtés : la durée d'un refus ne
+ * révèle pas l'état gelé. Le gel est lu en lecture seule ({@link TrustStateMachine#peek}), avant
+ * tout calcul, pour chaque compte déjà lié.
  *
  * <p>Revue ligne à ligne requise : vérification de signature, machine à états de la clé.
  */
@@ -155,31 +161,29 @@ public class DeviceEnrolment {
     AttestationVerifier.Outcome outcome =
         challenge == null ? null : verifier.verify(attestationChain, publicKey, challenge);
     boolean signed = challenge != null && signedBy(publicKey, challenge, challengeSignature);
-    // La clé LOGICIELLE est jugée AVANT le gel, gel ou non (PR #110) : sa réponse parle de
-    // l'appareil,
-    // pas du code, et doit être la même dans les deux cas, sinon elle révélerait l'état gelé
-    // (ES-22,
-    // AC-16 ; contrat device.yaml : DEVICE_UNSUPPORTED nommée même au ré-enrôlement).
-    if (outcome == AttestationVerifier.Outcome.SOFTWARE_KEY) {
-      throttle.failed(keys);
-      return new Refused(Refusal.DEVICE_UNSUPPORTED);
-    }
-    if (frozenUntil.isPresent()) {
-      // Pendant le gel, le refus est celui d'un code faux, quoi qu'aient donné les vérifications :
-      // rien ne distingue « gelé » de « code faux » (ES-22). Compté (ES-24) et journalisé.
+    // UNE cause, la première dans l'ordre des vérifications (décision du superviseur du 2026-10-25,
+    // symétrie T-AC-16) : la clé LOGICIELLE d'abord, gel ou non (PR #110 : sa réponse parle de
+    // l'appareil, pas du code, et ne doit pas révéler l'état gelé, ES-22/AC-16 ; contrat
+    // device.yaml) ;
+    // puis le gel, qui l'emporte sur le code : l'audit ne dit jamais « le code était juste »
+    // pendant
+    // un gel ; puis code, attestation, signature.
+    String cause = refusalCause(outcome, frozenUntil.isPresent(), codeOk, signed);
+    if (cause != null) {
+      // Tout refus d'un compte lié fait le MÊME travail, au même endroit : compté (ES-24) et UNE
+      // entrée d'audit (la durée d'un refus ne désigne ni la faute ni l'état gelé). Aucun secret.
       throttle.failed(keys);
       Map<String, Object> p = new LinkedHashMap<>();
       p.put("event", "REENROL_REFUSED");
       p.put("accountId", accountId);
-      p.put("cause", "REENROL_FROZEN");
-      p.put("reenrolFrozenUntil", frozenUntil.get().toString());
+      p.put("cause", cause);
+      frozenUntil.ifPresent(until -> p.put("reenrolFrozenUntil", until.toString()));
       p.put("occurredAt", now.toString());
       auditLog.append(p, now);
-      return new Refused(Refusal.RECOVERY_INVALID);
-    }
-    if (!codeOk || outcome != AttestationVerifier.Outcome.VALID || !signed) {
-      throttle.failed(keys);
-      return new Refused(Refusal.RECOVERY_INVALID);
+      return new Refused(
+          CAUSE_DEVICE_UNSUPPORTED.equals(cause)
+              ? Refusal.DEVICE_UNSUPPORTED
+              : Refusal.RECOVERY_INVALID);
     }
     Registration r =
         tx.execute(
@@ -189,6 +193,36 @@ public class DeviceEnrolment {
             });
     throttle.succeeded(keys);
     return r;
+  }
+
+  static final String CAUSE_DEVICE_UNSUPPORTED = "DEVICE_UNSUPPORTED";
+  static final String CAUSE_REENROL_FROZEN = "REENROL_FROZEN";
+  static final String CAUSE_CODE_INVALID = "CODE_INVALID";
+  static final String CAUSE_ATTESTATION_INVALID = "ATTESTATION_INVALID";
+  static final String CAUSE_SIGNATURE_INVALID = "SIGNATURE_INVALID";
+
+  /**
+   * Cause d'audit d'un refus de ré-enrôlement, la première dans l'ordre des vérifications ; {@code
+   * null} si rien ne s'oppose à l'enregistrement.
+   */
+  static String refusalCause(
+      AttestationVerifier.Outcome outcome, boolean frozen, boolean codeOk, boolean signed) {
+    if (outcome == AttestationVerifier.Outcome.SOFTWARE_KEY) {
+      return CAUSE_DEVICE_UNSUPPORTED;
+    }
+    if (frozen) {
+      return CAUSE_REENROL_FROZEN;
+    }
+    if (!codeOk) {
+      return CAUSE_CODE_INVALID;
+    }
+    if (outcome != AttestationVerifier.Outcome.VALID) {
+      return CAUSE_ATTESTATION_INVALID;
+    }
+    if (!signed) {
+      return CAUSE_SIGNATURE_INVALID;
+    }
+    return null;
   }
 
   private Registration firstEnrolment(

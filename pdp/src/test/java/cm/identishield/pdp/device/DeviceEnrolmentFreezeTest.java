@@ -196,25 +196,31 @@ class DeviceEnrolmentFreezeTest {
   }
 
   @Test
-  void duringTheFreeze_aSoftwareKey_isNamedDeviceUnsupported_exactlyAsOutsideTheFreeze_noAudit() {
+  void duringTheFreeze_aSoftwareKey_isNamedDeviceUnsupported_exactlyAsOutsideTheFreeze() {
     // PR #110 : la clé logicielle est jugée AVANT le gel. Sa réponse parle de l'appareil, pas du
-    // code,
-    // et ne doit pas changer avec l'état gelé (ES-22, AC-16 ; contrat : DEVICE_UNSUPPORTED nommée
-    // même au ré-enrôlement).
+    // code, et ne doit pas changer avec l'état gelé (ES-22, AC-16 ; contrat : DEVICE_UNSUPPORTED
+    // nommée même au ré-enrôlement). Symétrie (décision du 2026-10-25) : elle est auditée comme
+    // tout refus, cause DEVICE_UNSUPPORTED — jamais REENROL_FROZEN, l'appareil est jugé d'abord.
     List<String> softwareChain =
         chain(root, intermediate, device, keyDescription(CHALLENGE, SOFTWARE, SOFTWARE));
     boundAndFrozenUntil(T0.plus(FREEZE));
     Registration frozen = registerWith(softwareChain, "OLD123");
     assertEquals(new Refused(Refusal.DEVICE_UNSUPPORTED), frozen);
-    verify(audit, never())
-        .append(any(), any()); // aucun REENROL_REFUSED : l'appareil est jugé d'abord
     verify(throttle, times(1)).failed(COUNTED);
 
     // Hors gel : byte-identique.
     clock.advance(FREEZE.plus(Duration.ofSeconds(1)));
     Registration thawed = registerWith(softwareChain, "OLD123");
     assertEquals(frozen, thawed);
-    verify(audit, never()).append(any(), any());
     verify(throttle, times(2)).failed(COUNTED);
+
+    // Une entrée d'audit par refus, même cause des deux côtés.
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> payload = ArgumentCaptor.forClass(Map.class);
+    verify(audit, times(2)).append(payload.capture(), any());
+    for (Map<String, Object> p : payload.getAllValues()) {
+      assertEquals("REENROL_REFUSED", p.get("event"));
+      assertEquals("DEVICE_UNSUPPORTED", p.get("cause"));
+    }
   }
 }
