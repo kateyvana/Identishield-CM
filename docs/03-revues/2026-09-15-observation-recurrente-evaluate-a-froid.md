@@ -66,6 +66,13 @@ jamais servir à froid ». PR « prêt par construction » :
 - **Preuve (e), à la fenêtre 4, sous témoin** : trois fois « `docker restart isc-pdp` → premier
   virement réel par `verify_transfer` → `EXECUTED`, pas `DEGRADED` », sorties brutes collées ici
   (**non observée à la date de cette PR** : elle exige le déploiement).
+  **Fenêtre 4 (2026-10-25, 11:19Z)** : prêt par construction **OBSERVÉ** à trois démarrages du PDP
+  (« base jointe à l'initialisation » 11:19:27,07 **avant** « Tomcat started » 11:19:28,78 ; cœur
+  « PDP pret (essai 3/20) »), mais la preuve (e) est **ARRÊTÉE à l'essai 1** : `REJECTED`, 0 entrée
+  d'audit — le cœur a refusé avant `/evaluate` (A5-00 : 677000001 sans ligne HLR) et le compte est
+  gelé jusqu'à 15:48:31Z ; pas un défaut du prêt par construction, décision demandée (HLR des
+  comptes techniques), preuve 3/3 à refaire après 15:48:31Z. Détail :
+  `2026-10-24-deploiement-main.md` § Fenêtre 4.
 - **Registre des décisions** : ligne T-14 (PROPOSÉ, signature de la propriétaire).
 
 Les deux « rodages jetés » de `tools/bench_evaluate` (banc de latence, JIT) ne sont pas des
