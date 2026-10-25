@@ -314,6 +314,22 @@ class EnrolmentViewModelTest {
         assertEquals(listOf("start", "otp", "complete", "confirm", "confirm", "account"), repo.calls)
     }
 
+    /** L-DB71-1 : l'abandon (begin) efface la requête en attente de rejeu, donc le code qu'elle porterait en flux D. */
+    @Test
+    fun abandonAfterServiceUnavailable_dropsThePendingReplay() {
+        repo.completeResult = ApiResult.Refused(503, "SERVICE_UNAVAILABLE")
+        val vm = vm()
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        assertTrue(vm.hasPendingReplay())
+        vm.begin()
+        assertFalse("plus rien à rejouer après l'abandon", vm.hasPendingReplay())
+        assertEquals(EnrolStep.Number(), vm.step.value)
+        vm.retryRegistration()
+        assertEquals(1, repo.calls.count { it == "complete" })
+    }
+
     @Test
     fun retryRegistration_isInert_withoutAPendingServiceUnavailable() {
         val vm = vm()

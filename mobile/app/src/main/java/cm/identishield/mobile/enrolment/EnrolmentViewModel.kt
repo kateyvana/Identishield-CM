@@ -206,6 +206,7 @@ class EnrolmentViewModel(
     }
 
     fun begin() {
+        pendingComplete = null // abandon : la requête en attente de rejeu (et son code, flux D) ne vaut plus rien
         _step.value = EnrolStep.Number()
     }
 
@@ -613,6 +614,9 @@ class EnrolmentViewModel(
     }
 
     /** Pour les tests : aucun secret ne survit à l'arrivée sur l'accueil. */
+    /** Pour les tests : une requête d'enregistrement attend-elle un rejeu (D-B7-1) ? */
+    internal fun hasPendingReplay(): Boolean = pendingComplete != null
+
     internal fun holdsSecrets(): Boolean =
         pin != null || recovery != null || attestationChallenge != null || pendingRecoveryCode != null ||
             pendingComplete?.recoveryCode != null
