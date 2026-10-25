@@ -19,7 +19,13 @@ services:
       - ./init/migrations:/opt/isc/migrations:ro
       - ./init/apply-migrations.sh:/opt/isc/apply-migrations.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      # -h 127.0.0.1 : le controle passe par TCP, comme isc-migrate, le coeur et le PDP. Sur une
+      # base NEUVE, l'entrypoint de postgres:16 lance d'abord un serveur TEMPORAIRE avec
+      # listen_addresses='' (docker-entrypoint.sh, docker_temp_server_start) : il n'ecoute que la
+      # socket locale. Sans -h, pg_isready la voyait et declarait la base prete pendant init.sql ;
+      # isc-migrate arrivait alors en TCP et recevait « connection refused » (constat L-PG-1,
+      # 2026-10-25). Avec -h, la base n'est saine qu'une fois le serveur definitif a l'ecoute.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 12
