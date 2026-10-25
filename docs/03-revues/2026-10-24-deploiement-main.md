@@ -455,3 +455,93 @@ migrations 002/003/005 appliquées ; 8443 servi avec `core-mobile` ; console sur
 sortie Internet du sous-réseau mobile bloquée ; 25 comptes amorcés. **Non fait** : P4 (ACL Tailscale,
 propriétaire) ; `check-stack` (gel VEL jusqu'au 25/10 15:48:31Z) ; condition ADR-030 de #67 (adresse
 réelle de deux téléphones : exige des téléphones sur le tailnet).
+
+### Fenêtre 3 (2026-10-25, 09:02Z → 09:21Z) — `main` fbdaf3b + dotation du compte de démonstration
+
+Ordre du superviseur technique du 25/10 : après la fusion de #109 et #110, « témoin, export, git pull,
+make up (construction), preuves courtes, puis DOTATION » de 677000200 par un virement P2P réel de
+20 000 FCFA depuis le compte technique 677000123, par le simulateur USSD de la VM, de jour.
+
+**Porte constatée (09:02Z = 10:02 Douala)** : #110 fusionnée 08:55:01Z ; CI `main` fbdaf3b `success` ;
+aucune PR ouverte ; `origin/main` = fbdaf3b (#110 ordre du gel après `SOFTWARE_KEY`, #111 outil
+T-AC-16). Témoin A posé 09:02:58Z (`jusqu-a` 10:02:58Z), couloir B prévenu avant et après.
+
+**Export 1 (09:06:34Z, cœur et PDP arrêtés)** : `audit-export-2026-10-25T090634Z.csv`, 120280
+entrées, `sha256 975ee9ed12406fea2ea2d9b59384f3fc68f43b6377ca36803a07755e908ae405` = référence des
+fenêtres 1 et 2, 0 rupture, ancre conforme (`head_matches=true`) : chaîne intacte, rien ne s'est écrit
+depuis la fenêtre 2. `git pull --ff-only` : 0d7a952 → fbdaf3b.
+
+**`make up` avec construction (`~/deploy-step5.sh`, journal `up-20261025T090706Z.log`)** : 09:07:06Z →
+09:12:43Z (5 min 37 s), `FIN_MAKE_UP_RC=0`, « profil demo : compose.b3a.yml inclus ». Preuves :
+
+- `isc-migrate` : `002-b3a-premier-enrolement`, `003-holder-name`, `004-b3b-reenrolement`,
+  `005-b4-session-liveness`, `006-b5-alertes` — « 5 migration(s) appliquee(s) » (rejouées, `IF NOT
+  EXISTS`, aucune erreur) ;
+- `isc-ca-init` : « CA deja presente dans le volume -> REUTILISATION », 0 feuille ajoutée, empreinte
+  `70:58:2E:19:59:A6:C3:47:5D:46:87:B6:94:ED:2B:44:32:74:0A:2F:06:07:FC:1D:01:B2:85:39:C3:1A:BA:2F`
+  avant = après (même valeur que `openssl x509` sur `/certs/ca.crt`) ;
+- cœur : « Tomcat started on ports 8080 (http), 8443 (https) », connecteur 8443 sur
+  `core-mobile.key`/`core-mobile.crt` ;
+- 8443 : depuis la VM `http=403 verify=0` ; depuis le poste par Tailscale avec `vm-ca.crt`
+  `http=403 verify=0` (`--ssl-no-revoke` : le `curl` Windows échoue sinon sur la révocation, artefact
+  du poste) ; 8080 et 3000 depuis le poste : connexion refusée ;
+- comptes : **29** = 25 comptes de démonstration (amorcés le 24/10 à 19:51:55Z par le seeder B8, dont
+  677000123 à 152 300 et 677000200 à 0) + 4 comptes techniques des portes (677000001, 677000002,
+  677000007, 677000008). Aucun compte créé par cette fenêtre ; les « 25 comptes » des fenêtres 1 et 2
+  comptaient les seuls comptes amorcés.
+
+**Dotation (09:16:46Z = 10:16 Douala, `~/dotation-677000200.sh`, mode USSD scripté du cœur sur
+`isc-net`, chemin `/evaluate` avant commit, ni SQL ni nouvelle route)** :
+
+```text
+avant : 677000123|152300   677000200|0
+USSD> Transfert P2P. Montant en FCFA ?            USSD< 20000
+USSD> MSISDN du beneficiaire ?                   USSD< 677000200
+USSD> Confirmer 20000 FCFA vers 677000200 ? 1=Oui USSD< 1
+USSD_FINAL=Transfert EXECUTED_DEGRADED. Reference 2b0f90e2-4d96-4c00-929a-80dbc5d346cb
+après : 677000123|132300   677000200|20000
+core.transaction da4914fa-02f0-4a36-af78-cff28aebdbf7 | EXECUTED | 20000 | USSD | 2026-10-25 09:16:46.875Z
+pdp.audit_entry seq 120281 (chain_index 120280), written_at 09:16:47.868Z :
+  decision=ALLOW score=15 triggeredRules=[NEW_BENEFICIARY +15] vetoApplied=NONE requiredAction=NONE
+  ruleSetVersion=rs-0.10.0 decisionId=2b0f90e2-4d96-4c00-929a-80dbc5d346cb
+```
+
+**Référence de décision** : `2b0f90e2-4d96-4c00-929a-80dbc5d346cb` ; **entrée d'audit** : seq 120281.
+Soldes exacts, une seule transaction, une seule entrée d'audit.
+
+**Écart constaté, non masqué** : le message USSD dit `EXECUTED_DEGRADED` alors que le PDP a décidé
+`ALLOW`. Le code (`TransferService.operate`) ne rend `EXECUTED_DEGRADED` que si le cœur juge le PDP
+**indisponible**. Journal du PDP : le `/health` de préchauffage à 09:16:46.503Z n'initialise que le
+`DispatcherServlet` ; le pool Hikari ne s'ouvre qu'au premier `/evaluate` (« HikariPool-1 -
+Starting... » 09:16:47.463Z, « Start completed » 09:16:47.766Z), `evaluatedAt` 09:16:47.868Z : le PDP
+a répondu ≈ 1,0 s après la requête, au-delà du délai du client du cœur (`core.pdp.timeout-ms: 800`,
+`application.yml`). 20 000 < `CAP_FAILCLOSED.xaf` = 50 000 → le cœur a appliqué la voie **dégradée**
+(ES-11 : refus seulement au-dessus du plafond). Conséquences : (1) la décision `ALLOW` existe dans
+l'audit mais **n'a pas été consommée** par le cœur ; (2) l'état persisté est `EXECUTED` (le caractère
+dégradé n'est pas persisté dans `core.transaction`, il n'est que dans la réponse et le journal) ;
+(3) le virement n'a **pas** été refait (un second = 40 000). C'est la **sixième occurrence** de
+l'observation du 15/09 (`2026-09-15-observation-recurrente-evaluate-a-froid.md`), la première sur un
+**mouvement réel** et non une mesure : la dette « à trancher avant le mois 5 » est maintenant visible
+sur la démonstration elle-même.
+
+**Défaut d'outillage trouvé en cherchant la cause** : `core/Dockerfile` porte `ENTRYPOINT ["java",
+"-jar", "/app/app.jar"]` ; or `tools/verify_ussd.sh` (et `~/dotation-677000200.sh`, copié dessus)
+lancent `docker run … isc-core java -Dspring.main.web-application-type=none -Dcore.pdp.timeout-ms=5000
+-jar /app/app.jar` : tout ce qui suit le nom de l'image devient **argument du programme**, les options
+`-D` n'atteignent jamais la JVM. Le délai effectif a toujours été 800 ms et Tomcat démarre dans chaque
+conteneur jetable. Même motif dans `bench_mtls.sh`, `verify_console.sh`, `verify_hlr.sh`,
+`verify_hlr_agent.sh`, `verify_mtls.sh`, `verify_notification.sh`, `verify_otp.sh`,
+`verify_transfer.sh`, `verify_ussd.sh` (9 outils). **Non corrigé seul** : rendre les 5 000 ms effectifs
+ferait disparaître le symptôme à froid de `check-stack`, c'est-à-dire un contournement de plus de la
+dette ci-dessus ; la correction (`--entrypoint java`) attend la décision sur l'observation du 15/09.
+
+**Export 2 (09:19:08Z, cœur et PDP arrêtés)** : `audit-export-2026-10-25T091908Z.csv`, **120281**
+entrées (+1 = la dotation), `sha256 8c8b0a34eabcfc7f9b0910f7103c4a2844177dbadc34b9a378724738ae6af206`,
+0 rupture, ancre conforme, VERT. Après le redémarrage qui suit l'export, le PDP a été **réchauffé par
+une lecture seule** (`GET /trust/{accountId}` en mTLS depuis le conteneur du cœur : 286 ms à froid,
+pool ouvert 09:22:10Z, puis 51 ms) pour que le premier appel du couloir B soit nominal.
+
+**État final (09:22Z)** : `main` fbdaf3b déployé ; 5 conteneurs `Up`, `isc-pdp (healthy)` ; témoin
+retiré 09:21Z, « VM à toi » au couloir B. **Non fait** : P4 (ACL Tailscale, propriétaire) ;
+`check-stack` (une seule exécution, à partir de 15:48:31Z, levée du gel VEL) ; condition ADR-030 de
+#67 ; `passwd` de `isc` (incident du 24/10) ; signature des amendements PROPOSÉS d'ADR-030 et ADR-041.
