@@ -167,7 +167,10 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
   relevé de libellés tronqué l'avait manqué ; rectifié à la relecture de la capture). **Constat
   D-B7-3 (restreint)** : l'**accueil**, lui, n'affiche pas l'état FROZEN (badge « Appareil protégé »
   seulement) alors que `GET /account` le porte.
-- Tentative de l'attaquant (A, SIM `…667`) : voir sorties du couloir A (`serveur-f-attaquant-refuse.txt`).
+- Tentative de l'attaquant (SIM `…667`) : **non observée en direct, définitivement pour le mois 4**
+  (décision du superviseur technique du 2026-10-25, après le rapport de passe) ; la preuve de la
+  phase 2 d'AC-02 est celle des portes du 2026-10-23 et de l'étape (f) de cette passe (gel NOT_ME,
+  virement bloqué, aucun débit). Aucun fichier `serveur-f-attaquant-refuse.txt` ne sera ajouté.
 
 ### 2026-10-25 11:44–11:47 UTC — étape (g) charte qualité mobile §10 (tablette SM-T515)
 
@@ -195,7 +198,7 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
 | (d) flux D, ancienne clé révoquée, DEVICE_REBOUND | **conforme, observée** |
 | (e) virement ALLOW signé | **conforme, observée** (F-B7-2 : pas de `proofType` dans l'audit, preuve par le nonce) |
 | (f) SIM_CHANGED → « ce n'est pas moi » → FROZEN NOT_ME → virement bloqué | **conforme, observée** (D-B7-3 : état « gelé » non affiché sur l'ACCUEIL ; E-24 l'affiche) |
-| (f) tentative de l'attaquant (SIM `…667`, USSD puis ré-enrôlement sans code) | **non observée en direct** — décision du superviseur (2026-10-25) : lancée par la **propriétaire** avec les portes du dépôt ; la ligne reste ainsi jusqu'aux sorties collées par le couloir A |
+| (f) tentative de l'attaquant (SIM `…667`, USSD puis ré-enrôlement sans code) | **non observée en direct, définitivement pour le mois 4** — décision du superviseur technique (2026-10-25) ; preuve de phase 2 = portes du 2026-10-23 + étape (f) ci-dessus |
 | (g) arrière-plan → verrou, police 200 %, paysage | **conforme, observée** ; rotation/mort du processus : passe B1a, non rejouées |
 
 **Constats déclarés** (aucun correctif pendant la passe) : **D-B7-1** erreur générique au premier
@@ -241,7 +244,7 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | **observée** |
 | (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : « Votre compte est gelé pour votre sécurité… » affiché | **observée** |
 | (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | **observée** (FROZEN/NOT_ME, reenrol gelé 24 h) |
-| (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | **non observée en direct** — lancée par la propriétaire avec les portes du dépôt (décision du 2026-10-25) ; à passer « observée » avec les sorties du couloir A, en commit séparé |
+| (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | **non observée en direct, définitivement pour le mois 4** (décision du superviseur technique du 2026-10-25) ; fichier **non produit** ; preuve de phase 2 = portes du 2026-10-23 + étape (f) |
 | (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) — « Opération bloquée · Pour votre sécurité, cet envoi n'a pas été exécuté. Votre argent est toujours sur votre compte. Que faire ? … Aucun code ne vous sera demandé par téléphone. » ; serveur : REJECTED, veto ACCOUNT_FROZEN (audit 120286), solde 15 000 | **observée** |
 | (g) | `E-10-deverrouillage-arriere-plan.png` (71 s), `E-10-deverrouillage-session-expiree.png` (~25 min) | E-10 après 61 s en arrière-plan : verrou (charte §10.7) — observé après ~25 min : « Votre session a expiré » | **observée** |
 | (g) | `E-10-police-200.png`, `E-10-paysage.png` (l'appareil est la tablette : toutes les captures sont « tablette ») | Mise en page tablette et police 200 % (charte §10.8) — téléphone non disponible : non observé | **observée** (tablette, 200 %, paysage) |
