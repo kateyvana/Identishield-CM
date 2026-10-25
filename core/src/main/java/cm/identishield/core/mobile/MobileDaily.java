@@ -351,16 +351,24 @@ public class MobileDaily {
     } else {
       return Answer.unavailable();
     }
+    // Deux réponses concurrentes à la même alerte : le PDP a été appelé deux fois (la seconde fois
+    // il répond 409 ou reprolonge : l'effet est en place) ; une seule ferme l'alerte, l'autre rend
+    // le même résultat sans rien écrire (observation du couloir A sur #104).
     alerts.answer(alertId, Alerts.NOT_ME, clock.instant());
     return Answer.ok(
         Map.of("alertId", alertId.toString(), "status", Alerts.NOT_ME, "accountState", state));
   }
 
   /**
-   * Type d'alerte du cœur → alerte de la machine A1 (seules les deux alertes à réponse existent).
+   * Type d'alerte du cœur → alerte de la machine A1. Seules les deux alertes à réponse peuvent être
+   * OPEN (contrainte de core.alert) ; tout autre type ici est un défaut, jamais deviné.
    */
   private static String pdpAlert(String type) {
-    return SecurityAlerts.SIM_CHANGED.equals(type) ? "SIM_CHANGE" : "REENROL_ATTEMPT";
+    return switch (type) {
+      case SecurityAlerts.SIM_CHANGED -> "SIM_CHANGE";
+      case SecurityAlerts.REENROL_ATTEMPT -> "REENROL_ATTEMPT";
+      default -> throw new IllegalStateException("alerte sans réponse possible : " + type);
+    };
   }
 
   /** Vérification PDP de la réponse signée ; nul si VALID, sinon la réponse de refus. */
