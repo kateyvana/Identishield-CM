@@ -1,0 +1,21 @@
+# Preuve côté serveur — étape (f) AC-02 : réattribution HLR (A) → alerte → « ce n'est pas moi » signé → gel NOT_ME, 2026-10-25 (lectures SQL seules)
+## HLR (A, 11:33:12.916Z) : core.hlr_subscriber 677000200 → 624010000000667 ; core.hlr_reassignment 624010677000200 → 624010000000667, agent-ac02-f, motif « AC-02 (f) demo jury : remplacement SIM »
+## core.alert (677000200) : type | status | answered_at
+SIM_CHANGED|NOT_ME|2026-10-25 11:33:12.938856+00|2026-10-25 11:36:13.690041+00
+DEVICE_REBOUND|INFO|2026-10-25 11:00:02.711238+00|
+## pdp.trust_state (677000200) : account_id | state | since | reference_imsi | current_imsi | probation_until | freeze_cause | freeze_until | reenrol_frozen_until | ...
+5bee60dd-3ea3-4f73-9767-a110f48800f8|FROZEN|2026-10-25 11:36:13.66702+00|624010677000200|624010677000200||NOT_ME||2026-10-26 11:36:13.66702+00||
+## pdp.trust_transition : id | account_id | from | to | event | cause | occurred_at
+60134|5bee60dd-3ea3-4f73-9767-a110f48800f8|TRUSTED|FROZEN|TRUST_FROZEN|NOT_ME|2026-10-25 11:36:13.66702+00
+## pdp.audit_entry (seq | event | cause | alert | alertId | written_at)
+120283|TRUST_FROZEN|NOT_ME||46715ad0-ab38-4c9e-8315-765038629294|2026-10-25 11:36:13.673912+00
+120284|REENROL_FROZEN||SIM_CHANGE|46715ad0-ab38-4c9e-8315-765038629294|2026-10-25 11:36:13.66702+00
+## solde 677000200 après le gel (oracle : inchangé)
+15000
+## Tentative de virement DEPUIS le téléphone lié après le gel (11:40:40Z) : core.transaction type | amount | channel | state | decision_id | created_at
+P2P|5000|APP|REJECTED|917d5fc2-7d03-4841-a677-fab1706e4c7e|2026-10-25 11:40:40.977178+00
+## pdp.audit_entry seq 120286 : decision | vetoApplied | amountXaf
+120286|REJECTED|ACCOUNT_FROZEN|5000|2026-10-25 11:40:41.054857+00
+## solde 677000200 après la tentative : 
+15000
+Réponse mobile : 403 ACCOUNT_FROZEN → écran E-18 « Opération bloquée » (E-18-bloquee.png). Oracle : aucun débit.

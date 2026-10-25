@@ -141,6 +141,31 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
   observé (premier `/evaluate` après le redémarrage de la fenêtre 4 : nominal — prêt par
   construction). **Étape (e) : conforme, observée.**
 
+### 2026-10-25 11:33–11:40 UTC — étape (f) AC-02 réel avec le couloir A (un seul témoin, le B)
+
+- **Réattribution HLR par A** à **11:33:12.916Z** (`hlr-agent reassign`, motif « AC-02 (f) demo jury :
+  remplacement SIM ») : 677000200 passe de `624010677000200` à l'IMSI attaquant
+  **`624010000000667`** (distinct des portes automatiques).
+- **22 ms plus tard**, `core.alert` **`SIM_CHANGED` OPEN** (11:33:12.939Z : écouteur
+  `SecurityAlerts.onImsiChanged` dans la transaction de la réattribution). Sur la tablette, au
+  sondage suivant : bandeau « Alertes 1 » sur l'accueil (`E-11-accueil-alerte-sim.png`), **E-23**
+  (`E-23-alertes-sim-changed.png`) « Carte SIM changée · à traiter · 25 oct. à 12:33 », **E-24**
+  (`E-24-detail-sim-changed.png`) : « Numéro 677 000 200 », « Ce téléphone : toujours lié », « C'est
+  vous ? », « Oui, c'est moi » / « Non, ce n'est pas moi », « Nous ne vous demanderons jamais de code
+  ni de PIN dans une alerte » (ES-28).
+- « **Non, ce n'est pas moi** » → invite « Répondre à l'alerte — Déverrouillez votre téléphone pour
+  confirmer » → mot de passe de la tablette tapé par la propriétaire → signature
+  `accountId|ALERT_NOT_ME|alertId|nonce` vérifiée par le PDP → `POST /trust/{accountId}/not-me`.
+- Côté serveur (`serveur-f-trust-frozen.txt`) : `core.alert` **NOT_ME** à 11:36:13.690Z ;
+  `pdp.trust_state` **FROZEN**, `freeze_cause = NOT_ME`, `freeze_until = NULL` (sans expiration,
+  A1-3), **`reenrol_frozen_until = 2026-10-26T11:36:13Z`** (REENROL_FREEZE 24 h) ; transition 60134
+  TRUSTED → FROZEN ; audit seq 120283 `TRUST_FROZEN`/`NOT_ME` et 120284 `REENROL_FROZEN`/`SIM_CHANGE`
+  avec l'`alertId` `46715ad0…` ; **solde 677000200 = 15 000, inchangé**. **ES-27 observé de bout en
+  bout.** E-24 après réponse (`E-24-apres-not-me-frozen.png`) : les boutons ont disparu ; l'état du
+  compte n'est pas affiché sur cet écran (**constat D-B7-3**, présentation : afficher « compte gelé »
+  après « ce n'est pas moi »).
+- Tentative de l'attaquant (A, SIM `…667`) : voir sorties du couloir A (`serveur-f-attaquant-refuse.txt`).
+
 ## Captures attendues (ISC-MOB-SPEC v1.3, tableau des écrans ; écrans FLAG_SECURE exclus : E-06, E-08, E-09, E-14, E-15, E-20)
 
 Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce dossier.
@@ -168,12 +193,12 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (e) | `E-16-succes.png` | E-16 Succès (ALLOW, EXECUTED) ; si DEGRADED malgré la fenêtre 4 : écrit tel quel | **observée** (ALLOW, EXECUTED, 50762db8) |
 | (e) | `E-19-historique.png` | E-19 Historique (ligne OUT EXECUTED) | **observée** |
 | (e) | `serveur-e-audit-signature.txt` | Côté serveur : entrée d'audit de la décision avec `proofType=SIGNATURE` (console intégrité EF-34 ou lecture seule du journal) — preuve par le nonce consommé (F-B7-2 : pas de proofType dans le payload) | **observée** |
-| (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → IMSI attaquant **distinct** des portes automatiques (ex. `624010000000667`, décision du 2026-10-25) — **étape (f) seulement APRÈS la fenêtre 4 de A et après (e)** | non observée (après fenêtre 4) |
-| (f) | `E-23-alertes-sim-changed.png` | E-23 Alertes : `SIM_CHANGED` OPEN avec actions | non observée |
-| (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | non observée |
-| (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : état FROZEN affiché | non observée |
-| (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | non observée |
+| (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → IMSI attaquant **distinct** des portes automatiques (ex. `624010000000667`, décision du 2026-10-25) — **étape (f) seulement APRÈS la fenêtre 4 de A et après (e)** | **observée** (11:33:12.916Z, par A) |
+| (f) | `E-11-accueil-alerte-sim.png`, `E-23-alertes-sim-changed.png` | E-23 Alertes : `SIM_CHANGED` OPEN avec actions | **observée** |
+| (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | **observée** |
+| (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : état FROZEN affiché — boutons disparus ; état du compte NON affiché (D-B7-3) | **observée** (sans état affiché) |
+| (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | **observée** (FROZEN/NOT_ME, reenrol gelé 24 h) |
 | (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | non observée |
-| (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) | non observée |
+| (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) — « Opération bloquée · Pour votre sécurité, cet envoi n'a pas été exécuté. Votre argent est toujours sur votre compte. Que faire ? … Aucun code ne vous sera demandé par téléphone. » ; serveur : REJECTED, veto ACCOUNT_FROZEN (audit 120286), solde 15 000 | **observée** |
 | (g) | `E-10-deverrouillage-session-expiree.png` | E-10 après 61 s en arrière-plan : verrou (charte §10.7) — observé après ~25 min : « Votre session a expiré » | **observée** |
 | (g) | `E-11-accueil-tablette.png`, `E-11-accueil-police-200.png` | Mise en page tablette et police 200 % (charte §10.8) | non observée |
