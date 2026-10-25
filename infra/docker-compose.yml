@@ -29,6 +29,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+      # Avec -h, l'etat sain n'arrive qu'apres init.sql et les migrations ; pendant ces 60 s, un echec
+      # ne compte pas contre retries (un succes, lui, compte tout de suite : rien n'est retarde).
+      start_period: 60s
 
   # Autorite locale : genere CA + certificats de service au premier `up`, dans le
   # volume `certs`. Idempotent (reutilise si present ; down -v regenere). FORCE=1
