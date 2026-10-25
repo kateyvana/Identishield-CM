@@ -58,6 +58,58 @@ En attente du téléphone (Tailscale connecté par la propriétaire, ACL posée)
 superviseur du 2026-10-25) et du créneau AC-02 avec le couloir A. Aucune reprise de la VM avant ces
 trois conditions.
 
+### 2026-10-25 10:45–10:55 UTC — étape (c) flux A sur la tablette (pile servie fbdaf3b, témoin B)
+
+Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Déroulé observé :
+
+- E-02 → « Commencer » → **E-03** (`E-03-numero.png`, `E-03-numero-saisi.png`) : champ numérique,
+  pavé numérique du système, 9 chiffres acceptés (un « 0 » surnuméraire est venu d'un tapotement
+  d'automate sur le clavier, pas du champ) ; **E-06 PIN** : pavé numérique de l'application,
+  protégé, PIN des fixtures tapé par automate sans affichage.
+- **Première requête réelle tablette → VM** : `POST /enrolment/start` sur `https://100.93.166.19:8443`
+  → **200** (ACL Tailscale, TLS, CA épinglée et SAN : **conformes**, observés) ; **E-04 / E-05**
+  (`E-04-attente.png`, `E-05-otp.png`) : « Code reçu par SMS … 677 ••• 200 », compte à rebours de renvoi.
+- OTP lu dans la boîte du réseau simulé (`GET /inbox?imsi=624010677000200` dans le conteneur
+  `isc-sim`, lecture seule ; jamais affiché), 6 chiffres tapés → **E-07** (`E-07-securisation.png`) :
+  « Clé créée dans la puce ✓ », « Déverrouillage local ✓ » (verrou de la tablette : mot de passe ;
+  aucune saisie demandée à cet instant), « Enregistrement auprès du serveur … » puis **« Une erreur
+  est survenue. Réessayez. »** au premier essai. Côté serveur, ce premier essai avait pourtant
+  **enregistré une clé au PDP** (`pdp.device` `e6ecb8f0…` à 10:50:12Z, EN ATTENTE puis RÉVOQUÉE par
+  la seconde inscription — règle « au plus une clé EN ATTENTE par compte », ADR-041) : l'échec est
+  donc côté application, **après** la réponse du cœur, cause **non journalisée** (l'application
+  n'écrit rien dans logcat). **Constat D-B7-1** : message générique pour une cause non connue —
+  conforme à la charte §10.3 au sens strict, mais la cause doit être trouvée (journal de diagnostic
+  sans secret ?) ; pas de correctif pendant la passe. Au second essai, logcat système :
+  `E KeyStore: generateKeyInternal failed on request -68` à 10:52:20Z (StrongBox refusé, repli
+  TEE, comme SPIKE-1) puis réussite.
+- « Réessayer » → `POST /enrolment/complete` avec l'**attestation matérielle réelle** → **acceptée
+  par le PDP** (clé `d4d95427…` EN ATTENTE à 10:52:23Z) → **E-08 « Votre clé de récupération »**
+  (écran protégé : pas de capture). **La propriétaire a écrit la clé sur papier et l'a retapée sur
+  E-09 elle-même** (« clé écrite ») : aucune lecture de la clé par l'automate, rien dans aucun
+  fichier.
+- **E-11 Accueil atteint** (`E-11-accueil-trusted.png`) : « Hervé ESSOMBA », « 677 000 200 · MTN
+  MoMo », solde 20 000 FCFA, badge « 🛡 Appareil protégé · SM-T515 », Envoyer / Historique / Alertes
+  / Sécurité. Côté serveur (`serveur-c-pdp-device-active.txt`) : `pdp.device` **ACTIVE**
+  `d4d95427…`, `core.enrolment` **DONE**, session émise, `pdp.trust_state` sans ligne (jamais vu →
+  TRUSTED, A1-5), solde 20 000. **Étape (c) : conforme, observée.**
+
+### 2026-10-25 10:57–11:01 UTC — étape (d) flux D sur la même tablette (témoin B)
+
+- `adb uninstall` (clé détruite dans la puce, SPIKE-1) puis `adb install -r` du même APK ; E-02 →
+  E-03 (`E-03-numero-reenrolement.png`) → E-06 PIN (automate) → `POST /enrolment/start` → **branche
+  RECOVERY** : **E-20 « Nouveau téléphone — Ce compte est déjà protégé par un autre téléphone »**,
+  « Aucun code ne vous sera envoyé par SMS pour cette étape » (ES-17b, ES-19 : aucun OTP ; écran
+  protégé, pas de capture). **La propriétaire a tapé sa clé papier**, puis a écrit et confirmé la
+  **nouvelle clé** (E-08/E-09) elle-même (« fait »).
+- Résultat observé : accueil E-11 de nouveau (`E-22-reenrolement-reussi-accueil.png`, badge
+  « Appareil protégé · SM-T515 ») ; écran Alertes (`E-23-alertes-device-rebound.png`).
+- Côté serveur (`serveur-d-reenrolement.txt`) : nouvelle clé **ACTIVE** `0a4d704b…` (10:59:16Z),
+  ancienne `d4d95427…` **RÉVOQUÉE à l'activation** (11:00:02Z, même transaction, décision B3b), la
+  première `e6ecb8f0…` toujours RÉVOQUÉE ; `core.enrolment` DONE ×2 ; **alerte `DEVICE_REBOUND`
+  INFO levée à 11:00:02Z** (« Un nouveau téléphone a été lié à votre compte. », B5 en production).
+  Un seul appareil : l'ancien téléphone « informé » n'est pas observable (L-B5-4). **Étape (d) :
+  conforme, observée.**
+
 ## Captures attendues (ISC-MOB-SPEC v1.3, tableau des écrans ; écrans FLAG_SECURE exclus : E-06, E-08, E-09, E-14, E-15, E-20)
 
 Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce dossier.
@@ -66,19 +118,19 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 |---|---|---|---|
 | (b) | `E-01-lancement.png`, `E-02-bienvenue.png` | E-01 Lancement et E-02 Bienvenue sur la tablette SM-T515, APK d71eb7ea installé | **observée** (2026-10-25 10:13Z) |
 | (c) | `E-02-bienvenue.png` | E-02 Bienvenue (déjà saisie à l'étape (b)) | **observée** |
-| (c) | `E-03-numero.png` | E-03 Numéro (677000200 saisi) | non observée |
+| (c) | `E-03-numero.png`, `E-03-numero-saisi.png` | E-03 Numéro (677000200 saisi) | **observée** |
 | (c) | — | E-06 PIN : **protégé**, pas de capture | — |
-| (c) | `E-04-attente.png` | E-04 Attente (OTP émis côté serveur) | non observée |
-| (c) | `E-05-otp.png` | E-05 OTP (champ saisi, code masqué) | non observée |
-| (c) | `E-07-securisation.png` | E-07 Sécurisation (attestation réelle → PDP ; si refus : écran d'erreur capturé et **ARRÊT**) | non observée |
+| (c) | `E-04-attente.png` | E-04 Attente (OTP émis côté serveur) | **observée** |
+| (c) | `E-05-otp.png` | E-05 OTP (champ saisi, code masqué) | **observée** |
+| (c) | `E-07-securisation.png` | E-07 Sécurisation (attestation réelle → PDP ; si refus : écran d'erreur capturé et **ARRÊT**) | **observée** (1er essai : erreur générique ; 2e : OK) |
 | (c) | — | E-08 / E-09 Clé de récupération et confirmation : **protégés**, pas de capture | — |
-| (c) | `E-11-accueil-trusted.png` | E-11 Accueil : badge « Appareil protégé », état TRUSTED, solde | non observée |
-| (c) | `serveur-c-pdp-device-active.txt` | Côté serveur : `pdp.device` ACTIVE pour le compte (lecture seule, console ou SQL en lecture) | non observée |
-| (d) | `E-03-numero-reenrolement.png` | E-03 Numéro après désinstallation/réinstallation | non observée |
+| (c) | `E-11-accueil-trusted.png` | E-11 Accueil : badge « Appareil protégé », état TRUSTED, solde | **observée** |
+| (c) | `serveur-c-pdp-device-active.txt` | Côté serveur : `pdp.device` ACTIVE pour le compte (lecture seule, console ou SQL en lecture) | **observée** |
+| (d) | `E-03-numero-reenrolement.png` | E-03 Numéro après désinstallation/réinstallation | **observée** |
 | (d) | — | E-06 PIN, E-20 Clé de récupération, E-08/E-09 nouvelle clé : **protégés** | — |
-| (d) | `E-07-securisation-reenrolement.png` | E-07 Sécurisation (nouvelle clé) | non observée |
-| (d) | `E-22-reenrolement-reussi.png` | E-22 Réenrôlement réussi (ancienne clé révoquée) | non observée |
-| (d) | `E-23-alertes-device-rebound.png` | E-23 Alertes : `DEVICE_REBOUND` informative (si un second appareil est disponible, sinon « non observée : un seul appareil ») | non observée |
+| (d) | — | E-07 Sécurisation (nouvelle clé) — non capturé (sécurisation menée par la propriétaire, écran passé) | non observée |
+| (d) | `E-22-reenrolement-reussi-accueil.png`, `serveur-d-reenrolement.txt` | E-22 Réenrôlement réussi (ancienne clé révoquée) — accueil après ré-enrôlement, ancienne clé RÉVOQUÉE, nouvelle ACTIVE | **observée** |
+| (d) | `E-23-alertes-device-rebound.png` | E-23 Alertes : `DEVICE_REBOUND` informative (si un second appareil est disponible, sinon « non observée : un seul appareil ») — sur le même appareil (lecture par la session du nouveau téléphone) | **observée** |
 | (e) | `E-12-beneficiaire.png` | E-12 Bénéficiaire 677001101 (titulaire affiché, badge « nouveau bénéficiaire ») — **étape (e) seulement APRÈS la fenêtre 4 de A (« prêt par construction » déployé : plus de premier /evaluate DEGRADED à froid)** | non observée (après fenêtre 4) |
 | (e) | `E-13-montant.png` | E-13 Montant (< 50 000 FCFA, de jour) | non observée |
 | (e) | — | E-14 Confirmation, E-15 Autorisation (PIN) : **protégés** | — |

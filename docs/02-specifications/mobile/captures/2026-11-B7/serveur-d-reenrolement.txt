@@ -1,0 +1,10 @@
+# Preuve côté serveur — étape (d) flux D (ré-enrôlement), 2026-10-25 ~11:01Z (lectures SQL seules)
+## pdp.device (677000200) : state | enrolled_at | revoked_at | id(8)
+ACTIVE|2026-10-25 10:59:16.679565+00||0a4d704b
+REVOKED|2026-10-25 10:52:23.483351+00|2026-10-25 11:00:02.691487+00|d4d95427
+REVOKED|2026-10-25 10:50:12.547881+00||e6ecb8f0
+## core.enrolment (2 derniers) : stage | created_at
+DONE|2026-10-25 10:57:47.70003+00
+DONE|2026-10-25 10:49:08.428831+00
+## core.alert (677000200) : type | status | actionable | created_at | summary
+DEVICE_REBOUND|INFO|f|2026-10-25 11:00:02.711238+00|Un nouveau téléphone a été lié à votre compte.
