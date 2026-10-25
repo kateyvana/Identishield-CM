@@ -162,6 +162,17 @@ class RecoveryFlowTest {
         assertTrue("ni delete ni generate sans verrou", keys.log.isEmpty())
     }
 
+    /** D-B7-1 : un 503 à /enrolment/recover est transitoire : on reste sur E-20, aucune clé touchée. */
+    @Test
+    fun serviceUnavailableOnRecover_staysOnE20_withTheServerWait_andTouchesNoKey() {
+        server.recoverResults += ApiResult.Refused(503, "SERVICE_UNAVAILABLE", retryAfterSeconds = 6L)
+        val vm = vm()
+        untilRecovery(vm)
+        vm.submitRecoveryCode(OLD_CODE)
+        assertEquals(EnrolStep.Recovery(EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = 6L), vm.step.value)
+        assertTrue("ni delete ni generate sur un 503", keys.log.isEmpty())
+    }
+
     private fun untilRecovery(vm: EnrolmentViewModel) {
         vm.beginWithNumber(NUMBER)
         vm.submitPin(PIN)

@@ -77,10 +77,17 @@ object EnrolTags {
     const val HOME = "E-11"
 }
 
+/** Texte d'une erreur ; [retryAfterSeconds] (Retry-After du serveur) ne sert qu'au 503 transitoire (D-B7-1). */
 @Composable
-fun errorMessage(error: EnrolError): String =
-    stringResource(
-        when (error) {
+fun errorMessage(
+    error: EnrolError,
+    retryAfterSeconds: Long? = null,
+): String =
+    if (error == EnrolError.SERVICE_UNAVAILABLE && retryAfterSeconds != null) {
+        stringResource(R.string.error_service_unavailable_in, retryAfterSeconds)
+    } else {
+        stringResource(
+            when (error) {
             EnrolError.NUMBER_INVALID -> R.string.error_number_invalid
             EnrolError.CREDENTIALS_INVALID -> R.string.error_credentials_invalid
             EnrolError.OTP_INVALID -> R.string.error_otp_invalid
@@ -93,9 +100,11 @@ fun errorMessage(error: EnrolError): String =
             EnrolError.UNLOCK_CANCELLED -> R.string.error_unlock_cancelled
             EnrolError.CONFIRM_MISMATCH -> R.string.error_confirm_mismatch
             EnrolError.PROCESS_RESTARTED -> R.string.error_process_restarted
+            EnrolError.SERVICE_UNAVAILABLE -> R.string.error_service_unavailable
             EnrolError.UNEXPECTED -> R.string.error_unexpected
-        },
-    )
+            },
+        )
+    }
 
 // ---- E-02 Bienvenue -----------------------------------------------------------------------------
 @Composable
@@ -171,7 +180,7 @@ fun NumberScreen(
         }
         VerticalGap(Spacing.S)
         BodyText(stringResource(R.string.number_hint))
-        step.error?.let { ErrorText(errorMessage(it)) }
+        step.error?.let { ErrorText(errorMessage(it, step.retryAfterSeconds)) }
         Spacer(Modifier.weight(1f))
         VerticalGap(Spacing.L)
         PrimaryButton(stringResource(R.string.action_continue), { onSubmit(value) }, enabled = value.isNotBlank())
@@ -201,7 +210,7 @@ fun PinScreen(
         PinDots(pin.length)
         VerticalGap(Spacing.XL)
         BodyText(stringResource(R.string.pin_note), align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        step.error?.let { ErrorText(errorMessage(it)) }
+        step.error?.let { ErrorText(errorMessage(it, step.retryAfterSeconds)) }
         Spacer(Modifier.weight(1f))
         VerticalGap(Spacing.M)
         Keypad(onDigit = { pin += it }, onDelete = { pin = pin.dropLast(1) })
@@ -279,7 +288,7 @@ fun OtpScreen(
         }
         VerticalGap(Spacing.L)
         BodyText(stringResource(R.string.otp_note))
-        step.error?.let { ErrorText(errorMessage(it)) }
+        step.error?.let { ErrorText(errorMessage(it, step.retryAfterSeconds)) }
         VerticalGap(Spacing.L)
         SecondaryButton(
             if (remaining > 0) stringResource(R.string.otp_resend_wait, remaining) else stringResource(R.string.otp_resend),
@@ -301,6 +310,7 @@ fun SecuringScreen(
     step: EnrolStep.Securing,
     onSecure: () -> Unit,
     onRestart: () -> Unit,
+    onRetryRegistration: () -> Unit = onSecure, // D-B7-1 : après un 503, rejoue l'enregistrement, même clé
 ) {
     // Lancement automatique à l'arrivée sur l'écran : la clé ne naît qu'ici, après l'OTP validé.
     LaunchedEffect(Unit) { if (step.error == null && step.stage == SecuringStage.CREATING_KEY) onSecure() }
@@ -341,12 +351,18 @@ fun SecuringScreen(
             }
         }
         step.error?.let { error ->
-            ErrorText(if (error == EnrolError.UNREACHABLE) stringResource(R.string.error_connection_lost) else errorMessage(error))
+            ErrorText(
+                if (error == EnrolError.UNREACHABLE) stringResource(R.string.error_connection_lost) else errorMessage(error, step.retryAfterSeconds),
+            )
             VerticalGap(Spacing.L)
             val restart = error == EnrolError.DEVICE_REFUSED || error == EnrolError.SESSION_EXPIRED
             SecondaryButton(
                 stringResource(if (restart) R.string.welcome_start else R.string.securing_retry),
-                if (restart) onRestart else onSecure,
+                when {
+                    restart -> onRestart
+                    error == EnrolError.SERVICE_UNAVAILABLE -> onRetryRegistration // même clé, même requête
+                    else -> onSecure
+                },
                 tag = "securing-retry",
             )
         }
@@ -500,7 +516,7 @@ fun ConfirmKeyScreen(
         VerticalGap(Spacing.S)
         BodyText(stringResource(R.string.confirm_masked_hint))
         BodyText(stringResource(R.string.confirm_note))
-        step.error?.let { ErrorText(errorMessage(it)) }
+        step.error?.let { ErrorText(errorMessage(it, step.retryAfterSeconds)) }
         Spacer(Modifier.weight(1f))
         VerticalGap(Spacing.L)
         PrimaryButton(
