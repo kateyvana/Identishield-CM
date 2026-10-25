@@ -545,3 +545,104 @@ pool ouvert 09:22:10Z, puis 51 ms) pour que le premier appel du couloir B soit n
 retiré 09:21Z, « VM à toi » au couloir B. **Non fait** : P4 (ACL Tailscale, propriétaire) ;
 `check-stack` (une seule exécution, à partir de 15:48:31Z, levée du gel VEL) ; condition ADR-030 de
 #67 ; `passwd` de `isc` (incident du 24/10) ; signature des amendements PROPOSÉS d'ADR-030 et ADR-041.
+
+### Fenêtre 4 (2026-10-25, 11:02Z → 11:26Z) — `main` 9ea36dc (#114, #115, #116) + preuve (e) du prêt par construction
+
+Ordre du superviseur technique du 25/10 (midi) : après la fusion de #114, #115, #116 et sur le signal
+« VM libre » du couloir B (B7 (c) flux A et (d) flux D faits et observés sur la tablette), même plan
+que la fenêtre 3, plus la **preuve (e)** : trois fois « `docker restart isc-pdp` → attendre `healthy`
+→ premier virement par `verify_transfer` → `EXECUTED`, jamais `DEGRADED` », espacés au-delà de la
+fenêtre VELOCITY, avec l'ordre « base jointe à l'initialisation » AVANT « Tomcat started » dans le
+journal du PDP et « PDP pret (essai n/N) » dans celui du cœur ; **si l'un des trois sort autre
+chose : ARRÊT, rapport, pas de correction unilatérale.**
+
+**Porte constatée** : #114 fusionnée 09:57Z, #116 10:45:17Z, #115 10:45:34Z ; CI `main` 9ea36dc
+`success` ; « VM LIBRE » de B à 11:0xZ (témoin B effacé). Témoin A posé 11:02:32Z (`jusqu-a`
+12:22:32Z), B prévenu avant et après.
+
+**Export 1 (11:02:48Z, cœur et PDP arrêtés)** : `audit-export-2026-10-25T110248Z.csv`, 120281 entrées,
+`sha256 8c8b0a34eabcfc7f9b0910f7103c4a2844177dbadc34b9a378724738ae6af206` = fin de la fenêtre 3,
+0 rupture, ancre conforme. **Constat** : le flux A et le flux D réels du couloir B (enrôlement,
+activation, révocation, alerte `DEVICE_REBOUND`) n'ont écrit **aucune** entrée dans
+`pdp.audit_entry` — la chaîne d'audit ne couvre aujourd'hui que les décisions `/evaluate`, les
+transitions de confiance et les refus de ré-enrôlement ; à rapprocher d'ES-25/ES-27 par le couloir B.
+`git pull --ff-only` : fbdaf3b → 9ea36dc.
+
+**`make up` avec construction** : 11:03:22Z → 11:19:33Z (**16 min 11 s**, plus long que les fenêtres 2
+et 3 : téléchargement de la distribution Gradle lent dans les deux images), `FIN_MAKE_UP_RC=0`,
+profil demo inclus ; `isc-migrate` 002→006 (5 rejouées, aucune erreur) ; `isc-ca-init` CA réutilisée,
+0 feuille ajoutée, empreinte `70:58:2E:19…1A:BA:2F` inchangée ; 8443 `verify=0` depuis la VM et le
+poste ; 8080 et 3000 refusés depuis le poste ; 29 comptes (inchangé).
+
+**Prêt par construction, OBSERVÉ au démarrage de la pile** (journal PDP, dans l'ordre) :
+
+```text
+11:19:26.321Z  HikariPool-1 - Starting...
+11:19:27.012Z  HikariPool-1 - Start completed.
+11:19:27.067Z  c.i.pdp.web.DatabaseReadiness : base jointe à l'initialisation : pool ouvert avant l'ouverture du port
+11:19:28.780Z  TomcatWebServer : Tomcat started on port 8443 (https)
+11:19:28.808Z  Started Application in 11.011 seconds
+```
+
+Cœur : `11:19:48.084Z Tomcat started on ports 8080 (http), 8443 (https)` puis
+`11:19:55.815Z PdpClient : PDP pret (essai 3/20)` puis `coeur pret (mode service)`. `/health` du PDP
+depuis le conteneur du cœur (mTLS) : `{"service":"isc-pdp","status":"UP"} http=200 t=0.098s`. Le
+même ordre a été observé aux deux redémarrages suivants du PDP (preuve (e) essai 1 à 11:20:56Z,
+relance après l'export 2 à 11:23Z), et le cœur relancé a de nouveau journalisé « PDP pret ».
+
+**Essai 3/20, pas 1/20** : à chaque démarrage à froid d'une JVM du cœur (service et conteneur
+jetable `CORE_MODE=transfer`), les deux premières sondes `/health` échouent et la troisième réussit :
+le premier établissement TLS (chargement des classes, poignée de main) dépasse le délai de 800 ms de
+la sonde. C'est exactement le coût que l'attente bornée absorbe ; il est **mesuré** ici (≈ 2,6 s entre
+le premier essai et « PDP pret »), pas supposé.
+
+**Preuve (e) — ARRÊTÉE à l'essai 1 (`~/preuve-e-pret.sh`, sorties brutes)** :
+
+```text
+=== essai 1 : docker restart isc-pdp a 2026-10-25T11:20:43Z ===
+isc-pdp healthy a 2026-10-25T11:21:02Z
+  11:20:56.859Z  DatabaseReadiness : base jointe à l'initialisation : pool ouvert avant l'ouverture du port
+  11:20:58.668Z  TomcatWebServer : Tomcat started on port 8443 (https)
+--- premier virement : tools/verify_transfer.sh a 2026-10-25T11:21:02Z ---
+  PDP pret (essai 3/20)
+  TRANSFER_STATE=REJECTED
+  TRANSFER_DECISION_ID=802568ad-e006-4b1b-a786-0ddb09ddc0b5
+  [ECHEC] etat du transfert=REJECTED (attendu EXECUTED)
+  [ECHEC] debit incorrect : 815000 -> 815000
+  [ECHEC] 0 entree(s) d'audit pour 802568ad-e006-4b1b-a786-0ddb09ddc0b5 (attendu 1)
+  verify-transfer: ROUGE
+TRANSFER_STATE imprime par le coeur : REJECTED a 2026-10-25T11:21:20Z
+PREUVE_E_ARRET : essai 1, TRANSFER_STATE=REJECTED (attendu EXECUTED)
+```
+
+**Cause, prouvée (pas un défaut de #116)** : `REJECTED` (ni `EXECUTED` ni `DEGRADED`) avec **zéro**
+entrée d'audit pour ce `decisionId` : or `EvaluateController` écrit une entrée pour **toute**
+décision, `ACCOUNT_FROZEN` compris ; le PDP n'a donc **pas été appelé**. Le cœur a refusé **avant**
+`/evaluate` par la règle **A5-00** (#57, `TransferService.operate` : « numéro sans SIM connue de
+l'opérateur ») : `core.hlr_subscriber` a **26 lignes** — les 25 comptes de démonstration (seeder B8,
+24/10 19:51Z) et 677000007 (23/10) — et **aucune pour 677000001**, l'émetteur de `verify_transfer`
+et `verify_ussd`. `init.sql` crée la table sans la peupler ; `AccountBootstrap` crée les comptes
+677000001/677000002 mais pas leur SIM ; les `verify_*` d'attaque renseignent le HLR de leur victime,
+pas celui des comptes techniques. A5-00 est entré dans `main` le 24/10 (c1d5d85, #87) et dans la VM
+à la fenêtre 1 (24/10 20:04Z) ; le dernier `check-stack` (24/10 15:48Z) a tourné sur l'ancien code :
+**`verify_transfer` et `verify_ussd` sont structurellement ROUGES sur la pile réelle depuis A5-00**,
+indépendamment du gel. Second obstacle, cumulatif : 677000001 est **FROZEN** (`FREEZE_DECISION`,
+`freezeUntil 2026-10-25T15:48:31.529Z`, `GET /trust` et `pdp.trust_state` concordants) — même avec
+une SIM, le PDP aurait rendu `REJECTED ACCOUNT_FROZEN` jusqu'à 15:48:31Z.
+
+**Décision demandée, rien corrigé seul.** La preuve (e) et le `check-stack` exigent que l'émetteur
+des outils ait une SIM au HLR. Deux voies : (a) `AccountBootstrap.ensureSeedAccounts` donne aussi
+leur SIM aux deux comptes techniques (`insertIfAbsent` dans `core.hlr_subscriber`, IMSI fixes
+`624010000000001`/`…002`) — l'opérateur simulé connaît ses abonnés, cohérent avec A5-00 ; (b) la
+fixture dans `verify_transfer.sh`/`verify_ussd.sh`, à côté de la fixture de solde existante
+(`UPDATE core.account … balance_xaf`). Recommandation du couloir A : (a). Dans les deux cas, la
+preuve (e) et le `check-stack` se font **après 15:48:31Z** (levée du gel), dans une fenêtre courte.
+
+**Export 2 (11:23:18Z, cœur et PDP arrêtés)** : 120281 entrées, sha `8c8b0a34…` identique, 0 rupture,
+ancre conforme : la transaction rejetée n'a rien écrit dans la chaîne (cohérent : refus du cœur
+avant `/evaluate`), le solde de 677000001 est inchangé (815000).
+
+**État final (11:27Z)** : `main` 9ea36dc déployé (#115 symétrie, #116 prêt par construction), 5
+conteneurs `Up`, `isc-pdp (healthy)`, cœur « PDP pret » ; témoin retiré 11:26Z, « VM à toi » au
+couloir B pour son (e) virement ALLOW. **Non fait** : preuve (e) (3/3) ; `check-stack` ; carte #112
+(reste En cours) ; P4 déjà posée par la propriétaire (ACL : B a joint le 8443 depuis la tablette).
