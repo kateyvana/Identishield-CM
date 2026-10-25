@@ -40,5 +40,44 @@ Sous témoin B. Certificats PUBLICS lus dans le volume `isc-certs` de la VM (con
 
 ### étapes (c) à (g) — non observées
 
-En attente du téléphone (Tailscale connecté par la propriétaire, ACL), du solde de 677000200 et du
-créneau AC-02 avec le couloir A.
+En attente du téléphone (Tailscale connecté par la propriétaire, ACL posée), du solde de 677000200
+(virement P2P de 20 000 FCFA depuis 677000123 par le couloir A, sous témoin — décision du
+superviseur du 2026-10-25) et du créneau AC-02 avec le couloir A. Aucune reprise de la VM avant ces
+trois conditions.
+
+## Captures attendues (ISC-MOB-SPEC v1.3, tableau des écrans ; écrans FLAG_SECURE exclus : E-06, E-08, E-09, E-14, E-15, E-20)
+
+Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce dossier.
+
+| Étape | Fichier attendu | Écran / preuve | État |
+|---|---|---|---|
+| (b) | `E-01-lancement.png` | E-01 Lancement sur le téléphone, APK d71eb7ea installé | non observée |
+| (c) | `E-02-bienvenue.png` | E-02 Bienvenue | non observée |
+| (c) | `E-03-numero.png` | E-03 Numéro (677000200 saisi) | non observée |
+| (c) | — | E-06 PIN : **protégé**, pas de capture | — |
+| (c) | `E-04-attente.png` | E-04 Attente (OTP émis côté serveur) | non observée |
+| (c) | `E-05-otp.png` | E-05 OTP (champ saisi, code masqué) | non observée |
+| (c) | `E-07-securisation.png` | E-07 Sécurisation (attestation réelle → PDP ; si refus : écran d'erreur capturé et **ARRÊT**) | non observée |
+| (c) | — | E-08 / E-09 Clé de récupération et confirmation : **protégés**, pas de capture | — |
+| (c) | `E-11-accueil-trusted.png` | E-11 Accueil : badge « Appareil protégé », état TRUSTED, solde | non observée |
+| (c) | `serveur-c-pdp-device-active.txt` | Côté serveur : `pdp.device` ACTIVE pour le compte (lecture seule, console ou SQL en lecture) | non observée |
+| (d) | `E-03-numero-reenrolement.png` | E-03 Numéro après désinstallation/réinstallation | non observée |
+| (d) | — | E-06 PIN, E-20 Clé de récupération, E-08/E-09 nouvelle clé : **protégés** | — |
+| (d) | `E-07-securisation-reenrolement.png` | E-07 Sécurisation (nouvelle clé) | non observée |
+| (d) | `E-22-reenrolement-reussi.png` | E-22 Réenrôlement réussi (ancienne clé révoquée) | non observée |
+| (d) | `E-23-alertes-device-rebound.png` | E-23 Alertes : `DEVICE_REBOUND` informative (si un second appareil est disponible, sinon « non observée : un seul appareil ») | non observée |
+| (e) | `E-12-beneficiaire.png` | E-12 Bénéficiaire 677001101 (titulaire affiché, badge « nouveau bénéficiaire ») | non observée |
+| (e) | `E-13-montant.png` | E-13 Montant (< 50 000 FCFA, de jour) | non observée |
+| (e) | — | E-14 Confirmation, E-15 Autorisation (PIN) : **protégés** | — |
+| (e) | `E-16-succes.png` | E-16 Succès (ALLOW, EXECUTED) | non observée |
+| (e) | `E-19-historique.png` | E-19 Historique (ligne OUT EXECUTED) | non observée |
+| (e) | `serveur-e-audit-signature.txt` | Côté serveur : entrée d'audit de la décision avec `proofType=SIGNATURE` (console intégrité EF-34 ou lecture seule du journal) | non observée |
+| (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → `624010000000666` | non observée |
+| (f) | `E-23-alertes-sim-changed.png` | E-23 Alertes : `SIM_CHANGED` OPEN avec actions | non observée |
+| (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | non observée |
+| (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : état FROZEN affiché | non observée |
+| (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | non observée |
+| (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | non observée |
+| (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) | non observée |
+| (g) | `E-10-deverrouillage-arriere-plan.png` | E-10 après 61 s en arrière-plan : verrou (charte §10.7) | non observée |
+| (g) | `E-11-accueil-tablette.png`, `E-11-accueil-police-200.png` | Mise en page tablette et police 200 % (charte §10.8) | non observée |
