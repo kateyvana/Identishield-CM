@@ -53,11 +53,59 @@ brute serveur** à coller : c'est en soi un constat (voir §4, point 3).
 
 - **Sur la pile servie** : non rejouée volontairement (chaque `/device/register` écrit une clé et
   révoque la précédente ; le compte de démonstration est en état de passe).
-- **Sur la pile isolée** (`infra/compose.b3a-isolement.yml`, images `isc-*-b3a`) : à faire à la
-  prochaine fenêtre VM libre, sous témoin : redémarrer `isc-b3a-pdp`, mesurer la durée du **premier**
-  `POST /device/register` (en mTLS depuis le réseau isolé) puis d'un second ; attendu : premier
-  appel > 1 000 ms, second ≪ 1 000 ms. Résultat : **non observé à ce jour** (la VM est au couloir A :
-  témoin, `check-stack` à 15:48Z).
+- **Sur la pile isolée** (`infra/compose.b3a-isolement.yml`, projet `isc-b3a`, « VM à toi » de la
+  propriétaire à 16:52Z, témoin B 16:53→17:23Z) : **REPRODUIT** le 2026-10-25, 17:01–17:02Z.
+
+  Méthode. PDP isolé = **l'image de la pile servie** (`isc-pdp`, construite 11:19Z, `main`), base
+  isolée neuve (init + migrations 001–006), appels en mTLS depuis `isc-b3a-net` (`isc-tools-b3a`,
+  `curl` avec `core.crt`/`core.key`, horloges de `curl`). Chaque appel est un **premier enrôlement
+  complet** : chaîne d'attestation TEE fabriquée à l'exécution (même construction que la fixture
+  `pdp/src/test/…/TestAttestation`, KeyDescription réaliste, racine jetable), défi aléatoire signé
+  par la feuille, pas de code → le PDP parcourt tout le chemin : DER strict, signature du défi,
+  **PBKDF2 44 000** du code émis, **insertion**. Preuve du chemin complet : 6 lignes `pdp.device`
+  **PENDING** et `count(pdp.recovery_code) = 6` sur la base isolée. Aucun corps de réponse
+  conservé (il porte le code de récupération). Deux séries, chacune après `docker restart` du PDP
+  isolé et attente de `healthy` (22 s) :
+
+  | Série | Appel | Statut | Total (`time_total`) | dont TLS (`time_appconnect`) | Côté serveur ≈ total − TLS |
+  |---|---|---|---|---|---|
+  | 1 | 1er (froid) | 200 | **2,246 s** | 0,453 s | **≈ 1,79 s** |
+  | 1 | 2e | 200 | 0,180 s | 0,055 s | ≈ 0,13 s |
+  | 1 | 3e | 200 | 0,153 s | 0,038 s | ≈ 0,12 s |
+  | 2 | 1er (froid) | 200 | **2,582 s** | 0,471 s | **≈ 2,11 s** |
+  | 2 | 2e | 200 | 0,330 s | 0,087 s | ≈ 0,24 s |
+  | 2 | 3e | 200 | 0,199 s | 0,053 s | ≈ 0,15 s |
+
+  Lignes brutes :
+
+  ```text
+  === serie 1 : redemarrage a froid de isc-b3a-pdp 17:01:32.509Z
+  pdp healthy=healthy apres 22.0 s, 1er appel a 17:01:55.929Z
+  body-1 http=200 total=2.245920s tls_done=0.452513s first_byte=2.245268s
+  body-2 http=200 total=0.180157s tls_done=0.054904s first_byte=0.179018s
+  body-3 http=200 total=0.153314s tls_done=0.037590s first_byte=0.149655s
+  === serie 2 : redemarrage a froid de isc-b3a-pdp 17:02:01.693Z
+  pdp healthy=healthy apres 22.0 s, 1er appel a 17:02:25.331Z
+  body-4 http=200 total=2.581800s tls_done=0.471327s first_byte=2.578224s
+  body-5 http=200 total=0.330411s tls_done=0.086964s first_byte=0.328641s
+  body-6 http=200 total=0.198660s tls_done=0.052732s first_byte=0.197680s
+  ```
+
+  Lecture. Le **premier** `/device/register` après un démarrage du PDP dure **2,2 à 2,6 s**, soit
+  **plus du double** de `core.device.timeout-ms = 1000` ; le PDP, lui, termine et écrit la clé
+  (ligne PENDING), exactement comme à 10:50:12 sur la pile servie. Dès le deuxième appel : 0,15 à
+  0,33 s. Le « prêt par construction » (#116) n'y change rien : la base est jointe et le servlet
+  initialisé **avant** l'ouverture du port (journal du PDP isolé), le coût restant est le chargement
+  et la compilation à la volée du chemin attestation + PBKDF2, que seul un premier passage réchauffe.
+  Hypothèse (b) du §2 **confirmée** par la mesure ; la seconde hypothèse envisagée dans la passe
+  (réponse 4xx du PDP mal classée par le cœur) est exclue : le PDP répond 200.
+
+  Constats annexes de la reproduction (à corriger à part) : (1) `compose.b3a-isolement.yml` ne
+  renomme pas le **pont** `br-isc-mobile` fixé par le fichier partagé depuis L7-b → collision au
+  démarrage (contourné par une surcouche hors dépôt qui nomme le pont `br-isc-b3a-mob`) ; (2) l'image
+  `isc-pdp-b3a` de la VM (22/10) est antérieure aux routes `/device/*` (404) : l'essai a tourné sur
+  l'image servie `isc-pdp`. Même pour ce 404, le premier appel à froid coûtait 0,77–1,24 s (TLS à
+  froid 0,37–0,62 s). Pile isolée retirée (`down -v`) à la fin ; pile servie non touchée.
 
 ## 4. Verdict et correctifs proposés (PR à part, après accord)
 
@@ -67,10 +115,18 @@ brute serveur** à coller : c'est en soi un constat (voir §4, point 3).
    rejoue la même requête avec la même clé (la règle « une seule clé EN ATTENTE » du PDP absorbe la
    réinscription si la première était passée). Test JVM : 503 → état `Securing(REGISTERING,
    SERVICE_UNAVAILABLE)` avec `retryAfter`, clé conservée.
-2. **Cœur (couloir B, `core/mobile`, probable)** : chauffer le chemin `/device/*` au démarrage comme
-   `/health` (un `GET /device/state` sur un compte inexistant, lecture seule, dans le `warmup`) OU
-   relever `core.device.timeout-ms` d'après une mesure à froid — **décision après la mesure du §3**,
-   pas avant.
+2. **Cœur / PDP (probable → mesuré, §3)** : un `GET /device/state` de chauffe **ne suffit pas** (il
+   ne passe ni par la chaîne DER, ni par la signature, ni par PBKDF2 : ce sont eux qui coûtent
+   ~2 s). Deux options mesurables, à trancher par la propriétaire :
+   (a) **chauffe réelle côté PDP au démarrage** : exécuter une fois, avant l'ouverture du port, la
+   vérification d'une chaîne d'attestation fabriquée en mémoire + une dérivation PBKDF2 (aucune
+   écriture, aucune clé conservée) — supprime la cause ; preuve attendue : premier appel réel
+   < 1 000 ms sur pile isolée ;
+   (b) **délai dédié** `core.device.register-timeout-ms` ≥ 3 000 (le 1 000 ms reste pour
+   `/device/verify`, `/nonce`, `/state`) — absorbe la cause sans la supprimer, et allonge d'autant
+   l'attente de l'usager au premier enrôlement après un redémarrage.
+   Dans les deux cas, le correctif applicatif du point 1 reste nécessaire (un 503 ne doit jamais
+   détruire la clé).
 3. **Observabilité (les deux couloirs, décision superviseur)** : ni le cœur ni le PDP ne
    journalisent un délai dépassé vers le PDP ni la durée d'une requête interne ; une ligne WARN côté
    cœur (« /device/register : délai dépassé après 1000 ms ») aurait donné la cause en une lecture.
