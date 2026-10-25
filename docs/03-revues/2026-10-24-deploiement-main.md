@@ -663,3 +663,24 @@ couloir B pour son (e) virement ALLOW. **Non fait** : preuve (e) (3/3) ; `check-
 - **Tentative côté attaquant : NON OBSERVÉE.** Elle n'a pas été exécutée par le couloir A ;
   décision de la propriétaire. Restent aussi à sa décision : la levée du gel de 677000200 et le
   retour de son HLR à 624010677000200.
+
+**Limite déclarée — 677000200 reste FROZEN / NOT_ME (décision du superviseur technique du
+2026-10-25).** Le compte est la preuve de B7 et reste en l'état. Sa levée exige l'outil opérateur
+d'ES-08 (quatre-yeux, justification, contrôle des rôles), qui **n'existe pas** :
+`TrustStateMachine.release(accountId, actor)` existe mais n'a ni appelant, ni route, ni outil.
+Aucune route improvisée. Carte mois 5 « levée de gel opérateur ES-08 ».
+
+### Comptes de la répétition générale et de la démo — constat en lecture seule (2026-10-25, 14:36Z)
+
+Décision du superviseur : répétition générale vers le 3/11 sur 677001102 (IMSI attaquant prévu
+624010000000668), démo du 6/11 sur 677001103 (…669), bénéficiaire 677001101.
+
+| MSISDN | Titulaire | Solde (FCFA) | IMSI au HLR | Clé ACTIVE | État de confiance PDP |
+|---|---|---|---|---|---|
+| 677001101 | Estelle MBARGA NGONO | 225 000 | 624010677001101 | aucune (0 clé) | aucun |
+| 677001102 | Patrick FOUDA ATANGANA | 290 000 | 624010677001102 | aucune (0 clé) | aucun |
+| 677001103 | Carine TCHOUPO KAMGA | 275 000 | 624010677001103 | aucune (0 clé) | aucun |
+
+Lignes HLR posées par le seeder B8 le 2026-10-24 à 19:51:55Z, jamais réattribuées. Les IMSI
+attaquants prévus (…668, …669) ne sont attribués à aucun numéro. Le solde de 677001101 inclut le
+virement de 5 000 FCFA de l'étape (e) de B7.
