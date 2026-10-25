@@ -35,8 +35,8 @@ tool() {
 # Le mode hlr de T2-10 : amorce l'IMSI initial et imprime la requete /evaluate EXACTE (inspection).
 core_hlr() {
   docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=hlr "$@" \
-    -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
-    java -Dspring.main.web-application-type=none -jar /app/app.jar 2>/dev/null
+    -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" --entrypoint java isc-core \
+    -Dspring.main.web-application-type=none -jar /app/app.jar 2>/dev/null
 }
 
 # Hygiene + amorcage de l'IMSI initial sur le numero de test (harnais, pas logique de production).

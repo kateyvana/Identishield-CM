@@ -45,6 +45,11 @@ core:
     breaker:
       failure-threshold: 3
       cooldown-ms: 5000
+    # Pret par construction (2026-10-25) : au demarrage, le coeur attend que /health du PDP
+    # reponde 200 (vrai aller-retour en base cote PDP), au plus warmup-attempts x warmup-delay-ms,
+    # puis continue quoi qu'il arrive (journalise). Le delai de 800 ms reste celui de production.
+    warmup-attempts: 20
+    warmup-delay-ms: 500
   # Routes /device/* du PDP (B3a) : délai DISTINCT de celui d'/evaluate, fixé d'après la mesure
   # de la dérivation PBKDF2 du code de récupération ; le calcul est dans ADR-042.
   device:

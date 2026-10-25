@@ -34,7 +34,9 @@ class MobileEnrolmentControllerTest {
           "c",
           "k",
           "a",
-          new PdpClientProperties.Breaker(3, 4_500));
+          new PdpClientProperties.Breaker(3, 4_500),
+          20,
+          500);
   private final MobileEnrolmentController controller =
       new MobileEnrolmentController(service, new ObjectMapper(), pdp);
   private final jakarta.servlet.http.HttpServletRequest http =
