@@ -63,10 +63,13 @@ networks:
     name: isc-b3a-mobile
     # Le fichier partagé fixe le NOM DU PONT Linux (br-isc-mobile, L7-b, règle DOCKER-USER de la
     # propriétaire). Deux réseaux ne peuvent pas porter le même pont : sans ce renommage, l'essai
-    # ne démarre pas (constaté le 2026-10-25). Ce pont-ci n'est couvert par aucune règle DOCKER-USER :
-    # l'essai n'y publie aucun port.
+    # ne démarre pas (constaté le 2026-10-25).
     driver_opts:
       com.docker.network.bridge.name: br-isc-b3a-mob
+    # Ce pont-ci n'est couvert par AUCUNE règle DOCKER-USER (L7-3 ne vise que br-isc-mobile) : sans
+    # « internal », le cœur de l'essai aurait une sortie Internet (relecture du couloir A,
+    # 2026-10-25). L'essai ne publie aucun port sur ce réseau : il est donc interne, comme isc-net.
+    internal: true
 
 volumes:
   pgdata:
