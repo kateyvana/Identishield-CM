@@ -1,14 +1,18 @@
 package cm.identishield.pdp.device;
 
+import cm.identishield.pdp.audit.AuditLog;
 import cm.identishield.pdp.device.DeviceRegistry.DeviceKey;
 import cm.identishield.pdp.device.EnrolmentThrottle.Key;
+import cm.identishield.pdp.trust.TrustStateMachine;
 import java.security.GeneralSecurityException;
 import java.security.Signature;
 import java.security.interfaces.ECPublicKey;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,6 +37,13 @@ import org.springframework.transaction.support.TransactionTemplate;
  * chaque échec compte pour l'origine, l'installation et le compte (ADR-030). Seule une clé
  * LOGICIELLE reste nommée (DEVICE_UNSUPPORTED) : elle parle de l'appareil de l'appelant, pas du
  * code.
+ *
+ * <p>Gel des ré-enrôlements (ES-27, A1-4 ; décision du superviseur du 2026-10-25, L-B5-2) : pendant
+ * {@code reenrolFrozenUntil} (posé par « ce n'est pas moi »), un ré-enrôlement reçoit EXACTEMENT le
+ * refus d'un code faux — même contenu, même code, même durée, toutes les vérifications faites —
+ * ES-22 l'emporte sur une réponse distincte. Le PDP écrit une entrée d'audit (cause REENROL_FROZEN)
+ * et compte la tentative (ES-24) ; aucune restriction nouvelle sur le compte. Le gel est lu en
+ * lecture seule ({@link TrustStateMachine#peek}), avant tout calcul, pour chaque compte déjà lié.
  *
  * <p>Revue ligne à ligne requise : vérification de signature, machine à états de la clé.
  */
@@ -81,6 +92,8 @@ public class DeviceEnrolment {
   private final DeviceRegistry registry;
   private final RecoveryCodes codes;
   private final EnrolmentThrottle throttle;
+  private final TrustStateMachine trust;
+  private final AuditLog auditLog;
   private final TransactionTemplate tx;
   private final Clock clock;
 
@@ -89,12 +102,16 @@ public class DeviceEnrolment {
       DeviceRegistry registry,
       RecoveryCodes codes,
       EnrolmentThrottle throttle,
+      TrustStateMachine trust,
+      AuditLog auditLog,
       PlatformTransactionManager transactions,
       Clock clock) {
     this.verifier = verifier;
     this.registry = registry;
     this.codes = codes;
     this.throttle = throttle;
+    this.trust = trust;
+    this.auditLog = auditLog;
     this.tx = new TransactionTemplate(transactions);
     this.clock = clock;
   }
@@ -124,12 +141,33 @@ public class DeviceEnrolment {
     if (locked.isPresent()) {
       return new Refused(Refusal.THROTTLED, locked.get());
     }
+    // Gel des ré-enrôlements : lu pour CHAQUE compte lié, avant les calculs (même durée gelé ou
+    // non).
+    Instant now = clock.instant();
+    Optional<Instant> frozenUntil =
+        trust
+            .peek(accountId)
+            .map(TrustStateMachine.Trust::reenrolFrozenUntil)
+            .filter(until -> now.isBefore(until));
     // Tout est vérifié, toujours, dans le même ordre : la durée ne désigne pas la faute.
     boolean codeOk = codes.matches(active.get().id(), recoveryCode == null ? "" : recoveryCode);
     byte[] challenge = decode(attestationChallenge);
     AttestationVerifier.Outcome outcome =
         challenge == null ? null : verifier.verify(attestationChain, publicKey, challenge);
     boolean signed = challenge != null && signedBy(publicKey, challenge, challengeSignature);
+    if (frozenUntil.isPresent()) {
+      // Pendant le gel, le refus est celui d'un code faux, quoi qu'aient donné les vérifications :
+      // rien ne distingue « gelé » de « code faux » (ES-22). Compté (ES-24) et journalisé.
+      throttle.failed(keys);
+      Map<String, Object> p = new LinkedHashMap<>();
+      p.put("event", "REENROL_REFUSED");
+      p.put("accountId", accountId);
+      p.put("cause", "REENROL_FROZEN");
+      p.put("reenrolFrozenUntil", frozenUntil.get().toString());
+      p.put("occurredAt", now.toString());
+      auditLog.append(p, now);
+      return new Refused(Refusal.RECOVERY_INVALID);
+    }
     if (outcome == AttestationVerifier.Outcome.SOFTWARE_KEY) {
       throttle.failed(keys);
       return new Refused(Refusal.DEVICE_UNSUPPORTED);
@@ -138,7 +176,6 @@ public class DeviceEnrolment {
       throttle.failed(keys);
       return new Refused(Refusal.RECOVERY_INVALID);
     }
-    Instant now = clock.instant();
     Registration r =
         tx.execute(
             status -> {
