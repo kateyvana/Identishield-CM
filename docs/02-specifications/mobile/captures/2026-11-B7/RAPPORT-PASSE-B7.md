@@ -161,9 +161,12 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
   A1-3), **`reenrol_frozen_until = 2026-10-26T11:36:13Z`** (REENROL_FREEZE 24 h) ; transition 60134
   TRUSTED → FROZEN ; audit seq 120283 `TRUST_FROZEN`/`NOT_ME` et 120284 `REENROL_FROZEN`/`SIM_CHANGE`
   avec l'`alertId` `46715ad0…` ; **solde 677000200 = 15 000, inchangé**. **ES-27 observé de bout en
-  bout.** E-24 après réponse (`E-24-apres-not-me-frozen.png`) : les boutons ont disparu ; l'état du
-  compte n'est pas affiché sur cet écran (**constat D-B7-3**, présentation : afficher « compte gelé »
-  après « ce n'est pas moi »).
+  bout.** E-24 après réponse (`E-24-apres-not-me-frozen.png`) : les boutons ont disparu et l'écran affiche en
+  rouge « Votre compte est gelé pour votre sécurité, et la liaison d'un nouveau téléphone est
+  suspendue. Rendez-vous chez un agent MTN avec votre pièce d'identité. » — **conforme** (un premier
+  relevé de libellés tronqué l'avait manqué ; rectifié à la relecture de la capture). **Constat
+  D-B7-3 (restreint)** : l'**accueil**, lui, n'affiche pas l'état FROZEN (badge « Appareil protégé »
+  seulement) alors que `GET /account` le porte.
 - Tentative de l'attaquant (A, SIM `…667`) : voir sorties du couloir A (`serveur-f-attaquant-refuse.txt`).
 
 ### 2026-10-25 11:44–11:47 UTC — étape (g) charte qualité mobile §10 (tablette SM-T515)
@@ -191,13 +194,13 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
 | (c) flux A réel, attestation acceptée, TRUSTED | **conforme, observée** (D-B7-1 : premier `/complete` en erreur générique) |
 | (d) flux D, ancienne clé révoquée, DEVICE_REBOUND | **conforme, observée** |
 | (e) virement ALLOW signé | **conforme, observée** (F-B7-2 : pas de `proofType` dans l'audit, preuve par le nonce) |
-| (f) SIM_CHANGED → « ce n'est pas moi » → FROZEN NOT_ME → virement bloqué | **conforme, observée** (D-B7-3 : état « gelé » non affiché) |
+| (f) SIM_CHANGED → « ce n'est pas moi » → FROZEN NOT_ME → virement bloqué | **conforme, observée** (D-B7-3 : état « gelé » non affiché sur l'ACCUEIL ; E-24 l'affiche) |
 | (f) tentative de l'attaquant (SIM `…667`, USSD puis ré-enrôlement sans code) | **non observée** — le couloir A ne l'exécute pas depuis sa session ; **décision de la propriétaire** (qui l'exécute, quand) |
 | (g) arrière-plan → verrou, police 200 %, paysage | **conforme, observée** ; rotation/mort du processus : passe B1a, non rejouées |
 
 **Constats déclarés** (aucun correctif pendant la passe) : **D-B7-1** erreur générique au premier
 `POST /enrolment/complete` (cause non journalisée côté application) ; **D-B7-3** après « ce n'est
-pas moi », ni E-24 ni l'accueil n'affichent « compte gelé » ; **F-B7-2** le payload d'audit du PDP
+pas moi », l'accueil n'affiche pas « compte gelé » (E-24 l'affiche) ; **F-B7-2** le payload d'audit du PDP
 n'a pas de clé `proofType` (preuve de signature = nonce consommé).
 
 **État laissé sur la pile servie — à décider par la propriétaire** : 677000200 est **FROZEN / NOT_ME**
@@ -236,7 +239,7 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → IMSI attaquant **distinct** des portes automatiques (ex. `624010000000667`, décision du 2026-10-25) — **étape (f) seulement APRÈS la fenêtre 4 de A et après (e)** | **observée** (11:33:12.916Z, par A) |
 | (f) | `E-11-accueil-alerte-sim.png`, `E-23-alertes-sim-changed.png` | E-23 Alertes : `SIM_CHANGED` OPEN avec actions | **observée** |
 | (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | **observée** |
-| (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : état FROZEN affiché — boutons disparus ; état du compte NON affiché (D-B7-3) | **observée** (sans état affiché) |
+| (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : « Votre compte est gelé pour votre sécurité… » affiché | **observée** |
 | (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | **observée** (FROZEN/NOT_ME, reenrol gelé 24 h) |
 | (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | **non observée** — le couloir A ne l'exécute pas depuis sa session ; décision de la propriétaire |
 | (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) — « Opération bloquée · Pour votre sécurité, cet envoi n'a pas été exécuté. Votre argent est toujours sur votre compte. Que faire ? … Aucun code ne vous sera demandé par téléphone. » ; serveur : REJECTED, veto ACCOUNT_FROZEN (audit 120286), solde 15 000 | **observée** |
