@@ -110,6 +110,37 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
   Un seul appareil : l'ancien téléphone « informé » n'est pas observable (L-B5-4). **Étape (d) :
   conforme, observée.**
 
+### 2026-10-25 11:27–11:31 UTC — étape (e) virement ALLOW (pile servie 9ea36dc, « prêt par construction » déployé par A à la fenêtre 4 ; témoin B)
+
+- Au retour sur l'application après ~25 min : **E-10 « Votre session a expiré. Déverrouillez à
+  nouveau. »** (`E-10-deverrouillage-session-expiree.png`) — expiration imposée par le serveur
+  (charte §10.7). PIN (automate) puis **invite système « Ouvrir votre compte — Entrez votre mot de
+  passe actuel »** : déverrouillage local exigé avant la signature du défi (S-14), **tapé par la
+  propriétaire** ; accueil.
+- « Envoyer » → **E-12** (`E-12-beneficiaire.png`, `E-12-beneficiaire-saisi.png`) : 677001101 →
+  **E-13** (`E-13-montant.png`, `E-13-montant-saisi.png`) : « À Estelle MBARGA NGONO · 677 001 101 »
+  (titulaire réel, ED-11), « Solde disponible : 20 000 FCFA », montants rapides 5 000 / 10 000 /
+  25 000 / 50 000 ; **5 000 FCFA** choisi (< 50 000, de jour : 12:30 Douala).
+- **E-14** (protégé) : « Vérifiez avant d'envoyer », bénéficiaire, « ● Nouveau bénéficiaire »,
+  5 000 FCFA → Confirmer → **E-15** (protégé) : « 1. Votre code PIN », « 🔐 2. Déverrouillez votre
+  téléphone pour confirmer » → PIN (automate) → invite système → mot de passe de la tablette tapé par
+  la propriétaire → signature par la clé de l'appareil.
+- **E-16 « Envoyé »** (`E-16-succes.png`) : 5 000 FCFA à Estelle MBARGA NGONO · 677 001 101,
+  Référence `50762db8-df8e-4808-9067-ca9d70151020`, « Signé par ce téléphone (SM-T515) » ; **E-19
+  Historique** (`E-19-historique.png`) : « Estelle MBARGA NGONO · 25 oct. 12:30 · Envoi · − 5 000 FCFA ».
+- Côté serveur (`serveur-e-audit-signature.txt`) : `core.transaction` P2P 5000 → 677001101, canal
+  **APP**, **EXECUTED**, `decision_id = 50762db8…` ; soldes 677000200 = **15 000**, 677001101 =
+  225 000 ; entrée `pdp.audit_entry` seq 120282 : `decision=ALLOW`, `vetoApplied=NONE`, score 15.
+  **Constat F-B7-2** : le payload d'audit **ne porte pas de clé `proofType`** (clés : type, score,
+  msisdn, decision, accountId, amountXaf, decisionId, evaluatedAt, vetoApplied, beneficiaryId,
+  requiredAction, ruleSetVersion, triggeredRules) ; la preuve « opération signée » est apportée par
+  `pdp.nonce` : le nonce émis à 11:29:54Z pour le compte a été **consommé à 11:30:02.79Z**, à
+  l'instant du `/evaluate` — un nonce n'est consommé que par une signature **valide**
+  (`SignatureVerifier` : signature d'abord, nonce ensuite). À remonter au couloir A / superviseur
+  (proofType dans le payload d'audit ?), pas de correctif pendant la passe. Pas de mode dégradé
+  observé (premier `/evaluate` après le redémarrage de la fenêtre 4 : nominal — prêt par
+  construction). **Étape (e) : conforme, observée.**
+
 ## Captures attendues (ISC-MOB-SPEC v1.3, tableau des écrans ; écrans FLAG_SECURE exclus : E-06, E-08, E-09, E-14, E-15, E-20)
 
 Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce dossier.
@@ -131,12 +162,12 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (d) | — | E-07 Sécurisation (nouvelle clé) — non capturé (sécurisation menée par la propriétaire, écran passé) | non observée |
 | (d) | `E-22-reenrolement-reussi-accueil.png`, `serveur-d-reenrolement.txt` | E-22 Réenrôlement réussi (ancienne clé révoquée) — accueil après ré-enrôlement, ancienne clé RÉVOQUÉE, nouvelle ACTIVE | **observée** |
 | (d) | `E-23-alertes-device-rebound.png` | E-23 Alertes : `DEVICE_REBOUND` informative (si un second appareil est disponible, sinon « non observée : un seul appareil ») — sur le même appareil (lecture par la session du nouveau téléphone) | **observée** |
-| (e) | `E-12-beneficiaire.png` | E-12 Bénéficiaire 677001101 (titulaire affiché, badge « nouveau bénéficiaire ») — **étape (e) seulement APRÈS la fenêtre 4 de A (« prêt par construction » déployé : plus de premier /evaluate DEGRADED à froid)** | non observée (après fenêtre 4) |
-| (e) | `E-13-montant.png` | E-13 Montant (< 50 000 FCFA, de jour) | non observée |
+| (e) | `E-12-beneficiaire.png`, `E-12-beneficiaire-saisi.png` | E-12 Bénéficiaire 677001101 (titulaire affiché, badge « nouveau bénéficiaire ») — **étape (e) seulement APRÈS la fenêtre 4 de A (« prêt par construction » déployé : plus de premier /evaluate DEGRADED à froid)** | **observée** |
+| (e) | `E-13-montant.png`, `E-13-montant-saisi.png` | E-13 Montant (< 50 000 FCFA, de jour) | **observée** |
 | (e) | — | E-14 Confirmation, E-15 Autorisation (PIN) : **protégés** | — |
-| (e) | `E-16-succes.png` | E-16 Succès (ALLOW, EXECUTED) ; si DEGRADED malgré la fenêtre 4 : écrit tel quel | non observée (après fenêtre 4) |
-| (e) | `E-19-historique.png` | E-19 Historique (ligne OUT EXECUTED) | non observée |
-| (e) | `serveur-e-audit-signature.txt` | Côté serveur : entrée d'audit de la décision avec `proofType=SIGNATURE` (console intégrité EF-34 ou lecture seule du journal) | non observée |
+| (e) | `E-16-succes.png` | E-16 Succès (ALLOW, EXECUTED) ; si DEGRADED malgré la fenêtre 4 : écrit tel quel | **observée** (ALLOW, EXECUTED, 50762db8) |
+| (e) | `E-19-historique.png` | E-19 Historique (ligne OUT EXECUTED) | **observée** |
+| (e) | `serveur-e-audit-signature.txt` | Côté serveur : entrée d'audit de la décision avec `proofType=SIGNATURE` (console intégrité EF-34 ou lecture seule du journal) — preuve par le nonce consommé (F-B7-2 : pas de proofType dans le payload) | **observée** |
 | (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → IMSI attaquant **distinct** des portes automatiques (ex. `624010000000667`, décision du 2026-10-25) — **étape (f) seulement APRÈS la fenêtre 4 de A et après (e)** | non observée (après fenêtre 4) |
 | (f) | `E-23-alertes-sim-changed.png` | E-23 Alertes : `SIM_CHANGED` OPEN avec actions | non observée |
 | (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | non observée |
@@ -144,5 +175,5 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | non observée |
 | (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | non observée |
 | (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) | non observée |
-| (g) | `E-10-deverrouillage-arriere-plan.png` | E-10 après 61 s en arrière-plan : verrou (charte §10.7) | non observée |
+| (g) | `E-10-deverrouillage-session-expiree.png` | E-10 après 61 s en arrière-plan : verrou (charte §10.7) — observé après ~25 min : « Votre session a expiré » | **observée** |
 | (g) | `E-11-accueil-tablette.png`, `E-11-accueil-police-200.png` | Mise en page tablette et police 200 % (charte §10.8) | non observée |

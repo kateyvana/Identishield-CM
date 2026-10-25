@@ -1,0 +1,15 @@
+# Preuve côté serveur — étape (e) virement ALLOW, 2026-10-25 11:30Z (lectures SQL seules, pile servie 9ea36dc)
+## core.transaction (677000200, dernière) : type | amount | beneficiary | channel | state | decision_id | created_at
+P2P|5000|677001101|APP|EXECUTED|50762db8-df8e-4808-9067-ca9d70151020|2026-10-25 11:30:02.611573+00
+## soldes après : 677000200 | 677001101
+677000200|15000
+677001101|225000
+## pdp.audit_entry — colonnes
+seq chain_index payload prev_hash hash written_at 
+## pdp.audit_entry — entrée de la décision 50762db8 (champs décision)
+120282|ALLOW||NONE|15||5000|P2P|
+## Preuve de la signature (le payload d'audit ne porte PAS de clé proofType : clés = type score msisdn decision accountId amountXaf decisionId evaluatedAt vetoApplied beneficiaryId requiredAction ruleSetVersion triggeredRules)
+## pdp.nonce du compte (valeur masquée) : issued_at | expires_at | consumed_at
+nonce 1 : 11:27:54.578Z | 11:29:54.578Z | consommé 11:28:03.600Z  (défi de session E-10, /device/verify)
+nonce 2 : 11:29:54.996Z | 11:31:54.996Z | consommé 11:30:02.790Z  (POST /nonce → signature du virement ; consommé par SignatureVerifier.verify au /evaluate de 11:30:02.61Z)
+Un nonce n'est consommé que par une signature VALIDE (SignatureVerifier : signature d'abord, nonce ensuite) : la décision ALLOW 50762db8 a donc été rendue sur une opération SIGNÉE (proofType=SIGNATURE).
