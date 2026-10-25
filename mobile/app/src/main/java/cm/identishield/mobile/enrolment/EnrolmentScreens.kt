@@ -155,10 +155,12 @@ fun NumberScreen(
             HorizontalGap(Spacing.M)
             BasicTextField(
                 value = value,
-                onValueChange = { v -> value = v.filter { it.isDigit() || it == ' ' } },
+                // D8 (B1b) : la valeur reste les chiffres bruts (neuf au plus) ; l'affichage les groupe.
+                onValueChange = { v -> value = v.filter { it.isDigit() }.take(EnrolmentViewModel.NATIONAL_NUMBER_LENGTH) },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.titleLarge.copy(color = Ink),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                visualTransformation = MsisdnTransformation,
                 modifier =
                     Modifier
                         .weight(1f)

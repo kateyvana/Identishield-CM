@@ -134,6 +134,9 @@
     <string name="error_key_revoked">Cet appareil n\'est plus la clé de votre compte.</string>
     <string name="error_key_invalidated">La biométrie de votre téléphone a changé ; il faut sécuriser à nouveau cet appareil.</string>
     <string name="error_account_frozen">Votre compte est gelé pour votre sécurité. Rendez-vous chez un agent avec votre pièce d\'identité.</string>
+    <!-- B1b / D-B7-3 : bandeau de l'accueil quand GET /account rend state = FROZEN (charte §10.3 : la cause est connue). -->
+    <string name="home_frozen_title">Compte gelé pour votre sécurité</string>
+    <string name="home_frozen_body">Les envois sont bloqués. Rendez-vous chez un agent MTN avec votre pièce d\'identité. Aucun code ne vous sera demandé par téléphone.</string>
     <string name="error_session_ended">Votre session a expiré. Déverrouillez à nouveau.</string>
     <string name="error_insufficient_funds">Solde insuffisant</string>
     <string name="error_beneficiary_unknown">Aucun compte MoMo pour ce numéro.</string>

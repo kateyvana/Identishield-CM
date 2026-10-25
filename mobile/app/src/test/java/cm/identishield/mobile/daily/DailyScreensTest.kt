@@ -117,6 +117,21 @@ class DailyScreensTest {
         compose.onNodeWithTag("tile-alerts").assertIsDisplayed() // grisée : M-08
     }
 
+    /** D-B7-3 (B1b) : l'accueil dit « Compte gelé » quand GET /account rend FROZEN, et seulement alors. */
+    @Test
+    fun e11_frozenAccount_showsTheFrozenBanner_trustedDoesNot() {
+        show { DailyHomeScreen(ACCOUNT.copy(state = "FROZEN"), "Samsung A15", TXS, onSend = {}, onHistory = {}, zone = DOUALA) }
+        compose.onNodeWithTag("frozen-banner").assertIsDisplayed()
+        compose.onNodeWithText("Compte gelé pour votre sécurité", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("agent MTN", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun e11_trustedAccount_hasNoFrozenBanner() {
+        show { DailyHomeScreen(ACCOUNT, "Samsung A15", TXS, onSend = {}, onHistory = {}, zone = DOUALA) }
+        compose.onNodeWithTag("frozen-banner").assertDoesNotExist()
+    }
+
     @Test
     fun e19_history_onlyContractFields_withStatusBadges() {
         show { HistoryScreen(DailyStep.History(TXS), onBack = {}, onHome = {}, onSend = {}, zone = DOUALA) }

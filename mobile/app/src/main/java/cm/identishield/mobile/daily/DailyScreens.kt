@@ -74,6 +74,7 @@ import cm.identishield.mobile.data.Transaction
 import cm.identishield.mobile.enrolment.AmountText
 import cm.identishield.mobile.enrolment.BodyText
 import cm.identishield.mobile.enrolment.Callout
+import cm.identishield.mobile.enrolment.MsisdnTransformation
 import cm.identishield.mobile.enrolment.CenteredInput
 import cm.identishield.mobile.enrolment.DangerButton
 import cm.identishield.mobile.enrolment.Disc
@@ -385,6 +386,12 @@ fun DailyHomeScreen(
     NavScaffold(NavTab.HOME, onHome = null, onSend = onSend, onHistory = onHistory, onAlerts = onAlerts) {
         Page(DailyTags.HOME, hero = { HomeHero(account, deviceModel, onSend, onHistory, onAlerts, pendingAlerts.size) }) {
             problem?.let { ErrorText(problemText(it)) }
+            // D-B7-3 (B1b) : l'état vient de GET /account (lu au PDP par le cœur) ; FROZEN est dit à
+            // l'usager sur l'accueil, pas seulement après l'alerte (E-24) ou au refus (E-18).
+            if (account.state == STATE_FROZEN) {
+                VerticalGap(Spacing.S)
+                FrozenBanner()
+            }
             pendingAlerts.firstOrNull()?.let { alert ->
                 VerticalGap(Spacing.S)
                 AlertBanner(alert) { onAlert?.invoke(alert) }
@@ -598,6 +605,33 @@ private fun VerticalRule() =
 @Composable
 private fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium, color = Ink)
 
+/** État de confiance rendu par GET /account quand le PDP a gelé le compte (ES-27, A1). */
+const val STATE_FROZEN = "FROZEN"
+
+/**
+ * Bandeau « Compte gelé pour votre sécurité » de l'accueil (D-B7-3, charte §10.3) : la cause est
+ * connue, le message dit quoi faire, sans lien ni code (MOB-S-15).
+ */
+@Composable
+private fun FrozenBanner() {
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(R.string.home_frozen_title)) }
+            append(" · " + stringResource(R.string.home_frozen_body))
+        },
+        color = Ink,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.medium)
+                .background(Tone.DANGER.fill)
+                .border(Dimens.Hairline, Tone.DANGER.stroke, MaterialTheme.shapes.medium)
+                .padding(Spacing.L)
+                .testTag("frozen-banner"),
+    )
+}
+
 /** Bandeau d'alerte de la maquette E-11 : résumé du serveur, jamais de lien ni de code (MOB-S-15). */
 @Composable
 private fun AlertBanner(
@@ -720,6 +754,7 @@ fun BeneficiaryScreen(
                 singleLine = true,
                 textStyle = MaterialTheme.typography.titleLarge.copy(color = Ink),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                visualTransformation = MsisdnTransformation, // D8 (B1b) : « 677 001 101 » à l'écran
                 modifier =
                     Modifier
                         .weight(1f)
