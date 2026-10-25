@@ -18,7 +18,7 @@ Tout changement de schéma postérieur à `init.sql` est donc une **migration** 
    les trous dans la numérotation sont admis. Deux migrations de numéros voisins doivent être
    **indépendantes** (aucune ne suppose que l'autre est passée), puisqu'elles peuvent être écrites
    et fusionnées dans l'ordre inverse de leur attribution. Attribués : 001–003 (A), 004 = B3b,
-   005 = B4.
+   005 = B4, 006 = B5 (alertes ; fusionnée le 24/10, appliquée à la fenêtre 2).
 2. **Chaque migration est enveloppée dans une transaction** : `BEGIN;` en première instruction,
    `COMMIT;` en dernière. Un `DROP CONSTRAINT` suivi d'un `ADD CONSTRAINT` qui échoue laisserait
    autrement la table **sans** contrainte, et `psql` valide chaque instruction séparément. La preuve

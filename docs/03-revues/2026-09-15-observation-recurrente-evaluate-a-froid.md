@@ -17,6 +17,7 @@
 | 2026-09-13 / 14 | **T2-10** (HLR simulé) | **flake** : premier passage dégradé, vert au suivant |
 | 2026-09-15 | **check-stack** (`verify_transfer`) | premier `/evaluate` en **EXECUTED_DEGRADED** (init dispatcherServlet + Hikari ≈ 340 ms), VERT au 2e appel |
 | 2026-09-15 | **T2-14** (`verify_notification`) | le transfert qui déclenche la notification revient `EXECUTED_DEGRADED` au premier `/evaluate` ; la notification est émise quand même |
+| 2026-10-25 | **Fenêtre 3** (dotation réelle de 677000200, USSD, VM) | premier `/evaluate` après redémarrage du PDP : pool Hikari ouvert au premier appel (≈ 1,0 s > 800 ms) → le cœur exécute en **EXECUTED_DEGRADED** alors que le PDP a décidé `ALLOW` (audit seq 120281) ; **première occurrence sur un mouvement réel**, pas une mesure ; détail dans `2026-10-24-deploiement-main.md` § Fenêtre 3 |
 
 Trace du garde-fou déjà en place : `tools/verify_transfer.sh:6` note que « le budget de 800 ms reste celui de la production (cœur chaud) » — reconnaissance du problème, sans décision.
 
