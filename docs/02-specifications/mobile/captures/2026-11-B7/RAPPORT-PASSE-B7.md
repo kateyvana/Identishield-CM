@@ -220,7 +220,7 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (c) | `E-03-numero.png`, `E-03-numero-saisi.png` | E-03 Numéro (677000200 saisi) | **observée** |
 | (c) | — | E-06 PIN : **protégé**, pas de capture | — |
 | (c) | `E-04-attente.png` | E-04 Attente (OTP émis côté serveur) | **observée** |
-| (c) | `E-05-otp.png` | E-05 OTP (champ saisi, code masqué) | **observée** |
+| (c) | `E-05-otp.png` | E-05 OTP (champ de code vide, avant la saisie ; numéro masqué « 677 ••• 200 », compte à rebours de renvoi) | **observée** |
 | (c) | `E-07-securisation.png` | E-07 Sécurisation (attestation réelle → PDP ; si refus : écran d'erreur capturé et **ARRÊT**) | **observée** (1er essai : erreur générique ; 2e : OK) |
 | (c) | — | E-08 / E-09 Clé de récupération et confirmation : **protégés**, pas de capture | — |
 | (c) | `E-11-accueil-trusted.png` | E-11 Accueil : badge « Appareil protégé », état TRUSTED, solde | **observée** |
