@@ -646,3 +646,20 @@ avant `/evaluate`), le solde de 677000001 est inchangé (815000).
 conteneurs `Up`, `isc-pdp (healthy)`, cœur « PDP pret » ; témoin retiré 11:26Z, « VM à toi » au
 couloir B pour son (e) virement ALLOW. **Non fait** : preuve (e) (3/3) ; `check-stack` ; carte #112
 (reste En cours) ; P4 déjà posée par la propriétaire (ACL : B a joint le 8443 depuis la tablette).
+
+### AC-02 réel, étape (f) de B7 (2026-10-25, sous le témoin du couloir B) — état constaté
+
+- **Réattribution HLR par le couloir A (11:33:12.916Z)**, outil agent HLR : `REASSIGN_OK msisdn=677000200
+  old=624010677000200 new=624010000000667 … event_emitted=True` ; `core.hlr_reassignment` :
+  agent `agent-ac02-f`. État avant : `TRUSTED`, IMSI de référence 624010677000200, solde 15 000.
+- **Côté couloir B (tablette)** : alerte `SIM_CHANGED` levée 22 ms après la réattribution ; réponse
+  « Ce n'est pas moi » signée par la propriétaire à 11:36:13.667Z ; audit 120283 `TRUST_FROZEN` /
+  `NOT_ME` et 120284 `REENROL_FROZEN` avec l'`alertId`.
+- **Virement tenté depuis le téléphone lié après le gel (couloir B, 11:40:41Z)** : P2P 5 000 `APP`
+  `REJECTED`, audit seq 120286 `REJECTED` / `ACCOUNT_FROZEN`.
+- **Relevé du couloir A en lecture seule (13:51Z)** : solde 677000200 = **15 000, inchangé** ;
+  `pdp.trust_state` `FROZEN`, cause `NOT_ME`, sans échéance, ré-enrôlements gelés jusqu'au
+  2026-10-26T11:36:13Z ; HLR 624010000000667.
+- **Tentative côté attaquant : NON OBSERVÉE.** Elle n'a pas été exécutée par le couloir A ;
+  décision de la propriétaire. Restent aussi à sa décision : la levée du gel de 677000200 et le
+  retour de son HLR à 624010677000200.
