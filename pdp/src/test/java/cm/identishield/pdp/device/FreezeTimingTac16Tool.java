@@ -48,8 +48,9 @@ import org.yaml.snakeyaml.Yaml;
  * DeviceRegistry}, {@code AuditLog} et {@code TrustStateMachine} RÉELS, et le throttle neutralisé
  * (mock : jamais bloqué, comptage sans effet). Deux comptes liés, code FAUX : l'un non gelé,
  * l'autre gelé par « ce n'est pas moi » (REENROL_ATTEMPT). N appels chacun, en alternance ; médiane
- * et p95 par cas, imprimées brutes. Aucun seuil n'est décidé ici : l'écart est DÉCLARÉ, la décision
- * appartient au superviseur (fenêtre statistique du T-AC-16).
+ * et p95 par cas, imprimées brutes ; une entrée d'audit par refus des DEUX côtés (symétrie). Aucun
+ * seuil n'est décidé ici : l'écart est DÉCLARÉ, la décision appartient au superviseur (fenêtre
+ * statistique du T-AC-16).
  */
 @EnabledIfEnvironmentVariable(named = "ISC_TAC16", matches = "1")
 @EnabledIfEnvironmentVariable(named = "ISC_TEST_PG_URL", matches = ".+")
@@ -155,12 +156,11 @@ class FreezeTimingTac16Tool {
     Arrays.sort(tFro);
     long medNot = percentile(tNot, 0.50), p95Not = percentile(tNot, 0.95);
     long medFro = percentile(tFro, 0.50), p95Fro = percentile(tFro, 0.95);
-    int auditFrozen =
-        jdbc.queryForObject(
-            "SELECT count(*) FROM pdp.audit_entry WHERE payload ->> 'accountId' = ?"
-                + " AND payload ->> 'event' = 'REENROL_REFUSED'",
-            Integer.class,
-            frozen);
+    String countSql =
+        "SELECT count(*) FROM pdp.audit_entry WHERE payload ->> 'accountId' = ?"
+            + " AND payload ->> 'event' = 'REENROL_REFUSED' AND payload ->> 'cause' = ?";
+    int auditFrozen = jdbc.queryForObject(countSql, Integer.class, frozen, "REENROL_FROZEN");
+    int auditNotFrozen = jdbc.queryForObject(countSql, Integer.class, notFrozen, "CODE_INVALID");
 
     System.out.println("TAC16_PBKDF2_ITERATIONS=" + props.iterations());
     System.out.println("TAC16_N=" + N + " WARMUP=" + WARMUP);
@@ -185,7 +185,14 @@ class FreezeTimingTac16Tool {
     System.out.println(
         "TAC16_DELTA_us      median=" + (medFro - medNot) + " p95=" + (p95Fro - p95Not));
     System.out.println(
-        "TAC16_AUDIT_REENROL_REFUSED_rows=" + auditFrozen + " (attendu " + (N + WARMUP) + ")");
+        "TAC16_AUDIT_REENROL_REFUSED_rows frozen(REENROL_FROZEN)="
+            + auditFrozen
+            + " notFrozen(CODE_INVALID)="
+            + auditNotFrozen
+            + " (attendu "
+            + (N + WARMUP)
+            + " chacun)");
     assertEquals(N + WARMUP, auditFrozen, "une entrée d'audit par refus gelé");
+    assertEquals(N + WARMUP, auditNotFrozen, "une entrée d'audit par refus non gelé (symétrie)");
   }
 }
