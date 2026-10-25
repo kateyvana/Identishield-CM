@@ -166,6 +166,22 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
   après « ce n'est pas moi »).
 - Tentative de l'attaquant (A, SIM `…667`) : voir sorties du couloir A (`serveur-f-attaquant-refuse.txt`).
 
+### 2026-10-25 11:44–11:47 UTC — étape (g) charte qualité mobile §10 (tablette SM-T515)
+
+- **Arrière-plan 61 s → verrou** (§10.7) : application envoyée en arrière-plan à 11:44:51Z (touche
+  Accueil), reprise à 11:46:02Z (71 s) → **E-10 « Votre session a expiré. Déverrouillez à nouveau. »**
+  (`E-10-deverrouillage-arriere-plan.png`) : le serveur a tué le jeton (`APP_SESSION_BACKGROUND_TTL`
+  60 s, aucune requête pendant l'absence). **Conforme, observé.** Et déjà : expiration par
+  inactivité après ~25 min (étape (e)).
+- **Police à 200 %** (`E-10-police-200.png`, réglage système `font_scale 2.0` puis remis à 1.0) :
+  aucun texte coupé, pavé complet, bouton « Continuer » visible et **désactivé tant que le PIN est
+  vide** (§10.2). **Conforme, observé.**
+- **Paysage** (`E-10-paysage.png`, rotation forcée puis remise) : mise en page complète, aucun
+  chevauchement. **Conforme, observé.** L'appareil de la passe EST la tablette (§10.8 « tablette ») ;
+  un téléphone n'a pas été disponible : **téléphone non observé**.
+- Rotation et mort du processus avec conservation de l'état (§10.5) : vérifiées en passe B1a du
+  2026-10-14 sur ce même appareil ; **non rejouées** ici.
+
 ## Captures attendues (ISC-MOB-SPEC v1.3, tableau des écrans ; écrans FLAG_SECURE exclus : E-06, E-08, E-09, E-14, E-15, E-20)
 
 Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce dossier.
@@ -200,5 +216,5 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | **observée** (FROZEN/NOT_ME, reenrol gelé 24 h) |
 | (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | non observée |
 | (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) — « Opération bloquée · Pour votre sécurité, cet envoi n'a pas été exécuté. Votre argent est toujours sur votre compte. Que faire ? … Aucun code ne vous sera demandé par téléphone. » ; serveur : REJECTED, veto ACCOUNT_FROZEN (audit 120286), solde 15 000 | **observée** |
-| (g) | `E-10-deverrouillage-session-expiree.png` | E-10 après 61 s en arrière-plan : verrou (charte §10.7) — observé après ~25 min : « Votre session a expiré » | **observée** |
-| (g) | `E-11-accueil-tablette.png`, `E-11-accueil-police-200.png` | Mise en page tablette et police 200 % (charte §10.8) | non observée |
+| (g) | `E-10-deverrouillage-arriere-plan.png` (71 s), `E-10-deverrouillage-session-expiree.png` (~25 min) | E-10 après 61 s en arrière-plan : verrou (charte §10.7) — observé après ~25 min : « Votre session a expiré » | **observée** |
+| (g) | `E-10-police-200.png`, `E-10-paysage.png` (l'appareil est la tablette : toutes les captures sont « tablette ») | Mise en page tablette et police 200 % (charte §10.8) — téléphone non disponible : non observé | **observée** (tablette, 200 %, paysage) |
