@@ -28,7 +28,17 @@ import org.slf4j.LoggerFactory;
 class DeviceClientTimeoutTest {
 
   private static final String ACCOUNT = "5bee60dd-3ea3-4f73-9767-a110f48800f8";
-  private static final long TIMEOUT_MS = 150;
+
+  /**
+   * Cas « au-delà » : délai client court contre un serveur qui dort bien plus longtemps. Cas « dans
+   * le délai » : délai client LARGE, car il couvre aussi la connexion d'un HttpClient neuf sur une
+   * JVM froide, qui sous charge dépasse 150 ms (relecture du couloir A, 2026-10-25 : statut 0
+   * observé une fois sous mutation avec un délai unique de 150 ms).
+   */
+  private static final long SHORT_TIMEOUT_MS = 150;
+
+  private static final long SERVER_SLEEP_MS = 2000;
+  private static final long WIDE_TIMEOUT_MS = 5000;
 
   private HttpServer server;
   private volatile long serverDelayMs;
@@ -65,9 +75,9 @@ class DeviceClientTimeoutTest {
     server.stop(0);
   }
 
-  private DeviceClient client() throws Exception {
+  private DeviceClient client(long timeoutMs) throws Exception {
     String base = "http://127.0.0.1:" + server.getAddress().getPort();
-    return new DeviceClient(base, TIMEOUT_MS, SSLContext.getDefault(), new ObjectMapper());
+    return new DeviceClient(base, timeoutMs, SSLContext.getDefault(), new ObjectMapper());
   }
 
   private List<ILoggingEvent> warnLines() {
@@ -77,8 +87,8 @@ class DeviceClientTimeoutTest {
   @Test
   void aCallBeyondTheTimeout_isUnreachable_andLeavesOneWarnWithRouteAndDurationOnly()
       throws Exception {
-    serverDelayMs = TIMEOUT_MS * 4;
-    DeviceClient.Reply reply = client().state(ACCOUNT);
+    serverDelayMs = SERVER_SLEEP_MS;
+    DeviceClient.Reply reply = client(SHORT_TIMEOUT_MS).state(ACCOUNT);
 
     assertEquals(DeviceClient.Reply.UNREACHABLE, reply.status());
     List<ILoggingEvent> warns = warnLines();
@@ -94,7 +104,7 @@ class DeviceClientTimeoutTest {
   @Test
   void aCallWithinTheTimeout_leavesNoWarn() throws Exception {
     serverDelayMs = 0;
-    DeviceClient.Reply reply = client().state(ACCOUNT);
+    DeviceClient.Reply reply = client(WIDE_TIMEOUT_MS).state(ACCOUNT);
 
     assertEquals(200, reply.status());
     assertEquals("NONE", reply.body().get("state"));
