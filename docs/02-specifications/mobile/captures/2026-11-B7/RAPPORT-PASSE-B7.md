@@ -35,8 +35,13 @@ Sous témoin B. Certificats PUBLICS lus dans le volume `isc-certs` de la VM (con
   = CA de la VM ; `network_security_config` généré : `cleartextTrafficPermitted="false"`, seule
   ancre de confiance = cette CA (aucune autorité utilisateur). **Conforme.**
 - Copie hors dépôt : `…/scratchpad/identishield-b7-debug-d71eb7ea.apk` (jamais versionnée).
-- Installation sur le téléphone de la propriétaire (`adb install`) : **non observé** — aucun
-  appareil branché au poste ; téléphone et Tailscale côté propriétaire.
+- **2026-10-25 ~10:12 UTC — installation OBSERVÉE** sur l'appareil réel présenté par la propriétaire
+  (« téléphone prêt ») : **tablette Samsung SM-T515**, Android 11 (correctif 2022-12-01), nœud
+  Tailscale `galaxy-tab-a` = `100.110.208.13` sur le tailnet de la propriétaire (vu depuis le poste),
+  verrou d'écran configuré (ancre d'E-07 ; pas de biométrie sur cet appareil, passe QA du
+  2026-10-08). `adb install -r` de l'APK `d71eb7ea…` : `Success` ; `versionName=0.1.0`. Lancement
+  observé (E-02 Bienvenue affiché, capture `E-02-bienvenue.png`) ; aucun appel réseau avant la
+  saisie du numéro.
 
 ### étapes (c) à (g) — non observées
 
@@ -59,8 +64,8 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 
 | Étape | Fichier attendu | Écran / preuve | État |
 |---|---|---|---|
-| (b) | `E-01-lancement.png` | E-01 Lancement sur le téléphone, APK d71eb7ea installé | non observée |
-| (c) | `E-02-bienvenue.png` | E-02 Bienvenue | non observée |
+| (b) | `E-01-lancement.png`, `E-02-bienvenue.png` | E-01 Lancement et E-02 Bienvenue sur la tablette SM-T515, APK d71eb7ea installé | **observée** (2026-10-25 10:13Z) |
+| (c) | `E-02-bienvenue.png` | E-02 Bienvenue (déjà saisie à l'étape (b)) | **observée** |
 | (c) | `E-03-numero.png` | E-03 Numéro (677000200 saisi) | non observée |
 | (c) | — | E-06 PIN : **protégé**, pas de capture | — |
 | (c) | `E-04-attente.png` | E-04 Attente (OTP émis côté serveur) | non observée |
