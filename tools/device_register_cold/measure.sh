@@ -13,13 +13,12 @@
 # Usage, from the VM (run under a VM-OCCUPEE marker):
 #   1. on the workstation: "$JAVA_HOME/bin/java" tools/device_register_cold/GenRegister.java bodies 9
 #      scp bodies/body-*.json tools/device_register_cold/measure.sh isc@<vm>:/tmp/d-b7-1/
-#   2. isolated stack up (infra/, images already present) — two disposable overrides are needed
-#      until compose.b3a-isolement.yml is fixed: the mobile BRIDGE name (br-isc-mobile is fixed by
-#      the shared file since L7-b) and the PDP image (isc-pdp-b3a predates /device/*):
-#        printf 'networks:\n  isc-mobile:\n    name: isc-b3a-mobile\n    driver_opts:\n      com.docker.network.bridge.name: br-isc-b3a-mob\n' > /tmp/isc-b3a-reseau-mobile.yml
-#        printf 'services:\n  pdp:\n    image: isc-pdp\n' > /tmp/isc-b3a-pdp-image.yml
-#        docker compose -p isc-b3a -f docker-compose.yml -f compose.b3a.yml -f compose.b3a-isolement.yml \
-#          -f /tmp/isc-b3a-reseau-mobile.yml -f /tmp/isc-b3a-pdp-image.yml up -d --no-build
+#   2. isolated stack up, from infra/, with the three files of the repository and nothing else
+#      (proven 2026-10-25 19:33Z and 19:52Z; images isc-*-b3a already present in the VM, the
+#      isolated PDP is the served image isc-pdp and has no build):
+#        docker compose -p isc-b3a -f docker-compose.yml -f compose.b3a.yml -f compose.b3a-isolement.yml up -d --no-build
+#      (a first "up" on a brand-new volume may fail in "migrate" with "connection refused" while
+#      PostgreSQL restarts after init.sql — a start-up race unrelated to this tool: run "up" again.)
 #   3. bash /tmp/d-b7-1/measure.sh ; then the same compose command with "down -v" (listed first).
 # Environment: B (bodies dir), PDP (container), NET, CERTS, TOOLS (image with curl+openssl).
 set -u

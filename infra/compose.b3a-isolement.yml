@@ -10,12 +10,15 @@
 # précédente gardait les container_name, les réseaux et les ports du fichier partagé, donc entrait
 # en collision avec la pile en service) :
 #   - conteneurs : isc-b3a-* (le fichier partagé fixe isc-postgres, isc-core, … par nom) ;
-#   - réseaux    : isc-b3a-net (interne), isc-b3a-web, isc-b3a-mobile — le DNS de service
-#                  (postgres, pdp, core, sim) reste valable à l'intérieur du projet ;
+#   - réseaux    : isc-b3a-net, isc-b3a-web, isc-b3a-mobile, TOUS internes (l'essai ne publie rien
+#                  et ne doit avoir aucune sortie) — le DNS de service (postgres, pdp, core, sim)
+#                  reste valable à l'intérieur du projet ; le PONT Linux du réseau mobile a aussi
+#                  son propre nom (voir networks) ;
 #   - ports      : aucun port publié (console 3000, cœur 8443) : l'essai n'est joignable que de
 #                  l'intérieur de ses réseaux (docker compose -p isc-b3a exec …) ;
 #   - volumes    : base neuve (init.sql + migrations s'exécutent) et autorité TLS neuve ;
-#   - images     : les images construites ne remplacent pas celles de l'autre pile.
+#   - images     : les images construites ne remplacent pas celles de l'autre pile, SAUF le PDP,
+#                  qui est l'image de la pile servie, jamais reconstruite ici (voir pdp).
 # Usage (depuis infra/, avec un projet distinct) :
 #   docker compose -p isc-b3a -f docker-compose.yml -f compose.b3a.yml -f compose.b3a-isolement.yml up -d --build
 # Retrait : la même commande avec « down -v » ne supprime que les volumes isc-b3a-* ; les images
@@ -32,7 +35,14 @@ services:
     # est utilisé par apply-migrations.sh ; le fichier partagé prend postgres:16-alpine.
     image: postgres:16
   pdp:
-    image: isc-pdp-b3a
+    # D-B7-1 (décision du superviseur technique du 2026-10-25) : le PDP isolé est l'IMAGE DE LA PILE
+    # SERVIE, construite à la fenêtre de déploiement (routes /device/*, préchauffage #123), pour
+    # que la mesure à froid de tools/device_register_cold/ se refasse depuis le dépôt. L'ancienne
+    # image isc-pdp-b3a (22/10) n'avait pas ces routes (404 constaté le 25/10). « build » est retiré
+    # et l'image n'est jamais tirée : un « up --build » ne réétiquette pas isc-pdp.
+    image: isc-pdp
+    build: !reset null
+    pull_policy: never
     container_name: isc-b3a-pdp
   core:
     image: isc-core-b3a
@@ -50,8 +60,21 @@ networks:
     name: isc-b3a-net
   isc-web:
     name: isc-b3a-web
+    # Même raison que pour le réseau mobile : la console de l'essai ne publie rien (ports !reset [])
+    # et n'a besoin que du DNS de service vers le cœur ; un bridge non interne lui donnerait une
+    # sortie Internet (constatée le 2026-10-25 : http=301 depuis isc-b3a-web). Interne.
+    internal: true
   isc-mobile:
     name: isc-b3a-mobile
+    # Le fichier partagé fixe le NOM DU PONT Linux (br-isc-mobile, L7-b, règle DOCKER-USER de la
+    # propriétaire). Deux réseaux ne peuvent pas porter le même pont : sans ce renommage, l'essai
+    # ne démarre pas (constaté le 2026-10-25).
+    driver_opts:
+      com.docker.network.bridge.name: br-isc-b3a-mob
+    # Ce pont-ci n'est couvert par AUCUNE règle DOCKER-USER (L7-3 ne vise que br-isc-mobile) : sans
+    # « internal », le cœur de l'essai aurait une sortie Internet (relecture du couloir A,
+    # 2026-10-25). L'essai ne publie aucun port sur ce réseau : il est donc interne, comme isc-net.
+    internal: true
 
 volumes:
   pgdata:
