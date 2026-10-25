@@ -96,6 +96,7 @@ public class CoreRunner implements ApplicationRunner {
   /** Rejoue une session USSD scriptee de bout en bout (le fil ISC-SKEL etape 1). */
   private void ussd() {
     accountBootstrap.ensureSeedAccounts();
+    accountBootstrap.ensureSeedSubscribers(); // A5-00 : l'émetteur a une SIM au HLR
     pdp.warmup(); // l'etape finale appelle /evaluate
     String from = env("FROM_MSISDN", "677000001");
     String beneficiary = env("BENEFICIARY_MSISDN", "677000002");
@@ -125,6 +126,7 @@ public class CoreRunner implements ApplicationRunner {
   /** Un transfert P2P de bout en bout (verification du fil du squelette). */
   private void transfer() {
     accountBootstrap.ensureSeedAccounts();
+    accountBootstrap.ensureSeedSubscribers(); // A5-00 : l'émetteur a une SIM au HLR
     pdp.warmup(); // etablit la connexion persistante avant l'appel /evaluate (JVM froide)
     String from = env("FROM_MSISDN", "677000001");
     String beneficiary = env("BENEFICIARY_MSISDN", "677000002");
@@ -281,6 +283,7 @@ public class CoreRunner implements ApplicationRunner {
 
   private void service() {
     accountBootstrap.ensureSeedAccounts(); // le coeur en marche a des comptes
+    accountBootstrap.ensureSeedSubscribers(); // et leurs SIM au HLR (A5-00)
     pdp.warmup(); // etablit la connexion persistante : 1re decision reelle deja chaude
     // Le serveur web (GET /flux pour la console) garde le coeur en vie : pas d'attente.
     log.info("coeur pret (mode service). /flux expose pour la console ; client PDP chauffe.");
