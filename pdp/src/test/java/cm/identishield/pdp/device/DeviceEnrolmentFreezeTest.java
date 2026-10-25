@@ -1,5 +1,6 @@
 package cm.identishield.pdp.device;
 
+import static cm.identishield.pdp.device.TestAttestation.SOFTWARE;
 import static cm.identishield.pdp.device.TestAttestation.TEE;
 import static cm.identishield.pdp.device.TestAttestation.chain;
 import static cm.identishield.pdp.device.TestAttestation.ecKey;
@@ -87,6 +88,17 @@ class DeviceEnrolmentFreezeTest {
     } catch (Exception e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  private Registration registerWith(List<String> attestationChain, String recoveryCode) {
+    return enrolment.register(
+        "acc-1",
+        spki(device.getPublic()),
+        attestationChain,
+        CHALLENGE_B64,
+        sign(device, CHALLENGE),
+        recoveryCode,
+        CALLER);
   }
 
   private Registration register(String recoveryCode) {
@@ -181,5 +193,28 @@ class DeviceEnrolmentFreezeTest {
     when(trust.peek("acc-1")).thenReturn(Optional.empty());
     assertInstanceOf(Registered.class, register("OLD123"));
     verify(audit, never()).append(any(), any());
+  }
+
+  @Test
+  void duringTheFreeze_aSoftwareKey_isNamedDeviceUnsupported_exactlyAsOutsideTheFreeze_noAudit() {
+    // PR #110 : la clé logicielle est jugée AVANT le gel. Sa réponse parle de l'appareil, pas du
+    // code,
+    // et ne doit pas changer avec l'état gelé (ES-22, AC-16 ; contrat : DEVICE_UNSUPPORTED nommée
+    // même au ré-enrôlement).
+    List<String> softwareChain =
+        chain(root, intermediate, device, keyDescription(CHALLENGE, SOFTWARE, SOFTWARE));
+    boundAndFrozenUntil(T0.plus(FREEZE));
+    Registration frozen = registerWith(softwareChain, "OLD123");
+    assertEquals(new Refused(Refusal.DEVICE_UNSUPPORTED), frozen);
+    verify(audit, never())
+        .append(any(), any()); // aucun REENROL_REFUSED : l'appareil est jugé d'abord
+    verify(throttle, times(1)).failed(COUNTED);
+
+    // Hors gel : byte-identique.
+    clock.advance(FREEZE.plus(Duration.ofSeconds(1)));
+    Registration thawed = registerWith(softwareChain, "OLD123");
+    assertEquals(frozen, thawed);
+    verify(audit, never()).append(any(), any());
+    verify(throttle, times(2)).failed(COUNTED);
   }
 }

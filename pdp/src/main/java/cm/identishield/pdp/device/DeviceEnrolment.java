@@ -155,6 +155,15 @@ public class DeviceEnrolment {
     AttestationVerifier.Outcome outcome =
         challenge == null ? null : verifier.verify(attestationChain, publicKey, challenge);
     boolean signed = challenge != null && signedBy(publicKey, challenge, challengeSignature);
+    // La clé LOGICIELLE est jugée AVANT le gel, gel ou non (PR #110) : sa réponse parle de
+    // l'appareil,
+    // pas du code, et doit être la même dans les deux cas, sinon elle révélerait l'état gelé
+    // (ES-22,
+    // AC-16 ; contrat device.yaml : DEVICE_UNSUPPORTED nommée même au ré-enrôlement).
+    if (outcome == AttestationVerifier.Outcome.SOFTWARE_KEY) {
+      throttle.failed(keys);
+      return new Refused(Refusal.DEVICE_UNSUPPORTED);
+    }
     if (frozenUntil.isPresent()) {
       // Pendant le gel, le refus est celui d'un code faux, quoi qu'aient donné les vérifications :
       // rien ne distingue « gelé » de « code faux » (ES-22). Compté (ES-24) et journalisé.
@@ -167,10 +176,6 @@ public class DeviceEnrolment {
       p.put("occurredAt", now.toString());
       auditLog.append(p, now);
       return new Refused(Refusal.RECOVERY_INVALID);
-    }
-    if (outcome == AttestationVerifier.Outcome.SOFTWARE_KEY) {
-      throttle.failed(keys);
-      return new Refused(Refusal.DEVICE_UNSUPPORTED);
     }
     if (!codeOk || outcome != AttestationVerifier.Outcome.VALID || !signed) {
       throttle.failed(keys);
