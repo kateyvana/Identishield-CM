@@ -611,6 +611,26 @@ fun HorizontalGap(width: Dp) = Spacer(Modifier.width(width))
 /** 677000123 → « 677 000 123 ». */
 fun formatMsisdn(msisdn: String): String = msisdn.chunked(3).joinToString(" ")
 
+/**
+ * Saisie d'un numéro groupée à l'affichage (« 677 000 200 », D8 / B1b) : la valeur reste les neuf
+ * chiffres bruts, seul l'affichage insère une espace tous les trois chiffres. Le curseur suit.
+ */
+object MsisdnTransformation : androidx.compose.ui.text.input.VisualTransformation {
+    private const val GROUP = 3
+
+    override fun filter(text: androidx.compose.ui.text.AnnotatedString): androidx.compose.ui.text.input.TransformedText {
+        val raw = text.text
+        return androidx.compose.ui.text.input.TransformedText(
+            androidx.compose.ui.text.AnnotatedString(formatMsisdn(raw)),
+            object : androidx.compose.ui.text.input.OffsetMapping {
+                override fun originalToTransformed(offset: Int) = offset + if (offset == 0) 0 else (offset - 1) / GROUP
+
+                override fun transformedToOriginal(offset: Int) = (offset - offset / (GROUP + 1)).coerceAtMost(raw.length)
+            },
+        )
+    }
+}
+
 /** 677000123 → « 677 ••• 123 » (numéro masqué, MOB-S-11). */
 fun maskMsisdn(msisdn: String): String =
     if (msisdn.length == 9) "${msisdn.take(3)} ••• ${msisdn.takeLast(3)}" else "•••"
