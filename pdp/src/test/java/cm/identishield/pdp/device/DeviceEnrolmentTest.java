@@ -70,6 +70,8 @@ class DeviceEnrolmentTest {
           registry,
           codes,
           throttle,
+          mock(cm.identishield.pdp.trust.TrustStateMachine.class),
+          mock(cm.identishield.pdp.audit.AuditLog.class),
           mock(PlatformTransactionManager.class),
           Clock.fixed(T0, ZoneOffset.UTC));
   private static final List<Key> CALLER = List.of(Key.origin("100.64.0.9"));

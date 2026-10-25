@@ -65,6 +65,8 @@ class RealisticAttestationTest {
             registry,
             codes,
             mock(EnrolmentThrottle.class),
+            mock(cm.identishield.pdp.trust.TrustStateMachine.class),
+            mock(cm.identishield.pdp.audit.AuditLog.class),
             mock(PlatformTransactionManager.class),
             Clock.fixed(T0, ZoneOffset.UTC));
     Signature s = Signature.getInstance("SHA256withECDSA");

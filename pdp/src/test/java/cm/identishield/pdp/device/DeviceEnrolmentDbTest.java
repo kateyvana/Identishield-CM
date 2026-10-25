@@ -138,6 +138,8 @@ class DeviceEnrolmentDbTest {
             codes,
             new EnrolmentThrottle(
                 jdbc, java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC), TestRuleSet.load()),
+            org.mockito.Mockito.mock(cm.identishield.pdp.trust.TrustStateMachine.class),
+            org.mockito.Mockito.mock(cm.identishield.pdp.audit.AuditLog.class),
             new org.springframework.jdbc.datasource.DataSourceTransactionManager(ds),
             java.time.Clock.fixed(T0, java.time.ZoneOffset.UTC));
     String old = registry.registerPending(acc, "cGs=", T0);
