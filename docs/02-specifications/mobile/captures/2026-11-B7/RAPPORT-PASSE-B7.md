@@ -40,6 +40,14 @@ Sous témoin B. Certificats PUBLICS lus dans le volume `isc-certs` de la VM (con
 
 ### étapes (c) à (g) — non observées
 
+Ordre imposé par le superviseur (2026-10-25) : **(c) et (d)** dès le mot de la propriétaire
+« téléphone prêt, ACL posée » (solde doté : 20 000 FCFA, référence 2b0f90e2, audit seq 120281) ;
+**(e) et (f) seulement APRÈS la fenêtre 4 du couloir A** (« prêt par construction » : PDP avec pool
+ouvert avant le port et `/health` = vrai aller-retour en base, cœur avec warmup qui réessaie jusqu'à
+200), parce que le premier `/evaluate` après un redémarrage du PDP sort aujourd'hui
+`EXECUTED_DEGRADED` (pool ouvert au premier appel ≈ 1 s > 800 ms, 6 occurrences consignées par A).
+Si malgré tout un virement sortait DEGRADED, il serait écrit tel quel.
+
 En attente du téléphone (Tailscale connecté par la propriétaire, ACL posée), du solde de 677000200
 (virement P2P de 20 000 FCFA depuis 677000123 par le couloir A, sous témoin — décision du
 superviseur du 2026-10-25) et du créneau AC-02 avec le couloir A. Aucune reprise de la VM avant ces
@@ -66,13 +74,13 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (d) | `E-07-securisation-reenrolement.png` | E-07 Sécurisation (nouvelle clé) | non observée |
 | (d) | `E-22-reenrolement-reussi.png` | E-22 Réenrôlement réussi (ancienne clé révoquée) | non observée |
 | (d) | `E-23-alertes-device-rebound.png` | E-23 Alertes : `DEVICE_REBOUND` informative (si un second appareil est disponible, sinon « non observée : un seul appareil ») | non observée |
-| (e) | `E-12-beneficiaire.png` | E-12 Bénéficiaire 677001101 (titulaire affiché, badge « nouveau bénéficiaire ») | non observée |
+| (e) | `E-12-beneficiaire.png` | E-12 Bénéficiaire 677001101 (titulaire affiché, badge « nouveau bénéficiaire ») — **étape (e) seulement APRÈS la fenêtre 4 de A (« prêt par construction » déployé : plus de premier /evaluate DEGRADED à froid)** | non observée (après fenêtre 4) |
 | (e) | `E-13-montant.png` | E-13 Montant (< 50 000 FCFA, de jour) | non observée |
 | (e) | — | E-14 Confirmation, E-15 Autorisation (PIN) : **protégés** | — |
-| (e) | `E-16-succes.png` | E-16 Succès (ALLOW, EXECUTED) | non observée |
+| (e) | `E-16-succes.png` | E-16 Succès (ALLOW, EXECUTED) ; si DEGRADED malgré la fenêtre 4 : écrit tel quel | non observée (après fenêtre 4) |
 | (e) | `E-19-historique.png` | E-19 Historique (ligne OUT EXECUTED) | non observée |
 | (e) | `serveur-e-audit-signature.txt` | Côté serveur : entrée d'audit de la décision avec `proofType=SIGNATURE` (console intégrité EF-34 ou lecture seule du journal) | non observée |
-| (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → IMSI attaquant **distinct** des portes automatiques (ex. `624010000000667`, décision du 2026-10-25) | non observée |
+| (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → IMSI attaquant **distinct** des portes automatiques (ex. `624010000000667`, décision du 2026-10-25) — **étape (f) seulement APRÈS la fenêtre 4 de A et après (e)** | non observée (après fenêtre 4) |
 | (f) | `E-23-alertes-sim-changed.png` | E-23 Alertes : `SIM_CHANGED` OPEN avec actions | non observée |
 | (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | non observée |
 | (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : état FROZEN affiché | non observée |
