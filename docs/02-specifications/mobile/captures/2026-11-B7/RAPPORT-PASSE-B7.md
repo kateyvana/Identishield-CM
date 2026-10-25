@@ -72,7 +72,7 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (e) | `E-16-succes.png` | E-16 Succès (ALLOW, EXECUTED) | non observée |
 | (e) | `E-19-historique.png` | E-19 Historique (ligne OUT EXECUTED) | non observée |
 | (e) | `serveur-e-audit-signature.txt` | Côté serveur : entrée d'audit de la décision avec `proofType=SIGNATURE` (console intégrité EF-34 ou lecture seule du journal) | non observée |
-| (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → `624010000000666` | non observée |
+| (f) | `serveur-f-hlr-reassign.txt` | Côté serveur (A) : réattribution HLR 677000200 → IMSI attaquant **distinct** des portes automatiques (ex. `624010000000667`, décision du 2026-10-25) | non observée |
 | (f) | `E-23-alertes-sim-changed.png` | E-23 Alertes : `SIM_CHANGED` OPEN avec actions | non observée |
 | (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | non observée |
 | (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : état FROZEN affiché | non observée |

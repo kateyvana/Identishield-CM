@@ -41,7 +41,7 @@ scénario B3b (`2026-10-24-scenario-demonstration-B3b.md`), comptes B8
 | **Solde de 677000200 : 0 FCFA aujourd'hui** (constat A, 2026-10-25). **Décision du superviseur technique (2026-10-25)** : ni cash-in d'opérateur (aucune route ne l'expose), ni CSV (le seeder pose le solde à la création seulement), ni SQL. Dotation par un **virement P2P réel de 20 000 FCFA depuis 677000123** (compte technique, 152 300 FCFA, hors portes automatiques), exécuté par le couloir A sous témoin par le simulateur USSD de la VM, de jour, avec son entrée d'audit | couloir A (sous témoin) | non fait |
 | PIN de 677000200 : celui des fixtures de démonstration (rien à demander à la propriétaire) | — | acquis |
 | HLR : 677000200 → `624010677000200`, 677001101 → `624010677001101` (seeder B8) : A5-00 satisfait | couloir A (constaté) | fait |
-| IMSI attaquant `624010000000666` partagé avec les portes automatiques (`verify_attacker`, 677000007) : AC-02 réel **jamais en même temps** qu'un `check-stack` / `verify_attacker` | couloir A | règle |
+| IMSI attaquant d'AC-02 réel **DISTINCT** de celui des portes automatiques (décision du 2026-10-25) : par exemple `624010000000667` (`--attacker-imsi`), 677000007 garde `624010000000666` ; plus aucune contrainte d'exclusion avec `check-stack` / `verify_attacker` | couloir A | décidé |
 
 ## 5. Scénario du 6 novembre (dans cet ordre, chaque étape observée)
 
