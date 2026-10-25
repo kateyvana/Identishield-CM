@@ -251,7 +251,10 @@ class EnrolmentViewModelTest {
         untilOtp(vm)
         vm.submitOtp(OTP)
         vm.secureDevice(unlockOk)
-        assertEquals(EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE), vm.step.value)
+        assertEquals(
+            EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE, retryAfterSeconds = 2L),
+            vm.step.value,
+        )
         assertTrue("la clé locale est gardée : le PDP l'a peut-être déjà enregistrée", keys.hasDeviceKey())
         assertEquals(0, keys.deleted)
         assertEquals(1, repo.calls.count { it == "complete" })
