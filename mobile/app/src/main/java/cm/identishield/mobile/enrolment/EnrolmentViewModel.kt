@@ -44,6 +44,7 @@ enum class EnrolError {
     UNLOCK_CANCELLED,
     CONFIRM_MISMATCH,
     PROCESS_RESTARTED, // D4 : le téléphone a fermé l'application ; on reprend au PIN, numéro conservé
+    SERVICE_UNAVAILABLE, // D-B7-1 : 503 transitoire à /enrolment/complete ; clé GARDÉE, « Réessayer » rejoue la même requête
     UNEXPECTED,
 }
 
@@ -146,6 +147,10 @@ class EnrolmentViewModel(
     // Flux D (B3b, ADR-041) : la clé de récupération tapée part à /enrolment/complete AVEC
     // l'attestation ; le serveur la vérifie là, en une fois. Mémoire vive seulement, effacée après.
     private var pendingRecoveryCode: String? = null
+    // D-B7-1 : requête d'enregistrement refusée par un 503 (le contrat le dit TRANSITOIRE : le cœur
+    // garde l'enrôlement en BIND). Mémoire vive seulement ; rejouée telle quelle par « Réessayer »,
+    // avec la MÊME clé locale ; effacée dès une autre issue.
+    private var pendingComplete: CompleteRequest? = null
     private var beforeKeyLost: EnrolStep? = null
 
     private data class IssuedCode(
@@ -346,54 +351,85 @@ class EnrolmentViewModel(
                     challengeSignature = Base64.getEncoder().encodeToString(signature),
                     recoveryCode = if (rebinding) pendingRecoveryCode else null, // flux D (ADR-041)
                 )
-            when (val r = repository.complete(request)) {
-                is ApiResult.Ok -> {
-                    pendingRecoveryCode = null // la clé tapée a servi : elle ne vaut plus rien ici
-                    if (rebinding) throttle?.recordSuccess()
-                    // L'appareil est lié dès cette réponse : on mémorise ce que le flux B exige.
-                    val number = msisdn
-                    val deviceId = r.value.deviceId
-                    if (number != null && deviceId != null) boundDevice?.save(BoundDevice(number, deviceId))
-                    recovery = IssuedCode(r.value.enrolmentId, r.value.recoveryCode)
-                    _step.value =
-                        if (rebinding && number != null) {
-                            EnrolStep.Rebound(number) // E-22, puis la nouvelle clé (E-08)
-                        } else {
-                            EnrolStep.RecoveryKey(r.value.recoveryCode, lastDisplay = false)
+            register(request)
+        }
+    }
+
+    /**
+     * D-B7-1 : « Réessayer » après un 503 à l'enregistrement rejoue la MÊME requête avec la MÊME clé
+     * locale (pas de nouvelle clé, pas de nouveau déverrouillage). Côté serveur, l'enrôlement est resté
+     * en BIND et le PDP remplace une clé EN ATTENTE par la suivante : si la première réponse s'était
+     * perdue, la réinscription est absorbée.
+     */
+    fun retryRegistration() {
+        val current = _step.value as? EnrolStep.Securing ?: return
+        if (current.error != EnrolError.SERVICE_UNAVAILABLE) return
+        val request = pendingComplete ?: return
+        exclusive {
+            _step.value = EnrolStep.Securing(SecuringStage.REGISTERING)
+            register(request)
+        }
+    }
+
+    /** `/enrolment/complete` et ses issues ; appelé par la première tentative et par le rejeu. */
+    private suspend fun register(request: CompleteRequest) {
+        when (val r = repository.complete(request)) {
+            is ApiResult.Ok -> {
+                pendingComplete = null
+                pendingRecoveryCode = null // la clé tapée a servi : elle ne vaut plus rien ici
+                if (rebinding) throttle?.recordSuccess()
+                // L'appareil est lié dès cette réponse : on mémorise ce que le flux B exige.
+                val number = msisdn
+                val deviceId = r.value.deviceId
+                if (number != null && deviceId != null) boundDevice?.save(BoundDevice(number, deviceId))
+                recovery = IssuedCode(r.value.enrolmentId, r.value.recoveryCode)
+                _step.value =
+                    if (rebinding && number != null) {
+                        EnrolStep.Rebound(number) // E-22, puis la nouvelle clé (E-08)
+                    } else {
+                        EnrolStep.RecoveryKey(r.value.recoveryCode, lastDisplay = false)
+                    }
+            }
+            is ApiResult.Refused -> {
+                if (r.reason == REASON_SERVICE_UNAVAILABLE) {
+                    // Transitoire (contrat `Unavailable`) : rien n'est détruit, l'étape est gardée ;
+                    // le PDP a peut-être déjà la clé (D-B7-1 : premier appel à froid > délai du cœur).
+                    pendingComplete = request
+                    _step.value = EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE)
+                    return
+                }
+                pendingComplete = null
+                keys.delete() // le serveur n'a pas enregistré la clé : elle ne vaut rien
+                val wait = r.retryAfterSeconds?.let(Duration::ofSeconds)
+                _step.value =
+                    when (r.reason) {
+                        // Flux D : la clé de récupération a été refusée ICI (ADR-041). Retour à
+                        // E-20, ou E-21 si CET appareil doit attendre ; le compte n'est jamais bloqué.
+                        REASON_RECOVERY_INVALID -> {
+                            pendingRecoveryCode = null
+                            throttle?.recordFailure(wait)?.let { EnrolStep.RecoveryWait(it) }
+                                ?: EnrolStep.Recovery(EnrolError.RECOVERY_INVALID)
                         }
-                }
-                is ApiResult.Refused -> {
-                    keys.delete() // le serveur n'a pas enregistré la clé : elle ne vaut rien
-                    val wait = r.retryAfterSeconds?.let(Duration::ofSeconds)
-                    _step.value =
-                        when (r.reason) {
-                            // Flux D : la clé de récupération a été refusée ICI (ADR-041). Retour à
-                            // E-20, ou E-21 si CET appareil doit attendre ; le compte n'est jamais bloqué.
-                            REASON_RECOVERY_INVALID -> {
-                                pendingRecoveryCode = null
-                                throttle?.recordFailure(wait)?.let { EnrolStep.RecoveryWait(it) }
-                                    ?: EnrolStep.Recovery(EnrolError.RECOVERY_INVALID)
-                            }
-                            REASON_THROTTLED -> {
-                                pendingRecoveryCode = null
-                                throttle?.let { EnrolStep.RecoveryWait(it.serverWait(wait)) }
-                                    ?: EnrolStep.Recovery(EnrolError.UNEXPECTED)
-                            }
-                            else ->
-                                EnrolStep.Securing(
-                                    SecuringStage.REGISTERING,
-                                    when (r.reason) {
-                                        REASON_ATTESTATION_REJECTED, REASON_DEVICE_UNSUPPORTED -> EnrolError.DEVICE_REFUSED
-                                        REASON_ENROLMENT_EXPIRED -> EnrolError.SESSION_EXPIRED
-                                        else -> EnrolError.UNEXPECTED
-                                    },
-                                )
+                        REASON_THROTTLED -> {
+                            pendingRecoveryCode = null
+                            throttle?.let { EnrolStep.RecoveryWait(it.serverWait(wait)) }
+                                ?: EnrolStep.Recovery(EnrolError.UNEXPECTED)
                         }
-                }
-                ApiResult.Unreachable -> {
-                    keys.delete() // « Connexion perdue. Recommencez. » ; la clé locale est détruite
-                    _step.value = EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.UNREACHABLE)
-                }
+                        else ->
+                            EnrolStep.Securing(
+                                SecuringStage.REGISTERING,
+                                when (r.reason) {
+                                    REASON_ATTESTATION_REJECTED, REASON_DEVICE_UNSUPPORTED -> EnrolError.DEVICE_REFUSED
+                                    REASON_ENROLMENT_EXPIRED -> EnrolError.SESSION_EXPIRED
+                                    else -> EnrolError.UNEXPECTED
+                                },
+                            )
+                    }
+            }
+            ApiResult.Unreachable -> {
+                pendingComplete = null
+                keys.delete() // « Connexion perdue. Recommencez. » ; la clé locale est détruite
+                _step.value = EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.UNREACHABLE)
             }
         }
     }
@@ -555,7 +591,8 @@ class EnrolmentViewModel(
 
     /** Pour les tests : aucun secret ne survit à l'arrivée sur l'accueil. */
     internal fun holdsSecrets(): Boolean =
-        pin != null || recovery != null || attestationChallenge != null || pendingRecoveryCode != null
+        pin != null || recovery != null || attestationChallenge != null || pendingRecoveryCode != null ||
+            pendingComplete?.recoveryCode != null
 
     class Factory(
         private val repository: EnrolmentRepository,
@@ -604,5 +641,6 @@ class EnrolmentViewModel(
         const val REASON_ACCOUNT_FROZEN = "ACCOUNT_FROZEN"
         const val REASON_ATTESTATION_REJECTED = "ATTESTATION_REJECTED"
         const val REASON_DEVICE_UNSUPPORTED = "DEVICE_UNSUPPORTED"
+        const val REASON_SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
     }
 }

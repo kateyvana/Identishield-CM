@@ -239,6 +239,58 @@ class EnrolmentViewModelTest {
         assertFalse("pas de clé orpheline (SPEC §5.3)", keys.hasDeviceKey())
     }
 
+    /**
+     * D-B7-1 (passe B7 du 2026-10-25) : un 503 SERVICE_UNAVAILABLE à /enrolment/complete est
+     * TRANSITOIRE (contrat `Unavailable`) : la clé locale est gardée, l'étape aussi, le message est
+     * dédié, et « Réessayer » rejoue la MÊME requête avec la MÊME clé.
+     */
+    @Test
+    fun serviceUnavailableDuringRegistration_keepsTheLocalKey_andTheStage() {
+        repo.completeResult = ApiResult.Refused(503, "SERVICE_UNAVAILABLE", retryAfterSeconds = 2L)
+        val vm = vm()
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        assertEquals(EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE), vm.step.value)
+        assertTrue("la clé locale est gardée : le PDP l'a peut-être déjà enregistrée", keys.hasDeviceKey())
+        assertEquals(0, keys.deleted)
+        assertEquals(1, repo.calls.count { it == "complete" })
+        assertFalse(repo.calls.contains("confirm"))
+    }
+
+    @Test
+    fun retryAfterServiceUnavailable_replaysTheSameRequest_withTheSameKey_thenContinues() {
+        repo.completeResult = ApiResult.Refused(503, "SERVICE_UNAVAILABLE")
+        val vm = vm()
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        val first = repo.lastComplete
+        repo.completeResult = ApiResult.Ok(RecoveryCodeIssued("c-1", CODE))
+        vm.retryRegistration()
+        assertEquals(2, repo.calls.count { it == "complete" })
+        assertEquals("même requête (clé publique, attestation, signature)", first, repo.lastComplete)
+        assertEquals("aucune nouvelle clé générée", 1, keys.generateCalls)
+        assertEquals(0, keys.deleted)
+        assertEquals(EnrolStep.RecoveryKey(CODE, lastDisplay = false), vm.step.value)
+    }
+
+    @Test
+    fun retryRegistration_isInert_withoutAPendingServiceUnavailable() {
+        val vm = vm()
+        vm.retryRegistration()
+        assertEquals(EnrolStep.Welcome, vm.step.value)
+        assertTrue(repo.calls.isEmpty())
+        // Un autre refus à l'enregistrement n'ouvre pas le rejeu : la clé a été détruite, il faut recommencer.
+        repo.completeResult = ApiResult.Refused(422, "ATTESTATION_REJECTED")
+        untilOtp(vm)
+        vm.submitOtp(OTP)
+        vm.secureDevice(unlockOk)
+        assertEquals(1, keys.deleted)
+        vm.retryRegistration()
+        assertEquals(1, repo.calls.count { it == "complete" })
+    }
+
     @Test
     fun softwareOnlyKey_isRefused_mobS02() {
         val insecure = FakeKeys(insecure = true)

@@ -230,7 +230,12 @@ private fun EnrolmentRoot(
             if (step.error == EnrolError.DEVICE_REFUSED) {
                 DeviceIncompatibleScreen(onQuit) // E-27b (M-08)
             } else {
-                SecuringScreen(step, onSecure = { enrolment.secureDevice(unlocks.securing) }, onRestart = enrolment::begin)
+                SecuringScreen(
+                    step,
+                    onSecure = { enrolment.secureDevice(unlocks.securing) },
+                    onRestart = enrolment::begin,
+                    onRetryRegistration = enrolment::retryRegistration, // D-B7-1
+                )
             }
         is EnrolStep.ScreenLockRequired -> ScreenLockRequiredScreen(step, onOpenSecuritySettings, enrolment::screenLockConfigured)
         is EnrolStep.RecoveryKey -> RecoveryKeyScreen(step, enrolment::keyWrittenDown)

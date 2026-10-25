@@ -149,6 +149,25 @@ class EnrolmentScreensTest {
         assertEquals(1, starts)
     }
 
+    /** D-B7-1 : le 503 a son message (charte point 3) et « Réessayer » rejoue l'enregistrement, pas la clé. */
+    @Test
+    fun e07_serviceUnavailable_saysSo_andRetryReplaysTheRegistration() {
+        var starts = 0
+        var retries = 0
+        show {
+            SecuringScreen(
+                EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE),
+                onSecure = { starts++ },
+                onRestart = {},
+                onRetryRegistration = { retries++ },
+            )
+        }
+        compose.onNodeWithText("Service momentanément indisponible. Réessayez.").assertIsDisplayed()
+        compose.onNodeWithTag("securing-retry").performClick()
+        assertEquals(1, retries)
+        assertEquals(0, starts)
+    }
+
     /** D3 : l'écran dit la cause (pas de verrou) et l'action (réglages), charte points 3 et 4. */
     @Test
     fun e07_screenLockRequired_explainsCauseAndAction_andLeadsToSettings() {

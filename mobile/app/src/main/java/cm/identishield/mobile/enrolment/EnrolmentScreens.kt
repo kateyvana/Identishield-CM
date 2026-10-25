@@ -93,6 +93,7 @@ fun errorMessage(error: EnrolError): String =
             EnrolError.UNLOCK_CANCELLED -> R.string.error_unlock_cancelled
             EnrolError.CONFIRM_MISMATCH -> R.string.error_confirm_mismatch
             EnrolError.PROCESS_RESTARTED -> R.string.error_process_restarted
+            EnrolError.SERVICE_UNAVAILABLE -> R.string.error_service_unavailable
             EnrolError.UNEXPECTED -> R.string.error_unexpected
         },
     )
@@ -301,6 +302,7 @@ fun SecuringScreen(
     step: EnrolStep.Securing,
     onSecure: () -> Unit,
     onRestart: () -> Unit,
+    onRetryRegistration: () -> Unit = onSecure, // D-B7-1 : après un 503, rejoue l'enregistrement, même clé
 ) {
     // Lancement automatique à l'arrivée sur l'écran : la clé ne naît qu'ici, après l'OTP validé.
     LaunchedEffect(Unit) { if (step.error == null && step.stage == SecuringStage.CREATING_KEY) onSecure() }
@@ -346,7 +348,11 @@ fun SecuringScreen(
             val restart = error == EnrolError.DEVICE_REFUSED || error == EnrolError.SESSION_EXPIRED
             SecondaryButton(
                 stringResource(if (restart) R.string.welcome_start else R.string.securing_retry),
-                if (restart) onRestart else onSecure,
+                when {
+                    restart -> onRestart
+                    error == EnrolError.SERVICE_UNAVAILABLE -> onRetryRegistration // même clé, même requête
+                    else -> onSecure
+                },
                 tag = "securing-retry",
             )
         }
