@@ -161,7 +161,10 @@ class EnrolmentViewModel(
     // avec la MÊME clé locale ; effacée dès une autre issue.
     // LIMITE DÉCLARÉE (charte §10.5, décision du superviseur du 2026-10-25) : en flux D elle porte
     // l'ANCIEN code de récupération pendant la fenêtre de rejeu. Jamais persistée (ni SavedStateHandle
-    // ni disque) ; effacée au succès, au refus, à l'abandon (begin) et par la mort du processus.
+    // ni disque) ; effacée au succès, au refus, à la connexion perdue, à l'abandon (begin) et par la
+    // mort du processus. Depuis l'état 503 il n'existe pas d'autre sortie : seul « Réessayer »
+    // (onRestart ne sert qu'à DEVICE_REFUSED et SESSION_EXPIRED), retour arrière inactif pendant la
+    // liaison, beginWithNumber non joignable pendant un enrôlement.
     private var pendingComplete: CompleteRequest? = null
     private var beforeKeyLost: EnrolStep? = null
 
