@@ -123,8 +123,8 @@ probe_reason() {  # $1 = nom conteneur ; $2 = programme serveur ; imprime PROBE_
   # si le motif reste indetermine (JVM froide sous charge -> timeout -> OTHER).
   for i in 1 2; do
     out=$(docker run --rm --network "$VNET" -e CORE_MODE=probe -e CORE_TARGET=https://pdp:8443/health \
-          -v "$CERTS":/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
-          java -Dspring.main.web-application-type=none -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>&1)
+          -v "$CERTS":/certs:ro -v "$(pwd)/config:/config:ro" --entrypoint java isc-core \
+          -Dspring.main.web-application-type=none -jar /app/app.jar 2>&1)
     reason=$(echo "$out" | sed -n 's/^PROBE_REASON=//p')
     { [ "$reason" = "CHAIN_OR_SIGNATURE" ] || [ "$reason" = "NAME_MISMATCH" ]; } && break
   done

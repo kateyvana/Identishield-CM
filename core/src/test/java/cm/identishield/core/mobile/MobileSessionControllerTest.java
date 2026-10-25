@@ -40,7 +40,9 @@ class MobileSessionControllerTest {
                   "c",
                   "k",
                   "a",
-                  new PdpClientProperties.Breaker(3, 4_500))));
+                  new PdpClientProperties.Breaker(3, 4_500),
+                  20,
+                  500)));
 
   MobileSessionControllerTest() {
     when(http.getRemoteAddr()).thenReturn("100.64.0.9");

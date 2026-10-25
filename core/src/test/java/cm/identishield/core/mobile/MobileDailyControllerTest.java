@@ -55,7 +55,9 @@ class MobileDailyControllerTest {
                   "c",
                   "k",
                   "a",
-                  new PdpClientProperties.Breaker(3, 4_500))));
+                  new PdpClientProperties.Breaker(3, 4_500),
+                  20,
+                  500)));
 
   private void bearer(String token) {
     when(http.getHeader("Authorization")).thenReturn(token == null ? null : "Bearer " + token);

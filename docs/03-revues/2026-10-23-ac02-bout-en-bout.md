@@ -55,7 +55,7 @@ le contient :
 ```
 # 0. Coordination (CLAUDE.md) : ~/VM-OCCUPEE absent, sinon attendre ; puis le poser.
 make reset && make up        # make reset SEULEMENT si infra/init/init.sql a changé ; sinon make up
-make check-stack             # relancer une fois si le premier /evaluate sort à froid (EXECUTED_DEGRADED)
+make check-stack             # pile prête par construction (décision du 2026-10-25) : aucune relance « à froid »
 bash tools/verify_attacker.sh            # phase 1 : l'attaque réussit sans la couche
 bash tools/verify_ac02_protected.sh      # phase 2 : la même attaque est neutralisée
 PATH=$HOME/.local/bin:$PATH make abuse   # tests T-AC automatisés

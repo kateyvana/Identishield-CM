@@ -15,9 +15,14 @@ public record PdpClientProperties(
     String certPath,
     String keyPath,
     String caPath,
-    Breaker breaker) {
+    Breaker breaker,
+    int warmupAttempts,
+    long warmupDelayMs) {
   // CAP_FAILCLOSED ne vit PAS ici : c'est un parametre nomme, lu du jeu de regles
   // versionne (RuleSet / config/ruleset.yaml), source unique (ES-15).
+
+  // warmupAttempts x warmupDelayMs : attente BORNEE du /health du PDP au demarrage (pret par
+  // construction, 2026-10-25) ; parametres nommes de la configuration versionnee, jamais en dur.
 
   /** Seuils du disjoncteur (fait maison, sans dependance : ADR-021 / §4). */
   public record Breaker(int failureThreshold, long cooldownMs) {}

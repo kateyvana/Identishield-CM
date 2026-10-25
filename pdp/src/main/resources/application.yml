@@ -15,6 +15,11 @@ server:
 spring:
   application:
     name: isc-pdp
+  mvc:
+    servlet:
+      # Pret par construction (2026-10-25) : le DispatcherServlet s'initialise au demarrage,
+      # pas a la premiere requete.
+      load-on-startup: 1
   config:
     # Jeu de regles versionne (source unique des parametres nommes, EF-17/ES-15),
     # monte en lecture seule. La version est portee par chaque decision /evaluate.

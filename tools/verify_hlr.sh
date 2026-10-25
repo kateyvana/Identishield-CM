@@ -31,8 +31,8 @@ psqlapp() {
 }
 run_hlr() {
   docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=hlr "$@" \
-    -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
-    java -Dspring.main.web-application-type=none -jar /app/app.jar 2>/dev/null
+    -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" --entrypoint java isc-core \
+    -Dspring.main.web-application-type=none -jar /app/app.jar 2>/dev/null
 }
 field() { echo "$1" | sed -n "s/^$2=//p"; }
 

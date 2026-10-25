@@ -2,8 +2,9 @@
 # T2-07 — Verifie le fil du squelette cote coeur (EF-04/EF-05) : un transfert P2P
 # appelle /evaluate AVANT commit, applique ALLOW, debite le solde, et laisse
 # exactement une entree d'audit chainee (le decisionId lie transaction et audit).
-# Delai de sonde eleve : la VERIFICATION (JVM froide sous charge) tolere le
-# cold-start ; le budget de 800 ms reste celui de la production (coeur chaud).
+# Delai du client = celui de la production (800 ms) : la pile est prete PAR CONSTRUCTION
+# (decision du 2026-10-25), aucun delai elargi, aucune relance « a froid ». Les options -D
+# passent par --entrypoint java (ENTRYPOINT de l'image = java -jar ; carte #112).
 # Necessite la pile debout (postgres, pdp).
 set -uo pipefail
 export MSYS_NO_PATHCONV=1
@@ -17,8 +18,8 @@ adm "UPDATE core.account SET balance_xaf = 1000000 WHERE msisdn='$FROM' AND bala
 before=$(adm "SELECT balance_xaf FROM core.account WHERE msisdn='$FROM';")
 
 out=$(docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=transfer -e AMOUNT_XAF=$AMOUNT \
-      -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
-      java -Dspring.main.web-application-type=none -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>&1)
+      -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" --entrypoint java isc-core \
+      -Dspring.main.web-application-type=none -jar /app/app.jar 2>&1)
 state=$(echo "$out" | sed -n 's/^TRANSFER_STATE=//p' | tr -d '[:space:]')
 did=$(echo "$out" | sed -n 's/^TRANSFER_DECISION_ID=//p' | tr -d '[:space:]')
 after=$(adm "SELECT balance_xaf FROM core.account WHERE msisdn='$FROM';")

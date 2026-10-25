@@ -18,8 +18,8 @@ fail=0
 adm() { docker exec isc-postgres psql -U isc_admin -d identishield -tAc "$1" 2>/dev/null | tr -d '[:space:]'; }
 core_notif() {
   docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=notification "$@" \
-    -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
-    java -Dspring.main.web-application-type=none -jar /app/app.jar 2>/dev/null
+    -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" --entrypoint java isc-core \
+    -Dspring.main.web-application-type=none -jar /app/app.jar 2>/dev/null
 }
 field() { echo "$1" | sed -n "s/^$2=//p"; }
 
@@ -56,8 +56,8 @@ adm "UPDATE core.account SET balance_xaf = 1000000 WHERE msisdn='$FROM' AND bala
 adm "DELETE FROM core.notification WHERE msisdn='$FROM';" >/dev/null
 tout=$(docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=transfer -e FROM_MSISDN=$FROM \
        -e BENEFICIARY_MSISDN=677000002 -e AMOUNT_XAF=15000 \
-       -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
-       java -Dspring.main.web-application-type=none -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>/dev/null)
+       -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" --entrypoint java isc-core \
+       -Dspring.main.web-application-type=none -jar /app/app.jar 2>/dev/null)
 tstate=$(echo "$tout" | sed -n 's/^TRANSFER_STATE=//p' | tr -d '[:space:]')
 tlst=$(core_notif -e NOTIF_MSISDN=$FROM -e NOTIF_ACTION=list)
 if echo "$tlst" | grep -q "P2P_EXECUTED"; then

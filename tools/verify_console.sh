@@ -11,8 +11,8 @@ fail=0
 
 # Provoque une transaction (run CLI du coeur, ecrit dans la meme base que le service).
 did=$(docker run --rm --network isc-net --env-file infra/.env -e CORE_MODE=transfer -e AMOUNT_XAF=15000 \
-      -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" isc-core \
-      java -Dspring.main.web-application-type=none -Dcore.pdp.timeout-ms=5000 -jar /app/app.jar 2>&1 \
+      -v isc-certs:/certs:ro -v "$(pwd)/config:/config:ro" --entrypoint java isc-core \
+      -Dspring.main.web-application-type=none -jar /app/app.jar 2>&1 \
       | sed -n 's/^TRANSFER_DECISION_ID=//p' | tr -d '[:space:]')
 
 # Garde anti-faux-positif : sans decisionId (UUID), le transfert a echoue. Il ne

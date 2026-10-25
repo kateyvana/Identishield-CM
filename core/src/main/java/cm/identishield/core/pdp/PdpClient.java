@@ -154,18 +154,62 @@ public final class PdpClient {
     }
   }
 
+  /** Sonde de preparation : code HTTP du /health, ou exception si injoignable. */
+  interface Probe {
+    int status() throws Exception;
+  }
+
+  /** Attente entre deux essais (injectee : les tests n'attendent pas). */
+  interface Sleeper {
+    void sleep(long millis) throws InterruptedException;
+  }
+
   /**
-   * Prechauffe la pile TLS et etablit la connexion persistante au demarrage, pour que la PREMIERE
-   * decision reelle soit deja chaude (sinon le cout unique de chargement des classes TLS
-   * depasserait le budget de 800 ms et declencherait un fail-closed parasite). Best-effort : les
-   * erreurs sont ignorees et n'affectent pas le disjoncteur.
+   * Pret par construction (decision du superviseur technique du 2026-10-25, qui tranche
+   * l'observation du 2026-09-15) : au demarrage, attend que /health du PDP reponde 200 — c'est un
+   * vrai aller-retour en base cote PDP — en reessais BORNES ({@code warmup-attempts} x {@code
+   * warmup-delay-ms}, configuration versionnee). Journalise « PDP pret » ou « PDP non pret apres N
+   * essais » ; ne leve jamais, ne bloque jamais le demarrage du coeur au-dela de la borne, ne
+   * touche pas au disjoncteur. Etablit au passage la connexion persistante (TLS chauffe).
    */
   public void warmup() {
-    try {
-      get(URI.create(props.baseUrl() + props.healthPath()));
-    } catch (Exception ignored) {
-      // demarrage a froid : sans importance, la connexion sera retentee a l'usage
+    URI health = URI.create(props.baseUrl() + props.healthPath());
+    int attempt =
+        awaitReady(() -> get(health), props.warmupAttempts(), props.warmupDelayMs(), Thread::sleep);
+    if (attempt > 0) {
+      log.info("PDP pret (essai {}/{})", attempt, props.warmupAttempts());
+    } else {
+      log.warn(
+          "PDP non pret apres {} essais ({} ms d'intervalle) : le coeur demarre quand meme,"
+              + " la premiere sortie sensible tombera en fail-closed/degrade (ES-11)",
+          props.warmupAttempts(),
+          props.warmupDelayMs());
     }
+  }
+
+  /**
+   * Numero (1..attempts) de l'essai auquel la sonde a repondu 200, ou -1 si aucun ; une attente
+   * entre deux essais, aucune apres le dernier ; une interruption arrete tout et garde le drapeau.
+   */
+  static int awaitReady(Probe probe, int attempts, long delayMs, Sleeper sleeper) {
+    for (int i = 1; i <= attempts; i++) {
+      try {
+        if (probe.status() == 200) {
+          return i;
+        }
+      } catch (Exception notReady) {
+        // injoignable ou refus TLS : pas pret, on reessaie
+      }
+      if (i < attempts) {
+        try {
+          sleeper.sleep(delayMs);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return -1;
+        }
+      }
+    }
+    return -1;
   }
 
   /** Sonde brute d'un PDP cible : renvoie le motif de refus (4a/4b, OB-6). */
