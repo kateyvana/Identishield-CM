@@ -21,9 +21,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * D-B7-1 (passe B7 du 2026-10-25, décision du superviseur technique) : un appel {@code /device/*}
- * qui dépasse {@code core.device.timeout-ms} laisse UNE ligne WARN avec la route et la durée, et rien
- * d'autre (aucun identifiant de compte ou d'appareil, aucun corps). Sans cette ligne, la cause du 503
- * rendu à l'application était introuvable dans les journaux (qualification du 2026-10-25).
+ * qui dépasse {@code core.device.timeout-ms} laisse UNE ligne WARN avec la route et la durée, et
+ * rien d'autre (aucun identifiant de compte ou d'appareil, aucun corps). Sans cette ligne, la cause
+ * du 503 rendu à l'application était introuvable dans les journaux (qualification du 2026-10-25).
  */
 class DeviceClientTimeoutTest {
 

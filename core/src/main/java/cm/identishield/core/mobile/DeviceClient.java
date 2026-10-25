@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
-import java.net.http.HttpTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -225,7 +225,8 @@ public class DeviceClient {
       Thread.currentThread().interrupt();
       return Reply.unreachable();
     } catch (HttpTimeoutException e) {
-      // La cause du 503 rendu à l'application, en une ligne (D-B7-1) : route et durée, rien d'autre.
+      // La cause du 503 rendu à l'application, en une ligne (D-B7-1) : route et durée, rien
+      // d'autre.
       log.warn("{} : délai dépassé après {} ms", route, timeout.toMillis());
       return Reply.unreachable();
     } catch (Exception e) {
