@@ -10,7 +10,7 @@ réenrôlement (flux D) du **même** compte, sur un second téléphone ou après
 
 | Rôle | Compte | Source | Pourquoi |
 |---|---|---|---|
-| Titulaire enrôlé puis réenrôlé | **677000200 — Hervé ESSOMBA** (`testRole: compte-neuf-sans-appareil`) | `tools/mobile-mock/fixtures.json`, PIN de test public | Compte neuf : aucun appareil, c'est le flux A nominal ; après le flux A il est lié, c'est le flux D nominal |
+| Titulaire enrôlé puis réenrôlé | ~~**677000200 — Hervé ESSOMBA**~~ (joué le 2026-10-25 en passe B7 ; **reste gelé** FROZEN / NOT_ME : preuve de B7, levée ES-08 non construite = limite déclarée, mois 5). **Décision du superviseur du 2026-10-25 : répétition générale ≈ 3/11 sur 677001102, démonstration du 6/11 sur 677001103** (soldes amorcés par le CSV B8, **PIN tapés par la propriétaire**) ; avant chaque passage, **désinstaller l'application** puis flux A sur le nouveau numéro | CSV B8 (hors dépôt) | Compte neuf : aucun appareil, c'est le flux A nominal ; après le flux A il est lié, c'est le flux D nominal |
 | Compte visé par un tiers (freinage) | **677001101** (liste nominative de la propriétaire, hors dépôt) | `seed-comptes-demo.csv` (PIN connu de la propriétaire seule) | Montre qu'un tiers qui tape des codes faux bloque SON origine, jamais le compte (ES-21) |
 
 Préalable : pile démarrée sous le profil `demo` (`make up`, `ISC_DEMO_SEED_CSV` dans `infra/.env`),

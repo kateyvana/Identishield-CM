@@ -1,0 +1,9 @@
+# Preuve côté serveur — étape (c) flux A, 2026-10-25 ~10:56Z (lectures SQL seules, pile servie fbdaf3b)
+## pdp.device (compte 677000200) : state | enrolled_at | id(8)
+ACTIVE|2026-10-25 10:52:23.483351+00|d4d95427
+REVOKED|2026-10-25 10:50:12.547881+00|e6ecb8f0
+## core.enrolment (dernier) : stage
+DONE
+## core.session (compte) : nombre | dernière émission
+1|2026-10-25 10:54:39.342043+00
+## pdp.trust_state : aucune ligne (compte jamais vu du PDP → TRUSTED, A1-5) ; core.account.balance_xaf = 20000

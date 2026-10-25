@@ -1,0 +1,3 @@
+# Preuve côté serveur — étape (f) AC-02 : réattribution HLR (A) → alerte → « ce n'est pas moi » signé → gel NOT_ME, 2026-10-25 (lectures SQL seules)
+## HLR (A, 11:33:12.916Z) : core.hlr_subscriber 677000200 → 624010000000667 ; core.hlr_reassignment 624010677000200 → 624010000000667, agent-ac02-f, motif « AC-02 (f) demo jury : remplacement SIM »
+## Suite de l'étape (f) (alerte SIM_CHANGED, « ce n'est pas moi », gel NOT_ME, audit, solde) : serveur-f-trust-frozen.txt (ce fichier ne porte que la réattribution HLR ; doublon retiré après relecture du couloir A, 2026-10-25)
