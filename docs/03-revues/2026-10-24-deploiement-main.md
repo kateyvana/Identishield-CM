@@ -684,3 +684,51 @@ Décision du superviseur : répétition générale vers le 3/11 sur 677001102 (I
 Lignes HLR posées par le seeder B8 le 2026-10-24 à 19:51:55Z, jamais réattribuées. Les IMSI
 attaquants prévus (…668, …669) ne sont attribués à aucun numéro. Le solde de 677001101 inclut le
 virement de 5 000 FCFA de l'étape (e) de B7.
+
+### Fenêtre 5 (2026-10-25, 17:07Z → 17:51Z) — `main` a9e3486 (#117 à #121), `check-stack` VERT, preuve (e) VERTE 3/3
+
+Ordre du superviseur technique du 25/10 : fenêtre après la fusion de #117 à #121 et le « VM libre »
+du couloir B (16:49:42Z, puis témoin B de reproduction D-B7-1 retiré à 17:06:23Z). CI `main` a9e3486
+`success` (16:53:12Z). Témoin A posé 17:07:02Z.
+
+**Point 1, avant toute écriture (lecture seule, 16:49:32Z)** : `pdp.trust_state` de 677000001 :
+`state=FROZEN freeze_cause=FREEZE_DECISION freeze_until=2026-10-25 15:48:31.529168+00
+reenrol_frozen_until=NULL reference_imsi=624010000000000` ; `GET /trust` : `{"state":"TRUSTED",
+"since":"2026-10-25T15:48:31.529168Z","freezeUntil":null}`. Gel par décision, échéance dépassée, ni
+`NOT_ME` ni sans échéance : fenêtre ouverte.
+
+**Déploiement** : export 1 (17:08:12Z) 120287 entrées, `sha256 39ec8afe9f3049a2b702c1e433556ac53d54785f770c2fef77280cfdbaa5a9ad`,
+0 rupture, ancre conforme ; `git pull --ff-only` 9ea36dc → a9e3486 ; `make up` avec construction
+17:08:42Z → 17:13:14Z, `FIN_MAKE_UP_RC=0` ; migrations 002→006 rejouées ; CA inchangée ; 8443
+`verify=0` depuis la VM et le poste ; 8080 et 3000 refusés ; 29 comptes.
+
+**#121 effective au démarrage du cœur (17:13:36Z)** : `core.hlr_subscriber` 677000001 →
+`624010000000000`, 677000002 → `624010677000002`, aucune réattribution. Après le `check-stack` :
+677000001 `TRUSTED`, `reference_imsi = current_imsi = 624010000000000`, aucune PROBATION.
+
+**`check-stack`** 17:14:19Z → 17:15:48Z : **VERT, 44 [OK], 0 [ECHEC]**. Transfert et USSD
+`EXECUTED` avec leur entrée d'audit (seq 120290 et 120291, `ALLOW`, `proofType=NONE` : #119
+effective). Les 9 outils en `--entrypoint java` ont tourné (#112 fermée).
+
+**Preuve (e) VERTE 3/3** (`~/preuve-e-pret.sh`, départ différé à 17:26:30Z au-delà de VELOCITY,
+630 s entre essais) : à chaque redémarrage du PDP, « base jointe à l'initialisation » précède
+« Tomcat started » (17:26:39.985Z / 17:26:42.096Z ; 17:37:36.056Z / 17:37:37.880Z ; 17:48:34.690Z
+/ 17:48:36.827Z) ; premier virement `EXECUTED` (388251ac…, 95ff3da8…, b3530e54…), une entrée d'audit
+chacun, cœur « PDP pret » aux essais 2/20, 2/20, 3/20. Sorties brutes sur #116 et #112.
+
+**Mesure D-B7-1 sur la pile servie (17:16:26Z, aucune écriture)** : redémarrage du PDP, puis sur
+une connexion persistante déjà établie (comme le cœur) : `GET /health` puis trois `POST
+/device/register` d'un premier enrôlement de compte jetable dont le défi ne correspond pas à la
+chaîne (refus 422 `ATTESTATION_REJECTED` après tout le chemin d'attestation) : **351 ms**, puis
+8 ms et 10 ms. 0 clé, 0 audit pour le compte jetable. C'est une borne basse : ni défi signé, ni
+PBKDF2, ni insertion. Chemin complet mesuré par le couloir B sur pile jetable : **2,246 s et
+2,582 s** (sorties brutes de B, durée totale côté client, deux redémarrages), pour un délai
+`core.device.timeout-ms` de 1 000 ms. Décision du superviseur : chemin d'enrôlement prêt par
+construction (PR D-B7-1 côté PDP), délai inchangé.
+
+**Export final (17:49:58Z)** : 120294 entrées, `sha256 1d34f0c1fd67a2b76bdaab68240b96a6c1d962662d4554d5ce33b1b9392c0eac`,
+0 rupture, ancre conforme. Cœur relancé : « PDP pret (essai 8/20) » (cœur et PDP redémarrés
+ensemble, attente bornée absorbée).
+
+**État final** : `main` a9e3486 déployé, 5 conteneurs `Up`, `isc-pdp (healthy)`. 677000200 reste
+`FROZEN / NOT_ME` (limite déclarée, ES-08).
