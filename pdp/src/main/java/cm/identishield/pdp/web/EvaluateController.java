@@ -262,6 +262,9 @@ public class EvaluateController {
     p.put("requiredAction", requiredAction);
     p.put("vetoApplied", vetoApplied);
     p.put("triggeredRules", triggeredRules);
+    // Nature de la preuve présentée (F-B7-2) : SIGNATURE ou NONE, valeur validée par le contrat.
+    // Jamais la signature ni le nonce eux-mêmes dans une entrée de décision.
+    p.put("proofType", req.proofType());
     // Raison lisible de la décision (A5, #39) : veto -> raison du veto ; ALLOW sans règle ->
     // NONE_ALLOW ; sinon, l'explication est portée par chaque triggeredRule.
     if (!"NONE".equals(vetoApplied)) {
