@@ -1,4 +1,4 @@
-# Passe B7 · Application branchée sur le vrai système — rapport de passe (en cours)
+# Passe B7 · Application branchée sur le vrai système — rapport de passe du 2026-10-25
 
 Carte #50. Couloir B. Ordre du superviseur technique du 2026-10-25 (étapes a → g). Règle du
 rapport (charte §10.9) : « conforme » seulement pour ce qui a été observé ; sinon « non observé ».
@@ -182,6 +182,30 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
 - Rotation et mort du processus avec conservation de l'état (§10.5) : vérifiées en passe B1a du
   2026-10-14 sur ce même appareil ; **non rejouées** ici.
 
+### Bilan de la passe (2026-10-25, 13:58 UTC) — ce qui est observé, ce qui ne l'est pas, ce qui est à décider
+
+| Étape | Verdict |
+|---|---|
+| (a) CA épinglée + SAN | **conforme, observée** |
+| (b) APK contre la VM, installé | **conforme, observée** (tablette SM-T515 ; téléphone non disponible) |
+| (c) flux A réel, attestation acceptée, TRUSTED | **conforme, observée** (D-B7-1 : premier `/complete` en erreur générique) |
+| (d) flux D, ancienne clé révoquée, DEVICE_REBOUND | **conforme, observée** |
+| (e) virement ALLOW signé | **conforme, observée** (F-B7-2 : pas de `proofType` dans l'audit, preuve par le nonce) |
+| (f) SIM_CHANGED → « ce n'est pas moi » → FROZEN NOT_ME → virement bloqué | **conforme, observée** (D-B7-3 : état « gelé » non affiché) |
+| (f) tentative de l'attaquant (SIM `…667`, USSD puis ré-enrôlement sans code) | **non observée** — le couloir A ne l'exécute pas depuis sa session ; **décision de la propriétaire** (qui l'exécute, quand) |
+| (g) arrière-plan → verrou, police 200 %, paysage | **conforme, observée** ; rotation/mort du processus : passe B1a, non rejouées |
+
+**Constats déclarés** (aucun correctif pendant la passe) : **D-B7-1** erreur générique au premier
+`POST /enrolment/complete` (cause non journalisée côté application) ; **D-B7-3** après « ce n'est
+pas moi », ni E-24 ni l'accueil n'affichent « compte gelé » ; **F-B7-2** le payload d'audit du PDP
+n'a pas de clé `proofType` (preuve de signature = nonce consommé).
+
+**État laissé sur la pile servie — à décider par la propriétaire** : 677000200 est **FROZEN / NOT_ME**
+(sans expiration), ré-enrôlements gelés jusqu'au 2026-10-26 11:36Z, HLR rattaché à l'IMSI attaquant
+`624010000000667`, solde 15 000 ; 677001101 = 225 000 ; trois clés d'appareil (`0a4d704b` ACTIVE,
+deux RÉVOQUÉES). La levée du gel (acte opérateur, A3) et le retour de l'IMSI sont des décisions de
+la propriétaire ; rejouer le scénario tel quel le 6/11 suppose de les prendre avant.
+
 ## Captures attendues (ISC-MOB-SPEC v1.3, tableau des écrans ; écrans FLAG_SECURE exclus : E-06, E-08, E-09, E-14, E-15, E-20)
 
 Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce dossier.
@@ -214,7 +238,7 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | **observée** |
 | (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : état FROZEN affiché — boutons disparus ; état du compte NON affiché (D-B7-3) | **observée** (sans état affiché) |
 | (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | **observée** (FROZEN/NOT_ME, reenrol gelé 24 h) |
-| (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | non observée |
+| (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | **non observée** — le couloir A ne l'exécute pas depuis sa session ; décision de la propriétaire |
 | (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) — « Opération bloquée · Pour votre sécurité, cet envoi n'a pas été exécuté. Votre argent est toujours sur votre compte. Que faire ? … Aucun code ne vous sera demandé par téléphone. » ; serveur : REJECTED, veto ACCOUNT_FROZEN (audit 120286), solde 15 000 | **observée** |
 | (g) | `E-10-deverrouillage-arriere-plan.png` (71 s), `E-10-deverrouillage-session-expiree.png` (~25 min) | E-10 après 61 s en arrière-plan : verrou (charte §10.7) — observé après ~25 min : « Votre session a expiré » | **observée** |
 | (g) | `E-10-police-200.png`, `E-10-paysage.png` (l'appareil est la tablette : toutes les captures sont « tablette ») | Mise en page tablette et police 200 % (charte §10.8) — téléphone non disponible : non observé | **observée** (tablette, 200 %, paysage) |
