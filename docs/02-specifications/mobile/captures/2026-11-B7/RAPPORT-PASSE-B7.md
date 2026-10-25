@@ -195,7 +195,7 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
 | (d) flux D, ancienne clé révoquée, DEVICE_REBOUND | **conforme, observée** |
 | (e) virement ALLOW signé | **conforme, observée** (F-B7-2 : pas de `proofType` dans l'audit, preuve par le nonce) |
 | (f) SIM_CHANGED → « ce n'est pas moi » → FROZEN NOT_ME → virement bloqué | **conforme, observée** (D-B7-3 : état « gelé » non affiché sur l'ACCUEIL ; E-24 l'affiche) |
-| (f) tentative de l'attaquant (SIM `…667`, USSD puis ré-enrôlement sans code) | **non observée** — le couloir A ne l'exécute pas depuis sa session ; **décision de la propriétaire** (qui l'exécute, quand) |
+| (f) tentative de l'attaquant (SIM `…667`, USSD puis ré-enrôlement sans code) | **non observée en direct** — décision du superviseur (2026-10-25) : lancée par la **propriétaire** avec les portes du dépôt ; la ligne reste ainsi jusqu'aux sorties collées par le couloir A |
 | (g) arrière-plan → verrou, police 200 %, paysage | **conforme, observée** ; rotation/mort du processus : passe B1a, non rejouées |
 
 **Constats déclarés** (aucun correctif pendant la passe) : **D-B7-1** erreur générique au premier
@@ -203,7 +203,7 @@ Mot de la propriétaire « téléphone prêt, ACL posée » reçu à 10:40Z. Dé
 pas moi », l'accueil n'affiche pas « compte gelé » (E-24 l'affiche) ; **F-B7-2** le payload d'audit du PDP
 n'a pas de clé `proofType` (preuve de signature = nonce consommé).
 
-**État laissé sur la pile servie — à décider par la propriétaire** : 677000200 est **FROZEN / NOT_ME**
+**État laissé sur la pile servie — DÉCIDÉ (superviseur, 2026-10-25) : 677000200 reste gelé** (preuve de B7 ; la levée ES-08 n'est pas construite = limite déclarée, mois 5). Répétition générale ≈ 3/11 sur **677001102**, démonstration du 6/11 sur **677001103**, bénéficiaire 677001101 ; avant chaque passage : désinstaller l'application, flux A sur le nouveau numéro. Détail de l'état : : 677000200 est **FROZEN / NOT_ME**
 (sans expiration), ré-enrôlements gelés jusqu'au 2026-10-26 11:36Z, HLR rattaché à l'IMSI attaquant
 `624010000000667`, solde 15 000 ; 677001101 = 225 000 ; trois clés d'appareil (`0a4d704b` ACTIVE,
 deux RÉVOQUÉES). La levée du gel (acte opérateur, A3) et le retour de l'IMSI sont des décisions de
@@ -241,7 +241,7 @@ Chaque ligne reste « non observée » tant que le fichier n'existe pas dans ce 
 | (f) | `E-24-detail-sim-changed.png` | E-24 Détail : « C'est moi » / « Ce n'est pas moi » | **observée** |
 | (f) | `E-24-apres-not-me-frozen.png` | E-24 après « Ce n'est pas moi » signée : « Votre compte est gelé pour votre sécurité… » affiché | **observée** |
 | (f) | `serveur-f-trust-frozen.txt` | Côté serveur : `GET /trust/{accountId}` → `FROZEN`, `reenrolFrozenUntil` posé | **observée** (FROZEN/NOT_ME, reenrol gelé 24 h) |
-| (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | **non observée** — le couloir A ne l'exécute pas depuis sa session ; décision de la propriétaire |
+| (f) | `serveur-f-attaquant-refuse.txt` | Côté serveur (A) : tentative de l'attaquant refusée (USSD STEP_UP bloqué ; application : `RECOVERY_INVALID` uniforme pendant le gel) ; **oracle : aucun débit** | **non observée en direct** — lancée par la propriétaire avec les portes du dépôt (décision du 2026-10-25) ; à passer « observée » avec les sorties du couloir A, en commit séparé |
 | (f) | `E-18-bloquee.png` | E-18 Bloquée si un virement est tenté depuis le téléphone lié après le gel (`ACCOUNT_FROZEN`) — « Opération bloquée · Pour votre sécurité, cet envoi n'a pas été exécuté. Votre argent est toujours sur votre compte. Que faire ? … Aucun code ne vous sera demandé par téléphone. » ; serveur : REJECTED, veto ACCOUNT_FROZEN (audit 120286), solde 15 000 | **observée** |
 | (g) | `E-10-deverrouillage-arriere-plan.png` (71 s), `E-10-deverrouillage-session-expiree.png` (~25 min) | E-10 après 61 s en arrière-plan : verrou (charte §10.7) — observé après ~25 min : « Votre session a expiré » | **observée** |
 | (g) | `E-10-police-200.png`, `E-10-paysage.png` (l'appareil est la tablette : toutes les captures sont « tablette ») | Mise en page tablette et police 200 % (charte §10.8) — téléphone non disponible : non observé | **observée** (tablette, 200 %, paysage) |
