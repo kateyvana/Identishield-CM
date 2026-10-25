@@ -227,6 +227,24 @@ class MobileDailyTest {
   }
 
   @Test
+  void deny_onAnInformativeType_wouldBeADefect_notAGuess() {
+    when(alerts.findOpen(ACCOUNT, ALERT))
+        .thenReturn(
+            Optional.of(
+                new Alerts.AlertView(
+                    ALERT,
+                    "DEVICE_REBOUND",
+                    SecurityAlerts.TEXT_DEVICE_REBOUND,
+                    true,
+                    Alerts.OPEN,
+                    NOW)));
+    pdpVerdictOnAlert("ALERT_NOT_ME", "VALID");
+    org.junit.jupiter.api.Assertions.assertThrows(
+        IllegalStateException.class, () -> daily.deny(SESSION, ALERT, NONCE, "c2ln"));
+    verify(device, never()).notMe(anyString(), anyString(), anyString());
+  }
+
+  @Test
   void deny_pdpUnreachableOrRouteMissing_is503_andTheAlertStaysOpen() {
     when(alerts.findOpen(ACCOUNT, ALERT)).thenReturn(Optional.of(openAlert()));
     pdpVerdictOnAlert("ALERT_NOT_ME", "VALID");
