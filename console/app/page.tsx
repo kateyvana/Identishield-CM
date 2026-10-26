@@ -47,6 +47,7 @@ const STR: Record<Lang, Record<string, string>> = {
     brandTag: 'Policy Decision Point · Mobile Money',
     navAttack: 'Attack',
     navAudit: 'Audit',
+    navSms: 'SMS',
     live: 'live',
     offline: 'network unreachable',
     timelineTitle: 'Attack timeline',
@@ -68,6 +69,7 @@ const STR: Record<Lang, Record<string, string>> = {
     brandTag: 'Point de décision · Mobile Money',
     navAttack: 'Attaque',
     navAudit: 'Audit',
+    navSms: 'SMS',
     live: 'en direct',
     offline: 'réseau injoignable',
     timelineTitle: 'Chronologie de l’attaque',
@@ -225,6 +227,9 @@ export default function Console() {
             </Link>
             <Link href="/audit" className={path === '/audit' ? 'actif' : ''}>
               {t.navAudit}
+            </Link>
+            <Link href="/sms" className={path === '/sms' ? 'actif' : ''}>
+              {t.navSms}
             </Link>
           </nav>
           <span className="scenario-chip">AC-02</span>
