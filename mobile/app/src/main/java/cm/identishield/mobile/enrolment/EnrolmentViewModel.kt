@@ -159,6 +159,12 @@ class EnrolmentViewModel(
     // D-B7-1 : requête d'enregistrement refusée par un 503 (le contrat le dit TRANSITOIRE : le cœur
     // garde l'enrôlement en BIND). Mémoire vive seulement ; rejouée telle quelle par « Réessayer »,
     // avec la MÊME clé locale ; effacée dès une autre issue.
+    // LIMITE DÉCLARÉE (charte §10.5, décision du superviseur du 2026-10-25) : en flux D elle porte
+    // l'ANCIEN code de récupération pendant la fenêtre de rejeu. Jamais persistée (ni SavedStateHandle
+    // ni disque) ; effacée au succès, au refus, à la connexion perdue, à l'abandon (begin) et par la
+    // mort du processus. Depuis l'état 503 il n'existe pas d'autre sortie : seul « Réessayer »
+    // (onRestart ne sert qu'à DEVICE_REFUSED et SESSION_EXPIRED), retour arrière inactif pendant la
+    // liaison, beginWithNumber non joignable pendant un enrôlement.
     private var pendingComplete: CompleteRequest? = null
     private var beforeKeyLost: EnrolStep? = null
 
@@ -203,6 +209,7 @@ class EnrolmentViewModel(
     }
 
     fun begin() {
+        pendingComplete = null // abandon : la requête en attente de rejeu (et son code, flux D) ne vaut plus rien
         _step.value = EnrolStep.Number()
     }
 
@@ -610,6 +617,9 @@ class EnrolmentViewModel(
     }
 
     /** Pour les tests : aucun secret ne survit à l'arrivée sur l'accueil. */
+    /** Pour les tests : une requête d'enregistrement attend-elle un rejeu (D-B7-1) ? */
+    internal fun hasPendingReplay(): Boolean = pendingComplete != null
+
     internal fun holdsSecrets(): Boolean =
         pin != null || recovery != null || attestationChallenge != null || pendingRecoveryCode != null ||
             pendingComplete?.recoveryCode != null
