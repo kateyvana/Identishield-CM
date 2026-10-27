@@ -9,14 +9,15 @@
 //  - D4 : ni nom du titulaire, ni historique (isc-sim ne garde que le dernier code par IMSI).
 export const dynamic = 'force-dynamic';
 
-const MSISDN = /^677\d{6}$/;
+// Plage fictive ED-09 : 677000000 à 677009999.
+const MSISDN = /^67700\d{4}$/;
 
 export async function GET(req: Request) {
   const core = process.env.CORE_URL ?? 'http://core:8080';
   const sim = process.env.SIM_URL ?? 'http://sim:8080';
   const msisdn = new URL(req.url).searchParams.get('msisdn') ?? '';
   if (!MSISDN.test(msisdn)) {
-    return Response.json({ error: 'numero invalide (9 chiffres, 677…)' }, { status: 400 });
+    return Response.json({ error: 'numero invalide (plage fictive 677000000-677009999)' }, { status: 400 });
   }
 
   let hlr: { currentImsi?: string; updatedAt?: string };

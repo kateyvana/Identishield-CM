@@ -39,7 +39,7 @@ const STR: Record<Lang, Record<string, string>> = {
     noChange: 'not provided',
     limits:
       'Limits: the holder name is not shown; the simulated network keeps only the last code per SIM.',
-    invalid: 'Enter 9 digits starting with 677.',
+    invalid: 'Enter 9 digits in the fictitious range 677000000–677009999.',
   },
   fr: {
     brandTag: 'Point de décision · Mobile Money',
@@ -60,11 +60,12 @@ const STR: Record<Lang, Record<string, string>> = {
     noChange: 'non fournie',
     limits:
       'Limites : le nom du titulaire n’est pas affiché ; le réseau simulé ne garde que le dernier code par SIM.',
-    invalid: 'Saisissez 9 chiffres commençant par 677.',
+    invalid: 'Saisissez 9 chiffres dans la plage fictive 677000000–677009999.',
   },
 };
 
-const MSISDN = /^677\d{6}$/;
+// Plage fictive ED-09 : 677000000 à 677009999.
+const MSISDN = /^67700\d{4}$/;
 
 function heure(iso?: string | null): string {
   if (!iso) return '';
