@@ -128,7 +128,11 @@ sealed interface EnrolStep {
  * décide (P-2) : c'est LUI qui répond RECOVERY ; l'application ne devine jamais pourquoi.
  * Garde-fous : la clé n'est créée QU'APRÈS la validation de l'OTP ou de la clé de récupération par le
  * serveur (ES-25) ; en flux D, l'ancienne clé locale est détruite AVANT la création de la nouvelle ; le
- * PIN et les clés de récupération ne vivent qu'en mémoire ; la clé saisie n'est jamais conservée.
+ * PIN et les clés de récupération ne vivent qu'en mémoire. La clé saisie en flux D est GARDÉE en
+ * mémoire vive, jamais persistée, seulement le temps utile : dans [pendingRecoveryCode] jusqu'à
+ * l'issue de `/enrolment/complete` (elle part avec l'attestation, ADR-041), puis dans
+ * [pendingComplete] pendant la fenêtre de rejeu d'un 503 (D-B7-1, L-DB71-1) ; elle est effacée au
+ * succès, au refus, à la connexion perdue, à l'abandon ([begin]) et par la mort du processus.
  */
 class EnrolmentViewModel(
     private val repository: EnrolmentRepository,
