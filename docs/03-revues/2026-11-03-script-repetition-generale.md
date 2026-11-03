@@ -25,7 +25,8 @@ mobile (CLAUDE.md §10). Comptes : **répétition 677001102**, **démonstration 
 |---|---|---|---|
 | P1 | Lire le témoin `~/VM-OCCUPEE` ; en poser un (couloir B, `jusqu-a` réaliste) | B | contenu du témoin |
 | P2 | APK depuis `main` (SHA noté), `--offline`, `-Pisc.apiBaseUrl=https://100.93.166.19:8443/mobile/v1/ -Pisc.sandboxCa=<ca.crt VM>` ; `apksigner verify` ; SHA-256 ; CA épinglée `70:58:2E…BA:2F` | B | sorties brutes |
-| P3 | Tablette : chargée, **Tailscale connecté** (vérifier `ip route get 100.93.166.19` → `tun0`, et `tailscale status` côté VM), débogage USB autorisé, **mot de passe de la tablette changé** après l'incident du 27/10 | propriétaire | `adb devices` = `device` |
+| P3 | Tablette : chargée, débogage USB autorisé, **mot de passe de la tablette changé** après l'incident du 27/10 ; Tailscale : **VPN permanent** (Réglages → Connexions → Autres → VPN → Tailscale → « VPN permanent ») et **batterie non optimisée** pour l'application Tailscale (Réglages → Applications → Tailscale → Batterie → « Non restreinte »), pour que le tunnel ne tombe plus comme le 27/10 entre 00:18Z et 00:28Z | propriétaire | `adb devices` = `device` |
+| P3b | **Vérification Tailscale juste avant chaque passage** (R0, R8) : `adb shell ip route get 100.93.166.19` doit répondre `… dev tun0 … src 100.110.208.13` ; côté VM, `tailscale status` montre `galaxy-tab-a` en ligne. Sinon : reconnecter Tailscale sur la tablette **avant** de taper un PIN | B | sortie brute |
 | P4 | Preuve #66 depuis la tablette : `toybox nc -w 5 100.93.166.19 8443` rc=0 ; 22 et 3000 rc=1 | B | sortie brute |
 | P5 | Jeu de règles : `config/ruleset.yaml` identique poste/VM (sha256) | B | empreintes |
 | P6 | Aucun check-stack, aucun `make up`, aucun redémarrage du cœur/PDP **pendant** la répétition | A, B | témoin |
@@ -52,7 +53,7 @@ Si la fenêtre 6 a eu lieu (images avec #123) : pas de chauffe ; noter le SHA d�
 
 | Étape | Action | Attendu (observé = conforme) | Preuve |
 |---|---|---|---|
-| R0 | `adb shell pm list packages \| grep identishield` (listing) puis `adb uninstall cm.identishield.mobile` (commande seule) ; `adb install -r <APK>` | `Success`, `versionName=0.1.0`, `lastUpdateTime` du jour | sortie brute |
+| R0 | P3b (route par `tun0`) ; `adb shell pm list packages \| grep identishield` (listing) puis `adb uninstall cm.identishield.mobile` (commande seule) ; `adb install -r <APK>` | `Success`, `versionName=0.1.0`, `lastUpdateTime` du jour | sortie brute |
 | R1 | Lancer ; E-01 → E-02 « Cet appareil va devenir la clé… » | E-02 | `E-02-bienvenue-677001102.png` |
 | R2 | « Commencer » → E-03 ; numéro **677001102** | affiché **« 677 001 102 »** (D8) | `E-03-numero-677001102.png` |
 | R3 | « Continuer » → E-06 PIN ; **PIN tapé par la propriétaire** ; « Continuer » | E-05 OTP, « 677 ••• 102 » ; **aucune capture** (protégé) | horodatage |
@@ -77,4 +78,9 @@ démonstration du 6/11 sur 677001103 selon le scénario B3b/B7, avec le couloir 
 - Secrets : PIN, OTP, clé de récupération, mot de passe de la tablette ne sont jamais affichés,
   relevés ni capturés ; les captures se limitent aux écrans non protégés (E-02, E-03, E-11, E-12,
   E-13/E-14 si autorisés).
+- **Règle de relevé** (superviseur, 2026-11-03, après les incidents du 27/10) : aucun relevé
+  `uiautomator` sans avoir vérifié d'abord que `cm.identishield.mobile` est au premier plan
+  (`dumpsys window | grep mCurrentFocus`) ; **jamais** sur une invite système (BiometricPrompt), ni
+  sur E-06, E-08, E-09, E-14, E-15, E-20. Tout fichier de relevé (`/sdcard/ui*.xml`) est supprimé
+  (listing puis rm) en fin de passage.
 - Un « non observé » se rapporte tel quel, sans second essai forcé.
