@@ -129,10 +129,14 @@ sealed interface EnrolStep {
  * Garde-fous : la clé n'est créée QU'APRÈS la validation de l'OTP ou de la clé de récupération par le
  * serveur (ES-25) ; en flux D, l'ancienne clé locale est détruite AVANT la création de la nouvelle ; le
  * PIN et les clés de récupération ne vivent qu'en mémoire. La clé saisie en flux D est GARDÉE en
- * mémoire vive, jamais persistée, seulement le temps utile : dans [pendingRecoveryCode] jusqu'à
- * l'issue de `/enrolment/complete` (elle part avec l'attestation, ADR-041), puis dans
- * [pendingComplete] pendant la fenêtre de rejeu d'un 503 (D-B7-1, L-DB71-1) ; elle est effacée au
- * succès, au refus, à la connexion perdue, à l'abandon ([begin]) et par la mort du processus.
+ * mémoire vive, jamais persistée, seulement le temps utile, à deux endroits :
+ * - [pendingRecoveryCode] : de la saisie (E-20) jusqu'à l'issue de `/enrolment/complete` (elle part
+ *   avec l'attestation, ADR-041). Effacée au succès, après un refus du code (RECOVERY_INVALID,
+ *   THROTTLED), à l'abandon ([begin]) et par la mort du processus ; GARDÉE après les autres refus
+ *   et après une connexion perdue, le temps d'un « Réessayer » (elle repart avec la nouvelle
+ *   attestation) ;
+ * - [pendingComplete] : pendant la fenêtre de rejeu d'un 503 (D-B7-1, L-DB71-1). Effacée dès toute
+ *   autre issue, à l'abandon et par la mort du processus.
  */
 class EnrolmentViewModel(
     private val repository: EnrolmentRepository,
@@ -212,8 +216,16 @@ class EnrolmentViewModel(
         }
     }
 
+    /** Abandon / recommencer : retour à E-03, et AUCUN secret du parcours ne survit (charte §10.5). */
     fun begin() {
-        pendingComplete = null // abandon : la requête en attente de rejeu (et son code, flux D) ne vaut plus rien
+        pin = null
+        enrolmentId = null
+        attestationChallenge = null
+        recovery = null
+        redisplayUsed = false
+        rebinding = false
+        pendingRecoveryCode = null // la clé tapée en flux D (en attente avec l'attestation)
+        pendingComplete = null // la requête en attente de rejeu après un 503 (et son code, flux D)
         _step.value = EnrolStep.Number()
     }
 
