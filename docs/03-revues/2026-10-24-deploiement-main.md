@@ -748,7 +748,8 @@ les mêmes images », pas « pile intacte »). Test de téléchargement le même
 **2026-10-27 (00:32Z).** Diagnostic réseau interrompu : (a) poste 84 276 255 octets en 60 s
 (1,40 Mo/s) ; (b) la connexion SSH à la VM a été coupée à 00:35:40Z (« Connection reset by peer »).
 Témoin A (00:32:30Z → 03:02:30Z) jamais retiré par A ; retiré, échu, par le couloir B le
-2026-11-03 à 00:39:46Z, contenu consigné. **Pendant ce temps, constat du couloir B le 27/10** : le
+2026-11-03 à 00:39:46Z, contenu consigné. **Juste avant, constat du couloir B le 27/10** (enrôlement à 00:29:40Z, avant le témoin A de
+00:32:30Z) : le
 premier `/device/register` du PDP servi, froid depuis le 25/10 à 20:16Z et sur l'image sans #123,
 est resté **sous 1 000 ms** (flux A sur 677001104 sans 503 ; une seule clé, PENDING puis ACTIVE).
 **Écart avec la mesure de #122 (2,246 s et 2,582 s sur pile jetable), non expliqué.**
