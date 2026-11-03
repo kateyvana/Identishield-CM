@@ -732,3 +732,53 @@ ensemble, attente bornée absorbée).
 
 **État final** : `main` a9e3486 déployé, 5 conteneurs `Up`, `isc-pdp (healthy)`. 677000200 reste
 `FROZEN / NOT_ME` (limite déclarée, ES-08).
+
+### Fenêtre 6 — tentatives du 2026-10-25, du 2026-10-27 et du 2026-11-03 : ÉCHEC, rien n'est déployé
+
+Objet : déployer `main` (f3e560d au 3/11 : #123, #124, #126, #127, #129, #130), avec une preuve par
+changement. Aucune des trois tentatives n'a remplacé une image ; la pile servie tourne toujours sur
+les images du 2026-10-25 à 17:12Z (a9e3486), sans #123 ni #124.
+
+**2026-10-25 (20:15Z → 20:53Z).** Export VERT (120294 entrées, sha `1d34f0c1…`) ; `make up`
+`FIN_MAKE_UP_RC=2` : `gradle-8.14.3-bin.zip` non téléchargé en 120 s. Le cœur et le PDP servis ont
+été redémarrés à 20:16:06Z par l'arrêt pour l'export, sur les mêmes images (« pile redémarrée sur
+les mêmes images », pas « pile intacte »). Test de téléchargement le même soir depuis un conteneur :
+22 341 931 octets sur 137 393 837 en 300 s (74 Ko/s) : arrêt.
+
+**2026-10-27 (00:32Z).** Diagnostic réseau interrompu : (a) poste 84 276 255 octets en 60 s
+(1,40 Mo/s) ; (b) la connexion SSH à la VM a été coupée à 00:35:40Z (« Connection reset by peer »).
+Témoin A (00:32:30Z → 03:02:30Z) jamais retiré par A ; retiré, échu, par le couloir B le
+2026-11-03 à 00:39:46Z, contenu consigné. **Pendant ce temps, constat du couloir B le 27/10** : le
+premier `/device/register` du PDP servi, froid depuis le 25/10 à 20:16Z et sur l'image sans #123,
+est resté **sous 1 000 ms** (flux A sur 677001104 sans 503 ; une seule clé, PENDING puis ACTIVE).
+**Écart avec la mesure de #122 (2,246 s et 2,582 s sur pile jetable), non expliqué.**
+
+**2026-11-03 (00:41Z → 01:1xZ).** Diagnostic réseau, fichier complet de 137 393 837 octets :
+
+| Mesure | Heure | Durée | Débit |
+|---|---|---|---|
+| (a) poste | 00:42:02Z | 54,8 s | 2,51 Mo/s |
+| (b) VM hôte | 00:44:58Z | 58,4 s | 2,35 Mo/s |
+| (c) conteneur `eclipse-temurin:21-jdk-jammy` | 00:48:18Z | 59,73 s | 2,30 Mo/s (IPv4) |
+
+Pas de nœud de sortie Tailscale (`ExitNodeID` vide) ; sortie par le NAT de VirtualBox
+(`default via 10.0.2.2`). Conclusion : Internet lent partout de la même façon, pas un défaut du
+chemin de la VM. Garde (< 60 s) passée de justesse. Export 1 (00:50:25Z) VERT, 120294 entrées,
+sha `1d34f0c1…`. `make up` : `FIN_MAKE_UP_RC=2`. Le cache de #130 a servi (un seul téléchargement,
+par le PDP : `#39 2.721 Downloading …`, `#39 87.11 Welcome to Gradle 8.14.3!`), mais la construction
+parallèle du cœur a échoué sur le verrou du même cache :
+
+```text
+#42 152.9 > Timeout waiting to lock journal cache (/root/.gradle/caches/journal-1). It is currently in use by another Gradle instance.
+#42 152.9 BUILD FAILED in 2m 30s
+```
+
+Défaut de #130 (Gradle ne se passe pas un verrou d'un conteneur à l'autre ; sa description disait le
+contraire). Correctif : #132 (`sharing=locked`, vérifié dans la VM sur deux constructions parallèles
+d'`alpine` sérialisées). État après : images inchangées, cœur et PDP redémarrés à 00:50:38–39Z par
+l'arrêt pour l'export, PostgreSQL non recréé, audit 120294. Prochaine tentative après la fusion de
+#132 et le « VM libre » du couloir B.
+
+**Gel du code** (décision du superviseur technique) : après la répétition générale (jeudi
+2026-11-05 au plus tard) jusqu'à la démonstration du 2026-11-06, sauf correctif d'un défaut
+bloquant prouvé.
