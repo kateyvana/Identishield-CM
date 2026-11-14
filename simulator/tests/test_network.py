@@ -3,6 +3,8 @@ la chronologie d'attaque se publie, se lit et se réinitialise (T2-17)."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from isc_simulator.network import SimInbox, Timeline
 
 
@@ -50,3 +52,28 @@ def test_timeline_reset_empties_it() -> None:
     tl.publish({"step": 1, "message": "x"})
     tl.reset()
     assert tl.all() == []
+
+
+# Carte #65 (D4) : l'heure de remise est gardée avec le code, en UTC, depuis une horloge injectée.
+T1 = datetime(2026, 10, 26, 14, 5, 9, tzinfo=UTC)
+T2 = datetime(2026, 10, 26, 14, 7, 0, tzinfo=UTC)
+
+
+def test_delivery_time_comes_from_the_injected_clock_in_utc() -> None:
+    inbox = SimInbox(now=lambda: T1)
+    inbox.deliver("624010677000200", "483920")
+    assert inbox.delivered_at("624010677000200") == "2026-10-26T14:05:09Z"
+
+
+def test_a_new_delivery_replaces_the_code_and_its_time() -> None:
+    times = iter([T1, T2])
+    inbox = SimInbox(now=lambda: next(times))
+    inbox.deliver("624010677000200", "111111")
+    inbox.deliver("624010677000200", "222222")
+    # La boîte ne garde que le dernier SMS (limite déclarée D4).
+    assert inbox.read("624010677000200") == "222222"
+    assert inbox.delivered_at("624010677000200") == "2026-10-26T14:07:00Z"
+
+
+def test_unknown_imsi_has_no_delivery_time() -> None:
+    assert SimInbox(now=lambda: T1).delivered_at("624010000000010") is None

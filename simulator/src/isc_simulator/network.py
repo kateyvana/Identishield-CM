@@ -20,21 +20,41 @@ volatile : c'est un canal, pas un journal.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 
-class SimInbox:
-    """Boîtes SIM par IMSI : dernier code livré à chaque IMSI. En mémoire, volatile."""
+def _utc_now() -> datetime:
+    """Horloge réelle, fournie à la composition (INBOX) ; les tests injectent la leur."""
+    return datetime.now(UTC)
 
-    def __init__(self) -> None:
-        self._delivered: dict[str, str] = {}
+
+class SimInbox:
+    """Boîtes SIM par IMSI : DERNIER code livré à chaque IMSI, avec son heure de remise (UTC).
+
+    En mémoire, volatile. Une nouvelle remise au même IMSI remplace le code et l'heure : la boîte ne
+    garde que le dernier SMS (limite déclarée de l'onglet SMS de la console, carte #65, D4).
+    L'horloge est injectée (`now`) : aucune lecture de l'horloge système dans la classe.
+    """
+
+    def __init__(self, now: Callable[[], datetime] = _utc_now) -> None:
+        self._now = now
+        self._delivered: dict[str, tuple[str, str]] = {}
 
     def deliver(self, imsi: str, code: str) -> None:
-        self._delivered[imsi] = code
+        at = self._now().astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self._delivered[imsi] = (code, at)
 
     def read(self, imsi: str) -> str | None:
-        return self._delivered.get(imsi)
+        entry = self._delivered.get(imsi)
+        return entry[0] if entry else None
+
+    def delivered_at(self, imsi: str) -> str | None:
+        """Heure de remise (UTC, ISO-8601) du dernier code livré à [imsi], ou None."""
+        entry = self._delivered.get(imsi)
+        return entry[1] if entry else None
 
 
 INBOX = SimInbox()
@@ -70,7 +90,7 @@ TIMELINE = Timeline()
 class Handler(BaseHTTPRequestHandler):
     """Canal SMS + chronologie d'attaque.
 
-    POST /deliver {imsi, code} (le cœur remet un SMS) ; GET /inbox?imsi= (interception) ;
+    POST /deliver {imsi, code} (le cœur remet un SMS) ; GET /inbox?imsi= (code et heure de remise) ;
     POST /timeline {step, message, ts, ...} (l'attaquant publie une étape) ; GET /timeline (la console
     lit) ; POST /timeline/reset ; GET /health.
     """
@@ -94,7 +114,7 @@ class Handler(BaseHTTPRequestHandler):
             if code is None:
                 self._send(404, {"error": f"aucun message pour l'IMSI {imsi}"})
                 return
-            self._send(200, {"imsi": imsi, "code": code})
+            self._send(200, {"imsi": imsi, "code": code, "deliveredAt": INBOX.delivered_at(imsi)})
             return
         if parsed.path == "/timeline":
             self._send(200, {"steps": TIMELINE.all()})

@@ -35,6 +35,7 @@ const STR: Record<Lang, Record<string, string>> = {
     brandTag: 'Policy Decision Point · Mobile Money',
     navAttack: 'Attack',
     navAudit: 'Audit',
+    navSms: 'SMS',
     live: 'live',
     offline: 'core unreachable',
     integrityTitle: 'Audit log integrity',
@@ -62,6 +63,7 @@ const STR: Record<Lang, Record<string, string>> = {
     brandTag: 'Point de décision · Mobile Money',
     navAttack: 'Attaque',
     navAudit: 'Audit',
+    navSms: 'SMS',
     live: 'en direct',
     offline: 'cœur injoignable',
     integrityTitle: 'Intégrité du journal d’audit',
@@ -200,6 +202,9 @@ export default function AuditView() {
             </Link>
             <Link href="/audit" className={path === '/audit' ? 'actif' : ''}>
               {t.navAudit}
+            </Link>
+            <Link href="/sms" className={path === '/sms' ? 'actif' : ''}>
+              {t.navSms}
             </Link>
           </nav>
           <div className="langue" role="group" aria-label="Language / Langue">
