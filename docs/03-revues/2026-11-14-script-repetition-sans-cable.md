@@ -33,7 +33,7 @@ fenêtre 6 du 14/11, `main` 4f3ef12 puis 963b6c3), **démonstration 677001103**,
 | P4 | Preuve #66 (22 et 3000 refusés depuis la tablette) : **non faisable sans câble** ; reste celle de la règle Tailscale (couloir A / propriétaire) | — | non observé |
 | P5 | Jeu de règles : `config/ruleset.yaml` identique poste et VM (sha256) | B | empreintes |
 | P6 | Aucun `check-stack`, aucun `make up`, aucun redémarrage du cœur ou du PDP **pendant** la répétition | A, B | témoin |
-| P7 | **Onglet SMS de la console (#65) livré et déployé** ; la propriétaire y accède depuis le navigateur du poste par le tunnel SSH `ssh -N -L 3000:127.0.0.1:3000 isc@192.168.56.10` puis `http://localhost:3000` (`2026-10-24-console-boucle-locale.md`). B ouvre le tunnel si on le lui demande, **ne regarde pas** l'onglet et ne relève rien du poste | A, propriétaire | déclaration |
+| P7 | **Onglet SMS de la console (#65) livré et déployé** ; la propriétaire y accède depuis le navigateur du poste par le tunnel SSH `ssh -N -L 3000:127.0.0.1:3000 isc@192.168.56.10` puis **`http://localhost:3000/sms`** (`2026-10-24-console-boucle-locale.md` ; si le port 3000 est déjà pris sur le poste, changer seulement le port local, par exemple `-L 3300:127.0.0.1:3000` et `http://localhost:3300/sms` ; précision du couloir A, relecture de #139). B ouvre le tunnel si on le lui demande, **ne regarde pas** l'onglet et ne relève rien du poste | A, propriétaire | déclaration |
 
 ## 2. R0 — Repartir de zéro à la main : « Effacer les données »
 
