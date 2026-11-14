@@ -62,7 +62,10 @@ class DemoSeedCsvTest {
     assertTrue(refusal(write(semicolons)).contains("séparateur « ; »"));
 
     String threeDigitPin = HEADER + "677001101,Essimi NGUELE,042,50000\n";
-    String msg = refusal(write(threeDigitPin));
+    // Nom FIXE (#128) : le message cite le chemin du fichier ; un nom tiré de nanoTime pouvait
+    // contenir « 042 » et faire rougir l'assertion suivante (~1 passage sur 100).
+    String msg =
+        refusal(write("pin-trois-chiffres.csv", threeDigitPin.getBytes(StandardCharsets.UTF_8)));
     assertTrue(msg.contains("ligne 2") && msg.contains("3 caractère(s)"), msg);
     assertFalse(msg.contains("042"), "jamais la valeur du PIN : " + msg);
 

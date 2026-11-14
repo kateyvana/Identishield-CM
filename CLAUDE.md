@@ -44,6 +44,7 @@ Tu ne modifies JAMAIS un document de docs/02-specifications/. Si une tâche exig
 - Aucune bibliothèque hors de la stack (Java 21/Spring Boot, Python, Kotlin Android, Next.js, PostgreSQL) sans ADR préalable écrit par le propriétaire.
 - Aucune cryptographie maison : uniquement les API standard (java.security, Android Keystore). Pas de primitive réimplémentée.
 - Aucun secret, mot de passe, certificat ou jeton en clair dans le dépôt.
+  - Exception (propriétaire, 2026-10-25) : pdp/src/main/resources/readiness/attestation-sample.json, chaîne d'attestation publique de test (racine simulée, aucune clé privée), pour le préchauffage du PDP ; aucun autre certificat.
 - Aucun paramètre nommé (CAR_IMSI, ~~CAR_ENROL~~, CAP_PROB, THR_HIGH, THR_4EYES, TTL_FREEZE, NIGHT, VEL, DEFER) en littéral dans le code : ils viennent de la configuration versionnée.
 - Aucun import de `spikes/` par le code de production.
 - Aucune modification d'un test existant pour le faire passer. Si un test révèle un défaut, le défaut est corrigé.

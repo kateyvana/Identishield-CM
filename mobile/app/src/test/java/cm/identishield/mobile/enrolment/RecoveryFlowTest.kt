@@ -173,6 +173,22 @@ class RecoveryFlowTest {
         assertTrue("ni delete ni generate sur un 503", keys.log.isEmpty())
     }
 
+    /** Abandon pendant la liaison en flux D : la clé tapée (en attente avec l'attestation) ne survit pas à begin(). */
+    @Test
+    fun abandonDuringRebinding_dropsTheTypedRecoveryKey() {
+        server.completeResults += ApiResult.Refused(503, "SERVICE_UNAVAILABLE")
+        val vm = vm()
+        untilRecovery(vm)
+        vm.submitRecoveryCode(OLD_CODE)
+        assertTrue("le code accepté mène à la liaison (E-07)", vm.step.value is EnrolStep.Securing)
+        vm.secureDevice(unlockOk)
+        assertEquals(EnrolStep.Securing(SecuringStage.REGISTERING, EnrolError.SERVICE_UNAVAILABLE), vm.step.value)
+        assertTrue("la clé tapée attend le rejeu", vm.holdsSecrets())
+        vm.begin()
+        assertFalse("plus aucun secret après l'abandon", vm.holdsSecrets())
+        assertEquals(EnrolStep.Number(), vm.step.value)
+    }
+
     private fun untilRecovery(vm: EnrolmentViewModel) {
         vm.beginWithNumber(NUMBER)
         vm.submitPin(PIN)

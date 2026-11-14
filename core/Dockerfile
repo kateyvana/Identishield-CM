@@ -12,7 +12,11 @@ COPY src ./src
 # deja presentes. Le cache vit hors de l'image : il disparait avec « docker builder prune » ; ne
 # jamais l'executer avant la demonstration. Pas de ligne « # syntax= » : elle tirerait une image
 # du registre, injoignable depuis la VM ; le frontend integre de BuildKit suffit.
-RUN --mount=type=cache,id=isc-gradle-home,target=/root/.gradle \
+# sharing=locked (fenetre 6 du 2026-11-03) : les constructions du coeur et du PDP tournent en
+# parallele dans deux conteneurs. Gradle ne sait pas se passer un verrou d'un conteneur a l'autre
+# (« Timeout waiting to lock journal cache … in use by another Gradle instance ») : BuildKit
+# donne donc le cache a une seule construction a la fois ; l'autre attend la fin de son RUN.
+RUN --mount=type=cache,id=isc-gradle-home,target=/root/.gradle,sharing=locked \
     chmod +x ./gradlew && ./gradlew --no-daemon clean bootJar
 
 FROM eclipse-temurin:21-jre-jammy
