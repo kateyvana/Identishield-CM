@@ -141,25 +141,11 @@ pour l'écran, « non observé » pour le reste. **Jamais de PIN, d'OTP ni de cl
 
 ## 6. Ce qui reste impossible sans câble
 
-1. **Installer ou mettre à jour l'APK.** L'APK de publication signé par la propriétaire ne peut pas être
-   posé sur la tablette ; la tablette garde l'APK de débogage du 27/10 (P2). Une installation par le réseau
-   (fichier servi depuis le poste sur le tailnet, « sources inconnues » activées) est possible en principe
-   mais **n'est pas couverte** par ce script : décision à prendre.
-2. **Lire le code SMS** tant que l'onglet SMS de la console (#65) n'est pas livré : la seule autre lecture
-   est `docker exec isc-sim …` par B, qui devrait alors **dicter le code** à la propriétaire par le fil de
-   session — interdit (secret dans un journal). Sans #65, R4 est **bloqué**.
-3. **Désinstaller** (plus de réinstallation) ; donc le flux D « réinstallation » du script #131 devient
-   « effacer les données » (R11).
-4. La **preuve #66 depuis la tablette** (`nc` sur 22, 3000, 8443) ; reste `tailscale status` côté VM et le
-   navigateur de la tablette sur le 8443 (P3b).
-5. Les **relevés d'arbre d'accessibilité** (`uiautomator`) : formatage exact des numéros (D8), état
-   « désactivé » d'un bouton, texte d'une erreur. Ils sont remplacés par la lecture de la propriétaire.
-6. Les **mesures** : durée « N s » d'un 503 lue par la propriétaire et non chronométrée ; niveau de batterie ;
-   état de l'écran.
-7. La **mort du processus par le système** (`am kill`) : remplacée par « Forcer l'arrêt », qui n'est pas le
-   même cas (§3, R10).
-8. Le **transfert des captures** vers le poste ; elles restent sur la tablette.
-9. Le **journal de l'application** (`logcat`) : un plantage ne laisse que ce que l'écran a montré.
+La liste complète, avec ce qui casse un APK déjà distribué (autorité TLS, adresse, contrat, paramètres
+copiés), est tenue dans **`2026-11-14-sans-cable-impossibilites-et-ruptures.md`** (une seule liste). Les deux
+points qui commandent ce script : **aucun nouvel APK** sur la tablette (elle garde celui du 27/10, P2) et
+**aucune lecture du code SMS** sans l'onglet SMS de la console (#65) : B ne dicte jamais un code par le fil
+de session (secret dans un journal). Sans #65, R4 est **bloqué**.
 
 ## 7. Déclarations
 
