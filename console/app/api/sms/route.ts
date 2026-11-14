@@ -7,6 +7,8 @@
 //  - D1 : le code est rendu EN CLAIR (but de l'onglet : lire l'OTP du titulaire pendant la démo) ;
 //    protection = console en boucle locale (#66). AUCUN code dans un journal : rien n'est écrit ici.
 //  - D4 : ni nom du titulaire, ni historique (isc-sim ne garde que le dernier code par IMSI).
+// Les erreurs sont des CODES (INVALID_MSISDN, UNKNOWN_MSISDN, HLR_UNAVAILABLE, CORE_UNREACHABLE,
+// SIM_UNAVAILABLE, SIM_UNREACHABLE) : la page les traduit en FR/EN avec la conduite à tenir.
 export const dynamic = 'force-dynamic';
 
 // Plage fictive ED-09 : 677000000 à 677009999.
@@ -17,7 +19,7 @@ export async function GET(req: Request) {
   const sim = process.env.SIM_URL ?? 'http://sim:8080';
   const msisdn = new URL(req.url).searchParams.get('msisdn') ?? '';
   if (!MSISDN.test(msisdn)) {
-    return Response.json({ error: 'numero invalide (plage fictive 677000000-677009999)' }, { status: 400 });
+    return Response.json({ error: 'INVALID_MSISDN' }, { status: 400 });
   }
 
   let hlr: { currentImsi?: string; updatedAt?: string };
@@ -26,14 +28,14 @@ export async function GET(req: Request) {
       cache: 'no-store',
     });
     if (res.status === 404) {
-      return Response.json({ error: 'numero inconnu du HLR' }, { status: 404 });
+      return Response.json({ error: 'UNKNOWN_MSISDN' }, { status: 404 });
     }
     if (!res.ok) {
-      return Response.json({ error: 'etat HLR indisponible' }, { status: 502 });
+      return Response.json({ error: 'HLR_UNAVAILABLE' }, { status: 502 });
     }
     hlr = await res.json();
   } catch {
-    return Response.json({ error: 'coeur injoignable' }, { status: 502 });
+    return Response.json({ error: 'CORE_UNREACHABLE' }, { status: 502 });
   }
 
   const imsi = String(hlr.currentImsi ?? '');
@@ -46,10 +48,10 @@ export async function GET(req: Request) {
       const d = await res.json();
       sms = { code: String(d.code), deliveredAt: d.deliveredAt ?? null };
     } else if (res.status !== 404) {
-      return Response.json({ error: 'reseau simule indisponible' }, { status: 502 });
+      return Response.json({ error: 'SIM_UNAVAILABLE' }, { status: 502 });
     }
   } catch {
-    return Response.json({ error: 'reseau simule injoignable' }, { status: 502 });
+    return Response.json({ error: 'SIM_UNREACHABLE' }, { status: 502 });
   }
 
   return Response.json({ msisdn, imsi, hlrUpdatedAt: hlr.updatedAt ?? null, sms });

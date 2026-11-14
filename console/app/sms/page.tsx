@@ -40,6 +40,19 @@ const STR: Record<Lang, Record<string, string>> = {
     limits:
       'Limits: the holder name is not shown; the simulated network keeps only the last code per SIM.',
     invalid: 'Enter 9 digits in the fictitious range 677000000–677009999.',
+    INVALID_MSISDN:
+      'This number is outside the fictitious range: enter 9 digits from 677000000 to 677009999.',
+    UNKNOWN_MSISDN: 'This number is not in the simulated HLR: check the demo account number.',
+    HLR_UNAVAILABLE:
+      'The simulated core did not return the HLR state: check that the stack is running, then try again.',
+    CORE_UNREACHABLE:
+      'The simulated core is not answering: check that the stack is running, then try again.',
+    SIM_UNAVAILABLE:
+      'The simulated network (isc-sim) returned an error: check the stack, then try again.',
+    SIM_UNREACHABLE:
+      'The simulated network (isc-sim) is not answering: check the stack, then try again.',
+    FETCH_FAILED: 'The console could not reach its own server: reload the page.',
+    UNKNOWN_ERROR: 'Unexpected error: reload the page; if it persists, check the console logs.',
   },
   fr: {
     brandTag: 'Point de décision · Mobile Money',
@@ -61,16 +74,32 @@ const STR: Record<Lang, Record<string, string>> = {
     limits:
       'Limites : le nom du titulaire n’est pas affiché ; le réseau simulé ne garde que le dernier code par SIM.',
     invalid: 'Saisissez 9 chiffres dans la plage fictive 677000000–677009999.',
+    INVALID_MSISDN:
+      'Ce numéro est hors de la plage fictive : saisissez 9 chiffres de 677000000 à 677009999.',
+    UNKNOWN_MSISDN:
+      'Ce numéro n’existe pas dans le HLR simulé : vérifiez le numéro du compte de démonstration.',
+    HLR_UNAVAILABLE:
+      'Le cœur simulé n’a pas rendu l’état HLR : vérifiez que la pile est démarrée, puis réessayez.',
+    CORE_UNREACHABLE:
+      'Le cœur simulé ne répond pas : vérifiez que la pile est démarrée, puis réessayez.',
+    SIM_UNAVAILABLE:
+      'Le réseau simulé (isc-sim) a renvoyé une erreur : vérifiez la pile, puis réessayez.',
+    SIM_UNREACHABLE: 'Le réseau simulé (isc-sim) ne répond pas : vérifiez la pile, puis réessayez.',
+    FETCH_FAILED: 'La console n’a pas pu joindre son propre serveur : rechargez la page.',
+    UNKNOWN_ERROR:
+      'Erreur inattendue : rechargez la page ; si elle persiste, consultez les journaux de la console.',
   },
 };
 
 // Plage fictive ED-09 : 677000000 à 677009999.
 const MSISDN = /^67700\d{4}$/;
 
-function heure(iso?: string | null): string {
-  if (!iso) return '';
+// Heure locale du navigateur, fuseau affiché (les sources sont en UTC).
+function heure(iso: string, lang: Lang): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('fr-FR', { hour12: false });
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', { hour12: false, timeZoneName: 'short' });
 }
 
 function Logo() {
@@ -142,10 +171,10 @@ export default function SmsView() {
           setErreur(null);
         } else {
           setLigne(null);
-          setErreur(typeof d.error === 'string' ? d.error : String(r.status));
+          setErreur(typeof d.error === 'string' ? d.error : 'UNKNOWN_ERROR');
         }
       } catch {
-        if (actif) setErreur('console : requête impossible');
+        if (actif) setErreur('FETCH_FAILED');
       }
     }
     tick();
@@ -209,6 +238,7 @@ export default function SmsView() {
           <h2>{t.title}</h2>
         </div>
         <form
+          className="form-sms"
           onSubmit={(e) => {
             e.preventDefault();
             if (valide) setNumero(saisie);
@@ -217,6 +247,7 @@ export default function SmsView() {
           <label htmlFor="sms-numero">{t.numberLabel}</label>{' '}
           <input
             id="sms-numero"
+            autoComplete="off"
             inputMode="numeric"
             maxLength={9}
             value={saisie}
@@ -230,7 +261,7 @@ export default function SmsView() {
         <p className="note-verif">{t.hint}</p>
         {erreur ? (
           <p className="alerte-change" role="alert">
-            {erreur}
+            {t[erreur] ?? t.UNKNOWN_ERROR}
           </p>
         ) : null}
         {ligne ? (
@@ -248,11 +279,15 @@ export default function SmsView() {
               <tr>
                 <td className="mono">{ligne.msisdn}</td>
                 <td className="mono">{ligne.imsi}</td>
-                <td className="mono">{ligne.hlrUpdatedAt ? heure(ligne.hlrUpdatedAt) : t.noChange}</td>
+                <td className="mono">
+                  {ligne.hlrUpdatedAt ? heure(ligne.hlrUpdatedAt, lang) : t.noChange}
+                </td>
                 {ligne.sms ? (
                   <>
                     <td className="mono">{ligne.sms.code}</td>
-                    <td className="mono">{ligne.sms.deliveredAt ? heure(ligne.sms.deliveredAt) : t.noTime}</td>
+                    <td className="mono">
+                      {ligne.sms.deliveredAt ? heure(ligne.sms.deliveredAt, lang) : t.noTime}
+                    </td>
                   </>
                 ) : (
                   <td colSpan={2} className="vide">
