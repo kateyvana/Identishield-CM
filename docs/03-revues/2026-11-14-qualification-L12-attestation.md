@@ -95,10 +95,15 @@ recommandation ci-dessous.
    un risque non répété au moment le plus visible du parcours.
 2. **Faire d'abord la lecture, sans code de décision** : au prochain enrôlement sur la SM-T515 (R5 de la
    répétition), obtenir la chaîne réelle telle que le PDP la reçoit et la consigner (racine, longueur, niveau,
-   RootOfTrust). Cette lecture exige un relevé côté serveur qui n'existe pas aujourd'hui (le PDP ne journalise
-   pas la chaîne) : c'est une petite carte de **lecture seule** (journal au niveau DEBUG ou vue d'un outil
-   d'administration), à décider par la propriétaire ; sans câble, c'est la seule voie. En même temps, la
-   propriétaire lit « Statut de l'appareil » dans les paramètres de la tablette.
+   RootOfTrust). Cette lecture exige un relevé côté serveur qui n'existe pas aujourd'hui : `pdp.device` ne
+   garde que la clé publique, le vérificateur ne journalise rien, le trajet est en mTLS et l'application de
+   SPIKE-1 n'affiche que le nombre de certificats (relecture du couloir A, #141). **La plus petite voie, avec
+   code** : une ligne **INFO** dans `AttestationVerifier` portant le résultat, la longueur de la chaîne,
+   l'empreinte SHA-256 et le sujet de la racine, données publiques (ni défi, ni clé, ni compte) ; ni journal
+   DEBUG, ni outil à part : `docker logs isc-pdp | grep` après R5 suffit. Le `RootOfTrust` lui-même reste dans
+   le lot B, qui doit analyser l'extension. C'est une carte à **décider par la propriétaire** (une ligne de
+   code sous gel) ; sans câble, c'est la seule voie. En même temps, la propriétaire lit « Statut de l'appareil »
+   dans les paramètres de la tablette.
 3. **Puis, après la démonstration, faire les points 1 et 2** (lots A à E, 3,5 à 4 jours) **derrière un
    paramètre nommé** de la configuration versionnée (par exemple `ATTEST_ROOT_PINNING` : `off` / `on`), `off`
    dans la pile servie jusqu'à la preuve D, `on` ensuite ; la racine de test injectée pour les portes et les
