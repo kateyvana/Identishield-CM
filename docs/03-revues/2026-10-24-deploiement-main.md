@@ -783,3 +783,85 @@ l'arrêt pour l'export, PostgreSQL non recréé, audit 120294. Prochaine tentati
 **Gel du code** (décision du superviseur technique) : après la répétition générale (jeudi
 2026-11-05 au plus tard) jusqu'à la démonstration du 2026-11-06, sauf correctif d'un défaut
 bloquant prouvé.
+
+### Fenêtre 6 (2026-11-14, 15:27Z → 15:50Z) — `main` 4f3ef12 déployé par `make up`, `check-stack` VERT
+
+Ordre du superviseur technique du 3/11 (fenêtre 6, une preuve par changement). Le témoin du couloir
+B (virement de jour 677001104 → 677001101, échu le 3/11 à 15:15:00Z) a été retiré par B le
+2026-11-14 à 15:26:27Z, horloge de la VM ; le virement n'a pas eu lieu. Le poste a dormi du 4/11 au
+14/11 : la fenêtre a donc lieu **après** la date de démonstration du 6/11, et non avant comme prévu.
+Témoin A posé à 15:27:35Z. Dépôt de la VM : `git pull --ff-only` f3e560d → 4f3ef12 (tête détachée,
+comme avant).
+
+**Garde réseau (15:28:11Z), même conteneur et même fichier que le 3/11** :
+
+```text
+http=200 octets=137393837 duree=23.895872s debit=5749689 o/s ip=185.199.109.133
+```
+
+Sous 60 s : voie normale (`make up` avec construction). **La décision A bis, pré-approuvée par la
+propriétaire, n'a pas servi.**
+
+**Déploiement** : export 1 (15:28:59Z) VERT, 120294 entrées, sha `1d34f0c1…0eac`, 0 rupture, ancre
+conforme. Étiquettes de retour arrière `isc-core:avant-4f3ef12` (`e14f279e85d8`) et
+`isc-pdp:avant-4f3ef12` (`9d9d9875f3f0`). `make up` 15:30:29Z → 15:35Z, `FIN_MAKE_UP_RC=0` ;
+images neuves `isc-pdp` `5833811685c4` (15:32:42Z) et `isc-core` `2faa75fbeecf` (15:33:44Z). PostgreSQL,
+PDP et cœur recréés ; console et simulateur `Running`, non recréés (rien n'a changé pour eux
+depuis a9e3486). Export 2 (15:38:57Z) : 120294 entrées, fichier **identique à l'octet** à l'export 1.
+
+**#130 et #132 — cache Gradle (preuve de la voie 2 de #96)** : les deux constructions montent
+`--mount=type=cache,id=isc-gradle-home,target=/root/.gradle,sharing=locked` ; **0 ligne
+`Downloading`** dans les 342 lignes du journal ; `BUILD SUCCESSFUL` PDP en 2 min 7 s, cœur en 1 min
+(sérialisé derrière le verrou, plus de « Timeout waiting to lock »).
+
+**#129 — PostgreSQL recréé** : `isc-postgres` démarré à 15:33:57Z (au lieu du 2026-10-24 à
+19:58:32Z), `healthy` ; `isc-migrate` sorti à 0 ; healthcheck
+`pg_isready -h 127.0.0.1 -U $POSTGRES_USER -d $POSTGRES_DB`, `start_period=1m0s`. Pile isolée
+`isc-b3a` montée **à neuf trois fois** (volumes créés à 15:40:38Z, 15:42:50Z, 15:43:52Z, retirés par
+`down -v` après listing) : à chaque fois PostgreSQL `healthy` après son redémarrage d'initialisation
+(« ready to accept connections » ×2, « init process complete » ×1), `migrate` sorti à 0 avec
+**0 « connection refused »**, 5 migrations appliquées.
+
+**#123 et #124 — prêt d'enrôlement par construction**, PDP servi :
+
+```text
+15:34:27.104Z EnrolmentReadiness : chemin d'enrôlement prêt à l'initialisation (attestation, PBKDF2, ECDSA) en 2660 ms, avant l'ouverture du port
+15:34:27.182Z DatabaseReadiness  : base jointe à l'initialisation : pool ouvert avant l'ouverture du port
+15:34:29.576Z TomcatWebServer    : Tomcat started on port 8443 (https)
+```
+
+Cœur : « PDP pret (essai 3/20) » à 15:35:07Z. Au troisième montage isolé, `isc-b3a-pdp` a l'image
+`sha256:5833811685c4…` d'`isc-pdp:latest`, et la même ordonnance (prêt 15:44:12.591Z, Tomcat
+15:44:13.851Z).
+
+**Mesure D-B7-1 (`/tmp/d-b7-1/measure.sh`, 3 séries, pile isolée, chemin complet)** : premier
+`POST /device/register` après chaque redémarrage à froid du PDP isolé, 200 à chaque fois :
+
+| Série | Total client | TLS établi | Part serveur (premier octet − TLS) | Prêt d'enrôlement au démarrage |
+|---|---|---|---|---|
+| 1 | 813 ms | 136 ms | 675 ms | 1 350 ms |
+| 2 | **1 316 ms** | 224 ms | **1 087 ms** | 3 504 ms |
+| 3 | 523 ms | 86 ms | 434 ms | 819 ms |
+
+Appels suivants : 96 à 214 ms. **Critère « premier appel complet < 1 000 ms sur trois séries » :
+NON TENU, dépassement à la série 2** (l'outil a déroulé les trois séries ; la série 3 est donnée pour
+information, sans relance pour obtenir un vert). Observation, non prouvée comme cause : la série 2
+a démarré plus lentement dans son ensemble (prêt d'enrôlement en 3 504 ms, application en 13,7 s
+contre 9,2 et 9,5 s), la VM portant alors deux piles (charge moyenne ~2,5). 9 appareils `PENDING` et
+9 codes de récupération créés sur la base isolée, supprimée ensuite.
+
+Rappel, à verser à la même question : le 27/10, le premier `/device/register` du PDP servi froid,
+sans #123, est resté sous 1 000 ms (constat du couloir B) ; #122 mesurait 2,246 s et 2,582 s sur
+pile jetable. Écart toujours non expliqué.
+
+**`check-stack`** 15:46:33Z → 15:47:20Z : **VERT, 44 [OK], 0 [ECHEC]**.
+
+**677000200** (lecture seule) : `pdp.trust_state` `FROZEN / NOT_ME` depuis le 2026-10-25 à
+11:36:13Z, sans changement (limite déclarée, ES-08).
+
+**Export final (15:48:32Z)** : VERT, 120297 entrées (+3 du `check-stack`), sha `c9a0623b…0913`,
+0 rupture, ancre conforme ; ses 120294 premières entrées sont identiques à l'export 2. Cœur relancé :
+« PDP pret (essai 2/20) » à 15:49:01Z.
+
+**État final** : `main` 4f3ef12 déployé, 5 conteneurs `Up`, `isc-pdp (healthy)`. Le prochain
+`make up` qui change le cœur ou le PDP reconstruit depuis le cache `isc-gradle-home`.
