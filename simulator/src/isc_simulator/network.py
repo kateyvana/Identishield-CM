@@ -21,14 +21,14 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 
 def _utc_now() -> datetime:
     """Horloge réelle, fournie à la composition (INBOX) ; les tests injectent la leur."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class SimInbox:
@@ -44,7 +44,7 @@ class SimInbox:
         self._delivered: dict[str, tuple[str, str]] = {}
 
     def deliver(self, imsi: str, code: str) -> None:
-        at = self._now().astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        at = self._now().astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._delivered[imsi] = (code, at)
 
     def read(self, imsi: str) -> str | None:

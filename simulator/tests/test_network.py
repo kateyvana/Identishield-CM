@@ -3,7 +3,7 @@ la chronologie d'attaque se publie, se lit et se réinitialise (T2-17)."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from isc_simulator.network import SimInbox, Timeline
 
@@ -55,8 +55,8 @@ def test_timeline_reset_empties_it() -> None:
 
 
 # Carte #65 (D4) : l'heure de remise est gardée avec le code, en UTC, depuis une horloge injectée.
-T1 = datetime(2026, 10, 26, 14, 5, 9, tzinfo=timezone.utc)
-T2 = datetime(2026, 10, 26, 14, 7, 0, tzinfo=timezone.utc)
+T1 = datetime(2026, 10, 26, 14, 5, 9, tzinfo=UTC)
+T2 = datetime(2026, 10, 26, 14, 7, 0, tzinfo=UTC)
 
 
 def test_delivery_time_comes_from_the_injected_clock_in_utc() -> None:
